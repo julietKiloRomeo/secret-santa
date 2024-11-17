@@ -1,0 +1,205 @@
+/* static/styles.css */
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/api/placeholder/1920/1080');
+    background-size: cover;
+    color: white;
+}
+
+.container {
+    background: rgba(139, 0, 0, 0.9);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+h1 {
+    color: #fff;
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+input {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+button {
+    padding: 1rem;
+    background: #2c8a2c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #1e5e1e;
+}
+
+.wheel-container {
+    display: none;
+    margin-top: 2rem;
+}
+
+.wheel {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1);
+    transform: rotate(0deg);
+    margin: 0 auto;
+}
+
+.wheel-section {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    transform-origin: 100% 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: white;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.error-message {
+    display: none;
+    color: #ff4444;
+    margin-top: 1rem;
+    font-weight: bold;
+}
+
+.grinch {
+    font-size: 2rem;
+    margin-top: 1rem;
+}
+
+.success-message {
+    display: none;
+    color: #4CAF50;
+    margin-top: 1rem;
+    font-weight: bold;
+}
+
+.snowflake {
+    position: fixed;
+    color: white;
+    font-size: 1.5em;
+    user-select: none;
+    z-index: 1;
+    animation: fall linear forwards;
+}
+
+@keyframes fall {
+    to {
+        transform: translateY(100vh);
+    }
+}
+
+
+/* Add these styles to your styles.css file */
+.wheel {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1);
+    transform: rotate(0deg);
+    margin: 0 auto;
+    border: 5px solid #fff;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+}
+
+.wheel-section {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    transform-origin: 100% 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 0.8rem;
+    color: white;
+    padding: 1rem;
+    box-sizing: border-box;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.wheel-section span {
+    position: absolute;
+    left: 20px;
+    transform-origin: left center;
+    white-space: nowrap;
+}
+
+.wheel-container {
+    display: none;
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+}
+
+
+.wheel {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1);
+    transform: rotate(0deg);
+    margin: 0 auto;
+    border: 5px solid #fff;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    background: #fff;
+}
+
+.wheel-section {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 50%;
+    transform-origin: 0% 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    box-sizing: border-box;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.wheel-section span {
+    position: absolute;
+    left: 50%;
+    width: 100px;
+    text-align: center;
+    transform-origin: center;
+}
