@@ -11,16 +11,16 @@ SS.load()
 ASSIGNMENTS = SS.config
 
 logins = {
- 'ditte': '1234',
- 'camilla': '1234',
- 'emma': '1234',
- 'andreas': '1234',
- 'jimmy': '1234',
- 'sara': '1234',
- 'mathias': '1234',
- 'klaus': '1234',
- 'tommy': '1234',
- 'jonna': '1234'
+ 'ditte': '5491',
+ 'camilla': '9915',
+ 'emma': '4673',
+ 'andreas': '1284',
+ 'jimmy': '8476',
+ 'sara': '0554',
+ 'mathias': '7355',
+ 'klaus': '8153',
+ 'tommy': '6778',
+ 'jonna': '6022'
 }
 
 
