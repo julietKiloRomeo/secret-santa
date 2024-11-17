@@ -51,23 +51,10 @@ def login():
 
     if code == logins[name]:
         session['user'] = name
-        return jsonify({"success": True, "name": name})
+        return jsonify({"success": True, "name": name, "recipient": ASSIGNMENTS[name]})
 
     return jsonify({"success": False, "error": "Invalid credentials"}), 401
 
-@app.route('/api/names', methods=['GET'])
-@login_required
-def get_eligible_names():
-    current_user = session['user']
-    
-    return jsonify({"names": list(SS.get_eligible_names(current_user))})
-
-@app.route('/api/secret-santa', methods=['GET'])
-@login_required
-def get_assignment():
-    current_user = session['user']
-    
-    return jsonify({"recipient": ASSIGNMENTS[current_user]})
     
 
 if __name__ == '__main__':

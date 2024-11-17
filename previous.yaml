@@ -1,0 +1,30 @@
+andreas:
+- sara
+- camilla
+camilla:
+- klaus
+- ditte
+ditte:
+- camilla
+- jonna
+emma:
+- tommy
+- klaus
+jimmy:
+- jonna
+- tommy
+jonna:
+- mathias
+- jimmy
+klaus:
+- ditte
+- mathias
+mathias:
+- jimmy
+- sara
+sara:
+- andreas
+- emma
+tommy:
+- emma
+- andreas

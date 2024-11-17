@@ -17,7 +17,7 @@ body {
     border-radius: 15px;
     box-shadow: 0 0 20px rgba(0,0,0,0.5);
     text-align: center;
-    max-width: 400px;
+    max-width: 500px;
     width: 90%;
 }
 
@@ -56,36 +56,6 @@ button:hover {
     background: #1e5e1e;
 }
 
-.wheel-container {
-    display: none;
-    margin-top: 2rem;
-}
-
-.wheel {
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    position: relative;
-    overflow: hidden;
-    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1);
-    transform: rotate(0deg);
-    margin: 0 auto;
-}
-
-.wheel-section {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    transform-origin: 100% 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    color: white;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
 .error-message {
     display: none;
     color: #ff4444;
@@ -121,85 +91,9 @@ button:hover {
 }
 
 
-/* Add these styles to your styles.css file */
-.wheel {
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    position: relative;
-    overflow: hidden;
-    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1);
-    transform: rotate(0deg);
-    margin: 0 auto;
-    border: 5px solid #fff;
-    box-shadow: 0 0 15px rgba(0,0,0,0.3);
-}
-
-.wheel-section {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    transform-origin: 100% 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    font-size: 0.8rem;
-    color: white;
-    padding: 1rem;
-    box-sizing: border-box;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-}
-
-.wheel-section span {
-    position: absolute;
-    left: 20px;
-    transform-origin: left center;
-    white-space: nowrap;
-}
-
-.wheel-container {
-    display: none;
-    margin-top: 2rem;
-    padding: 1rem;
-    background: rgba(0,0,0,0.2);
-    border-radius: 10px;
-}
-
-
-.wheel {
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    position: relative;
-    overflow: hidden;
-    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1);
-    transform: rotate(0deg);
-    margin: 0 auto;
-    border: 5px solid #fff;
-    box-shadow: 0 0 15px rgba(0,0,0,0.3);
-    background: #fff;
-}
-
-.wheel-section {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 50%;
-    height: 50%;
-    transform-origin: 0% 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: white;
-    box-sizing: border-box;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-}
-
-.wheel-section span {
-    position: absolute;
-    left: 50%;
-    width: 100px;
-    text-align: center;
-    transform-origin: center;
+/* static/styles.css */
+#gif-container img {
+    width: 100%; /* or any specific width like 300px */
+    max-width: 400px; /* optional: to limit the maximum width */
+    height: auto; /* maintain aspect ratio */
 }

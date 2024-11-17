@@ -1,0 +1,68 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gave roulette</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🎄 Gave rouletten 🎄</h1>
+        <div class="form-message" style="display: block;">
+            <form class="login-form" onsubmit="handleSubmit(event)">
+                <input type="text" id="name" placeholder="Fornavn" required>
+                <input type="password" id="code" placeholder="Kode" maxlength="4" required>
+                <button type="submit">Træk et navn...</button>
+            </form>
+        </div>
+        <div class="error-message" style="display: none;">
+            <div class="grinch">😈</div>
+            Hov hov! Ingen gaver til dig!
+        </div>
+        <div class="success-message" style="display: none;">
+            <div>
+                🎁 Du skal give til: <span id="result"></span> 🎁
+            </div>
+            <div id="gif-container">
+                <img src="{{ url_for('static', filename='santa.gif') }}" alt="Spinner GIF">
+            </div>
+        </div>
+    </div>
+    <script>
+        async function handleSubmit(event) {
+            event.preventDefault();
+            await login();
+        }
+
+        async function login() {
+            const name = document.getElementById('name').value;
+            const code = document.getElementById('code').value;
+            console.log(name, code);
+
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, code })
+            });
+            const result = await response.json();
+            console.log(result);
+
+            if (result.success) {
+                // Show success message
+                document.querySelector('.form-message').style.display = 'none';
+                document.querySelector('.success-message').style.display = 'block';
+                document.getElementById('result').textContent = result.recipient;
+                document.querySelector('.error-message').style.display = 'none';
+            } else {
+                // Show error message
+                document.querySelector('.error-message').style.display = 'block';
+                document.querySelector('.success-message').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
