@@ -51,7 +51,7 @@ def login():
 
     if code == logins[name]:
         session['user'] = name
-        return jsonify({"success": True, "name": name, "recipient": ASSIGNMENTS[name]})
+        return jsonify({"success": True, "name": name, "recipient": ASSIGNMENTS[name].capitalize()})
 
     return jsonify({"success": False, "error": "Invalid credentials"}), 401
 

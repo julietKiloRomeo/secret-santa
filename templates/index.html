@@ -18,7 +18,7 @@
                     <source src="https://cdn.glitch.global/e96496c4-8145-4241-967e-6b2e0fa0baf1/HOHOHOOOO.mp3?v=1731947562034" type="audio/mp3">
                  </audio>
                  
-                 <button type="submit" onclick="playHoHo()">Træk et navn...</button>            </form>
+                 <button type="submit">Træk et navn...</button>            </form>
         </div>
         <div class="error-message" style="display: none;">
             <div class="grinch">😈</div>
@@ -42,7 +42,6 @@
         async function login() {
             const name = document.getElementById('name').value;
             const code = document.getElementById('code').value;
-            console.log(name, code);
 
             const response = await fetch('/api/login', {
                 method: 'POST',
@@ -52,7 +51,6 @@
                 body: JSON.stringify({ name, code })
             });
             const result = await response.json();
-            console.log(result);
 
             if (result.success) {
                 // Show success message
@@ -60,6 +58,7 @@
                 document.querySelector('.success-message').style.display = 'block';
                 document.getElementById('result').textContent = result.recipient;
                 document.querySelector('.error-message').style.display = 'none';
+                playHoHo();
             } else {
                 // Show error message
                 document.querySelector('.error-message').style.display = 'block';
