@@ -46,7 +46,7 @@ def index():
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
-    name = data.get('name')
+    name = data.get('name').lower()
     code = data.get('code')
 
     if code == logins[name]:
