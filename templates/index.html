@@ -14,8 +14,11 @@
             <form class="login-form" onsubmit="handleSubmit(event)">
                 <input type="text" id="name" placeholder="Fornavn" required>
                 <input type="password" id="code" placeholder="Kode" maxlength="4" required>
-                <button type="submit">Træk et navn...</button>
-            </form>
+                <audio id="hohoSound">
+                    <source src="https://cdn.glitch.global/e96496c4-8145-4241-967e-6b2e0fa0baf1/HOHOHOOOO.mp3?v=1731947562034" type="audio/mp3">
+                 </audio>
+                 
+                 <button type="submit" onclick="playHoHo()">Træk et navn...</button>            </form>
         </div>
         <div class="error-message" style="display: none;">
             <div class="grinch">😈</div>
@@ -63,6 +66,30 @@
                 document.querySelector('.success-message').style.display = 'none';
             }
         }
+
+
+        const audio = document.getElementById('hohoSound');
+   
+   function playHoHo() {
+      const startDelay = 1000; // Delay i millisekunder 1000ms = 1 second
+      setTimeout(() => {
+         audio.play().catch(error => {
+            console.error("Error playing audio:", error);
+            alert("Hoho kan ikke afspilles, øv");
+         });
+      }, startDelay);
+   }
+   
+   // Event listener for at time hoho med munden
+   audio.addEventListener('ended', () => {
+      const delayBetweenLoops = 550; // Delay er i millisekunder 1500ms = 1.5 seconds
+      setTimeout(() => {
+         audio.play();
+      }, delayBetweenLoops);
+   });
+   
+
+
     </script>
 </body>
 </html>
