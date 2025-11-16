@@ -12,8 +12,35 @@
   const santaImg = new Image();
   santaImg.src = '/static/santa.gif';
 
+  // WebAudio jingle for flaps
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = AudioCtx ? new AudioCtx() : null;
+  function jingle() {
+    if (!audioCtx) return;
+    try {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      const t = audioCtx.currentTime;
+      o.frequency.setValueAtTime(880, t);
+      o.frequency.linearRampToValueAtTime(1100, t + 0.08);
+      o.frequency.linearRampToValueAtTime(1320, t + 0.16);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.05, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.start(t);
+      o.stop(t + 0.2);
+    } catch (e) {
+      // ignore audio errors
+      console.warn('Audio jingle failed', e);
+    }
+  }
+
   let bird = { x: 80, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
-  const GRAVITY = 0.6;
+  // Make Santa fall a little bit slower for gentler gameplay
+  const GRAVITY = 0.45;
   const FLAP = -9;
 
   const chimneys = [];
@@ -115,6 +142,10 @@
 
   function flap() {
     bird.vy = FLAP;
+    try {
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
+    jingle();
   }
 
   document.addEventListener('keydown', (e) => {
@@ -132,4 +163,3 @@
   // initial draw
   draw();
 })();
-
