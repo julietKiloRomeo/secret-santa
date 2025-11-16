@@ -26,6 +26,7 @@
   let pendingDirection = direction;
   let score = 0;
   let running = true;
+  let skinQueue = [];
 
   // Snake represented as segments, each with x,y and optional skin (emoji)
   // Start length 5
@@ -36,6 +37,7 @@
     { x: 4, y: 10 },
     { x: 3, y: 10 },
   ];
+  let forcedNextSkin = null;
   let gift = placeGift();
 
   function shuffle(arr) {
@@ -47,6 +49,11 @@
   }
 
   function nextGiftSkin() {
+    if (forcedNextSkin) {
+      const s = forcedNextSkin;
+      forcedNextSkin = null;
+      return s;
+    }
     if (giftCycle.length === 0) giftCycle = shuffle([...PRESENT_EMOJI]);
     return giftCycle.pop();
   }
@@ -121,7 +128,8 @@
       direction = pendingDirection;
     }
 
-    const head = { ...snake[0] };
+    // Create a fresh head without inheriting body skins
+    const head = { x: snake[0].x, y: snake[0].y, skin: null };
     if (direction === 'left') head.x -= 1;
     else if (direction === 'right') head.x += 1;
     else if (direction === 'up') head.y -= 1;
@@ -139,8 +147,8 @@
     // Move
     snake.unshift(head);
     if (head.x === gift.x && head.y === gift.y) {
-      // Grow: keep tail and mark new segment with gift skin
-      snake[0].skin = gift.skin;
+      // Grow: keep tail and record gift in queue preserving order
+      skinQueue.push(gift.skin);
       score += 1;
       scoreEl.textContent = `Score: ${score}`;
       playEat();
@@ -151,6 +159,7 @@
     }
 
     // Draw
+    applySkinsFromQueue();
     drawGrid();
     drawGift();
     drawSnake();
@@ -203,6 +212,17 @@
   drawGift();
   drawSnake();
 
+  function applySkinsFromQueue() {
+    // Clear all skins first
+    for (let i = 0; i < snake.length; i++) {
+      snake[i].skin = null;
+    }
+    const max = Math.min(skinQueue.length, snake.length - 1);
+    for (let j = 0; j < max; j++) {
+      snake[j + 1].skin = skinQueue[j];
+    }
+  }
+
   // Debug hooks for Playwright tests
   window.__snakeDebug__ = {
     placeGiftNextToHead(dx = 1, dy = 0) {
@@ -212,7 +232,7 @@
       // clamp to grid
       nx = Math.max(0, Math.min(GRID.cols - 1, nx));
       ny = Math.max(0, Math.min(GRID.rows - 1, ny));
-      gift = { x: nx, y: ny, skin: PRESENT_EMOJI[0] };
+      gift = { x: nx, y: ny, skin: nextGiftSkin() };
     },
     setDirection(dir) {
       pendingDirection = dir;
@@ -220,6 +240,9 @@
     getSnakeLength() {
       return snake.length;
     },
+    tickOnce() { tick(); },
+    getSkinsFiltered() { return snake.slice(1).map(s => s.skin).filter(Boolean); },
+    setNextGiftSkin(skin) { forcedNextSkin = skin; },
   };
   // Overlay + High score helpers
   let overlayEl = null;
