@@ -116,5 +116,8 @@ def test_advent_pages_exist_and_are_under_construction():
         html = r.get_data(as_text=True)
         assert r.status_code == 200
         assert title in html
-        assert "Under Construction" in html or "Under construction" in html
-
+        if route == "/forste-advent":
+            # First minigame is implemented; should have a canvas
+            assert "snake-canvas" in html
+        else:
+            assert "Under Construction" in html or "Under construction" in html
