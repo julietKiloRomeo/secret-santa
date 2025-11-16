@@ -1,18 +1,17 @@
-[tool.poetry]
-name = "secret-santa"
-version = "0.1.0"
-description = ""
-authors = ["jkr <jimmy.kjaersgaard@gmail.com>"]
-readme = "README.md"
-packages = [{include = "secret_santa"}]
+ [project]
+ name = "secret-santa"
+ version = "0.1.0"
+ description = "Lightweight Secret Santa web app"
+ readme = "README.md"
+ authors = [{ name = "jkr", email = "jimmy.kjaersgaard@gmail.com" }]
+ requires-python = ">=3.10"
+ dependencies = [
+   "Flask>=3.0.3",
+   "flask-cors>=5.0.0",
+   "python-dotenv>=1.0.1",
+   "jupyterlab>=4.3.0",
+ ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-Flask = "^3.0.3"
-flask-cors = "^5.0.0"
-jupyterlab = "^4.3.0"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+ [build-system]
+ requires = ["hatchling"]
+ build-backend = "hatchling.build"

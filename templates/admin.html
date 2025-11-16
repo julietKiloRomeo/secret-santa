@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+  <div class="container">
+    <h1>Admin Panel (Year {{ year }})</h1>
+
+    <section>
+      <h2>Sæt adgangskode</h2>
+      <form onsubmit="return setPassword(event);">
+        <input type="text" id="userName" placeholder="Brugernavn (fornavn)" required />
+        <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required />
+        <button type="submit">Gem adgangskode</button>
+      </form>
+      <div id="setPassMsg"></div>
+    </section>
+
+    <section style="margin-top: 2rem;">
+      <h2>Kør årets matcher</h2>
+      <button onclick="runMatches()">Kør matcher</button>
+      <div id="matchesMsg"></div>
+    </section>
+  </div>
+
+  <script>
+    async function setPassword(e) {
+      e.preventDefault();
+      const name = document.getElementById('userName').value.trim();
+      const passphrase = document.getElementById('userPass').value.trim();
+      const resp = await fetch('/api/admin/set_password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, passphrase })
+      });
+      const data = await resp.json();
+      document.getElementById('setPassMsg').textContent = data.success ? 'Adgangskode gemt' : (data.error || 'Fejl');
+      return false;
+    }
+
+    async function runMatches() {
+      const resp = await fetch('/api/admin/run_matches', { method: 'POST' });
+      const data = await resp.json();
+      document.getElementById('matchesMsg').textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
+    }
+  </script>
+{% endblock %}

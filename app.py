@@ -1,32 +1,44 @@
 # app.py
 from flask import Flask, jsonify, request, session, render_template
+import os
 from flask_cors import CORS
+from werkzeug.security import check_password_hash, generate_password_hash
 import random
 from functools import wraps
 from secret_santa import SecretSanta
+from dotenv import load_dotenv, set_key
 
 
+ENV_FILE = os.environ.get("ENV_FILE", ".env")
+load_dotenv(ENV_FILE)
 SS = SecretSanta()
-SS.load()
+try:
+    SS.load()
+except Exception:
+    # If current year's file is missing, generate and save it
+    SS.draw()
+    SS.save()
+    SS.load()
 ASSIGNMENTS = SS.config
 
-logins = {
- 'ditte': '5491',
- 'camilla': '9915',
- 'emma': '4673',
- 'andreas': '1284',
- 'jimmy': '8476',
- 'sara': '0554',
- 'mathias': '7355',
- 'klaus': '8153',
- 'tommy': '6778',
- 'jonna': '6022'
-}
+def load_logins_from_env():
+    prefix = "LOGIN_"
+    result = {}
+    for key, value in os.environ.items():
+        if key.startswith(prefix):
+            name = key[len(prefix):].lower()
+            result[name] = value
+    return result
+
+logins = load_logins_from_env()
 
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
+
+def is_hashed(value: str) -> bool:
+    return isinstance(value, str) and (value.startswith('pbkdf2:') or value.startswith('scrypt:'))
 
 # Sample data structure for couples
 
@@ -38,10 +50,27 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        if session['user'] not in {"jimmy", "ditte"}:
+            return jsonify({"error": "Forbidden"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/admin')
+@login_required
+def admin_page():
+    if session['user'] not in {"jimmy", "ditte"}:
+        return jsonify({"error": "Forbidden"}), 403
+    return render_template('admin.html', year=SS.year)
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -49,11 +78,40 @@ def login():
     name = data.get('name').lower()
     code = data.get('code')
 
-    if code == logins[name]:
-        session['user'] = name
-        return jsonify({"success": True, "name": name, "recipient": ASSIGNMENTS[name].capitalize()})
+    if name in logins:
+        stored = logins[name]
+        if is_hashed(stored) and check_password_hash(stored, code):
+            session['user'] = name
+            return jsonify({"success": True, "name": name, "recipient": ASSIGNMENTS[name].capitalize()})
 
     return jsonify({"success": False, "error": "Invalid credentials"}), 401
+
+@app.route('/api/admin/set_password', methods=['POST'])
+@admin_required
+def admin_set_password():
+    data = request.get_json()
+    name = data.get('name', '').lower()
+    passphrase = data.get('passphrase', '')
+    if not name or not passphrase:
+        return jsonify({"success": False, "error": "Missing name or passphrase"}), 400
+    hashed = generate_password_hash(passphrase)
+    key = f"LOGIN_{name}"
+    set_key(ENV_FILE, key, hashed)
+    load_dotenv(ENV_FILE, override=True)
+    global logins
+    logins = load_logins_from_env()
+    return jsonify({"success": True, "name": name})
+
+@app.route('/api/admin/run_matches', methods=['POST'])
+@admin_required
+def admin_run_matches():
+    global SS, ASSIGNMENTS
+    SS = SecretSanta()
+    SS.draw()
+    SS.save()
+    SS.load()
+    ASSIGNMENTS = SS.config
+    return jsonify({"success": True, "year": SS.year})
 
     
 

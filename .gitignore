@@ -1,2 +1,4 @@
 *.pyc
 .ipynb_checkpoints/*
+#.env contains secrets; keep out of VCS
+.env

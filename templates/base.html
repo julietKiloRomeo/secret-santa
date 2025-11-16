@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Secret Santa{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-left">
+      <a href="/" class="brand">🎄 Secret Santa</a>
+    </div>
+    <div class="nav-right">
+      {% if session.get('user') in ['jimmy','ditte'] %}
+        <a id="admin-link" href="/admin">Admin</a>
+      {% endif %}
+    </div>
+  </nav>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
+
