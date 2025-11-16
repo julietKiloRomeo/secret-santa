@@ -90,7 +90,10 @@ def test_admin_access_and_set_password_and_run_matches():
     assert data["name"] == "emma"
     assert "recipient" in data
 
-    # Trigger re-generation of matches and ensure app uses the updated file
+    # Trigger re-generation of matches as admin and ensure app uses the updated file
+    # Re-login as admin (previous step logged in as emma)
+    resp = login_as(client, "jimmy", "cozy-winter-lantern")
+    assert resp.status_code == 200
     resp = client.post("/api/admin/run_matches")
     assert resp.status_code == 200
     data = resp.get_json()

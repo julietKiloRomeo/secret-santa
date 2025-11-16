@@ -9,9 +9,13 @@
    "Flask>=3.0.3",
    "flask-cors>=5.0.0",
    "python-dotenv>=1.0.1",
-   "jupyterlab>=4.3.0",
  ]
 
  [build-system]
  requires = ["hatchling"]
  build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+]

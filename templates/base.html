@@ -12,8 +12,15 @@
       <a href="/" class="brand">🎄 Secret Santa</a>
     </div>
     <div class="nav-right">
-      {% if session.get('user') in ['jimmy','ditte'] %}
-        <a id="admin-link" href="/admin">Admin</a>
+      {% if session.get('user') %}
+        <a href="/forste-advent">Første Advent</a>
+        <a href="/anden-advent">Anden Advent</a>
+        <a href="/tredje-advent">Tredje Advent</a>
+        <a href="/fjerde-advent">Fjerde Advent</a>
+        <a href="/glaedelig-jul">Glædelig Jul</a>
+        {% if session.get('user') in ['jimmy','ditte'] %}
+          <a id="admin-link" href="/admin">Admin</a>
+        {% endif %}
       {% endif %}
     </div>
   </nav>
@@ -22,4 +29,3 @@
   </main>
 </body>
 </html>
-

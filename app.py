@@ -65,6 +65,26 @@ def admin_required(f):
 def index():
     return render_template('index.html')
 
+@app.route('/forste-advent')
+def forste_advent():
+    return render_template('forste_advent.html')
+
+@app.route('/anden-advent')
+def anden_advent():
+    return render_template('anden_advent.html')
+
+@app.route('/tredje-advent')
+def tredje_advent():
+    return render_template('tredje_advent.html')
+
+@app.route('/fjerde-advent')
+def fjerde_advent():
+    return render_template('fjerde_advent.html')
+
+@app.route('/glaedelig-jul')
+def glaedelig_jul():
+    return render_template('glaedelig_jul.html')
+
 @app.route('/admin')
 @login_required
 def admin_page():
