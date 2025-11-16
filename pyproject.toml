@@ -5,17 +5,30 @@
  readme = "README.md"
  authors = [{ name = "jkr", email = "jimmy.kjaersgaard@gmail.com" }]
  requires-python = ">=3.10"
- dependencies = [
-   "Flask>=3.0.3",
-   "flask-cors>=5.0.0",
-   "python-dotenv>=1.0.1",
- ]
+dependencies = [
+  "Flask>=3.0.3",
+  "flask-cors>=5.0.0",
+  "python-dotenv>=1.0.1",
+  "gunicorn>=20.1.0",
+  "PyYAML>=6.0",
+]
 
- [build-system]
- requires = ["hatchling"]
- build-backend = "hatchling.build"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.1",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+  "secret_santa.py",
+  "app.py",
+  "couples.yaml",
+  "previous.yaml",
+  "templates/**",
+  "static/**",
+  "README.md",
 ]
