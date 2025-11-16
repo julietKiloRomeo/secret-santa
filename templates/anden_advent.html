@@ -13,5 +13,6 @@
       Tip: Brug mellemrum eller klik for at hoppe mellem skorstene.
     </div>
   </div>
+  <script>window.__defaultPlayerName__ = {{ default_name|tojson }};</script>
   <script src="{{ url_for('static', filename='anden_advent.js') }}"></script>
 {% endblock %}

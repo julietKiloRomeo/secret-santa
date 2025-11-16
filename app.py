@@ -126,7 +126,8 @@ def forste_advent():
 
 @app.route('/anden-advent')
 def anden_advent():
-    return render_template('anden_advent.html')
+    default_name = session.get('user', 'Nisse')
+    return render_template('anden_advent.html', default_name=default_name)
 
 @app.route('/tredje-advent')
 def tredje_advent():
