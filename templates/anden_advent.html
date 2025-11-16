@@ -1,8 +1,17 @@
 {% extends 'base.html' %}
-{% block title %}Anden Advent{% endblock %}
+{% block title %}Anden Advent - Flappy Santa{% endblock %}
 {% block content %}
-  <div class="container">
-    <h1>Anden Advent</h1>
-    <p>Under Construction</p>
+  <div class="container" style="max-width:640px;">
+    <h1>Anden Advent – Flappy Santa</h1>
+    <p>Styr julemanden gennem skorstene. Tryk mellemrum for at hoppe! 🎅</p>
+    <div style="display:flex; gap:1rem; align-items:center; justify-content:center; margin-bottom: 0.5rem;">
+      <div id="santa-score">Score: 0</div>
+      <div id="santa-status"></div>
+    </div>
+    <canvas id="santa-canvas" width="400" height="400" style="background:#68b; border:2px solid #fff; image-rendering: pixelated;"></canvas>
+    <div style="margin-top:0.5rem; font-size: 0.9rem; opacity: 0.9;">
+      Tip: Brug mellemrum eller klik for at hoppe mellem skorstene.
+    </div>
   </div>
+  <script src="{{ url_for('static', filename='anden_advent.js') }}"></script>
 {% endblock %}

@@ -333,7 +333,7 @@
   async function showHighScoresOverlay() {
     const data = await fetchScores();
     const panel = arcadePanel();
-    panel.appendChild(arcadeTitle('HØJE SCORER — Jule Snake'));
+    panel.appendChild(arcadeTitle('Søde Børn'));
     panel.appendChild(renderScoresList(data.scores || []));
     const close = arcadeButton('Luk');
     close.addEventListener('click', hideOverlay);

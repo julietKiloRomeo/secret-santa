@@ -46,6 +46,7 @@ def init_scores_db():
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
+        # Ensure table exists with a uniqueness constraint on (game, name)
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS scores (
@@ -53,11 +54,33 @@ def init_scores_db():
                 game TEXT NOT NULL,
                 name TEXT NOT NULL,
                 score INTEGER NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                UNIQUE(game, name)
             )
             """
         )
+        # Index to speed up top-N queries
         cur.execute("CREATE INDEX IF NOT EXISTS idx_scores_game_score ON scores(game, score DESC)")
+        # Also ensure unique index exists (for older SQLite versions this is redundant)
+        try:
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_game_name ON scores(game, name)")
+        except sqlite3.IntegrityError:
+            # There are duplicate (game, name) rows in an existing DB. Deduplicate
+            # by keeping the highest score for each (game, name).
+            cur.execute("SELECT game, name, COUNT(*) as c FROM scores GROUP BY game, name HAVING c > 1")
+            duplicates = cur.fetchall()
+            for g, n, _ in duplicates:
+                cur.execute(
+                    "SELECT id FROM scores WHERE game = ? AND name = ? ORDER BY score DESC, id ASC LIMIT 1",
+                    (g, n),
+                )
+                keep = cur.fetchone()[0]
+                cur.execute(
+                    "DELETE FROM scores WHERE game = ? AND name = ? AND id != ?",
+                    (g, n, keep),
+                )
+            # Try creating the unique index again
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_game_name ON scores(game, name)")
         con.commit()
     finally:
         con.close()
@@ -151,8 +174,15 @@ def post_score(game: str):
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
+        # Upsert: keep only one row per (game, name). If a new score is higher, update it.
         cur.execute(
-            "INSERT INTO scores (game, name, score, created_at) VALUES (?, ?, ?, ?)",
+            """
+            INSERT INTO scores (game, name, score, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(game, name) DO UPDATE SET
+                score = CASE WHEN excluded.score > score THEN excluded.score ELSE score END,
+                created_at = CASE WHEN excluded.score > score THEN excluded.created_at ELSE created_at END
+            """,
             (game, name, score, created_at)
         )
         con.commit()
