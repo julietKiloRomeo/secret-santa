@@ -7,6 +7,8 @@ import random
 from functools import wraps
 from secret_santa import SecretSanta
 from dotenv import load_dotenv, set_key
+import sqlite3
+from datetime import datetime
 
 
 ENV_FILE = os.environ.get("ENV_FILE", ".env")
@@ -36,6 +38,30 @@ logins = load_logins_from_env()
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
+
+SCORES_DB = os.environ.get('SCORES_DB', os.path.join(os.getcwd(), 'scores.sqlite3'))
+
+def init_scores_db():
+    con = sqlite3.connect(SCORES_DB)
+    try:
+        cur = con.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game TEXT NOT NULL,
+                name TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_scores_game_score ON scores(game, score DESC)")
+        con.commit()
+    finally:
+        con.close()
+
+init_scores_db()
 
 def is_hashed(value: str) -> bool:
     return isinstance(value, str) and (value.startswith('pbkdf2:') or value.startswith('scrypt:'))
@@ -67,7 +93,8 @@ def index():
 
 @app.route('/forste-advent')
 def forste_advent():
-    return render_template('forste_advent.html')
+    default_name = session.get('user', 'Nisse')
+    return render_template('forste_advent.html', default_name=default_name)
 
 @app.route('/anden-advent')
 def anden_advent():
@@ -84,6 +111,47 @@ def fjerde_advent():
 @app.route('/glaedelig-jul')
 def glaedelig_jul():
     return render_template('glaedelig_jul.html')
+
+@app.route('/api/scores/<game>', methods=['GET'])
+def get_scores(game: str):
+    con = sqlite3.connect(SCORES_DB)
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT name, score, created_at FROM scores WHERE game = ? ORDER BY score DESC, id ASC LIMIT 10",
+            (game,)
+        )
+        rows = cur.fetchall()
+        scores = [
+            {"name": name, "score": int(score), "created_at": created_at}
+            for (name, score, created_at) in rows
+        ]
+        return jsonify({"game": game, "scores": scores})
+    finally:
+        con.close()
+
+@app.route('/api/scores/<game>', methods=['POST'])
+def post_score(game: str):
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip() or session.get('user') or 'Guest'
+    try:
+        score = int(data.get('score', 0))
+    except Exception:
+        return jsonify({"success": False, "error": "Invalid score"}), 400
+    if score < 0:
+        return jsonify({"success": False, "error": "Invalid score"}), 400
+    created_at = datetime.utcnow().isoformat()
+    con = sqlite3.connect(SCORES_DB)
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "INSERT INTO scores (game, name, score, created_at) VALUES (?, ?, ?, ?)",
+            (game, name, score, created_at)
+        )
+        con.commit()
+    finally:
+        con.close()
+    return jsonify({"success": True})
 
 @app.route('/admin')
 @login_required
