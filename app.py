@@ -92,6 +92,10 @@ def admin_required(f):
 def index():
     return render_template('index.html')
 
+@app.route('/healthz')
+def healthz():
+    return jsonify({"status": "ok"})
+
 @app.route('/forste-advent')
 def forste_advent():
     default_name = session.get('user', 'Nisse')
