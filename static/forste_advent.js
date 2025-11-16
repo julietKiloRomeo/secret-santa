@@ -4,6 +4,7 @@
   const ctx = canvas.getContext('2d');
   const scoreEl = document.getElementById('score');
   const statusEl = document.getElementById('status');
+  const defaultPlayerName = window.__defaultPlayerName__ || 'Guest';
 
   const CELL = 20; // pixels per grid cell
   const GRID = { cols: canvas.width / CELL, rows: canvas.height / CELL };
@@ -157,15 +158,36 @@
 
   let timer = setInterval(tick, SPEED_MS);
 
-  function gameOver() {
+  async function gameOver() {
     running = false;
     clearInterval(timer);
-    setStatus('Game Over! Try again 🎅');
+    setStatus('Game Over! Try igen 🎅');
     playDeath();
-    // Submit score
-    const nameInput = document.getElementById('player-name');
-    const name = (nameInput && nameInput.value || 'Guest');
-    submitScore('forste-advent', name, score).then(fetchScores);
+    // Determine if high score and prompt for name if so, then show list
+    try {
+      const data = await fetchScores();
+      const scores = data.scores || [];
+      const qualifies = scores.length < 10 || score > (scores[scores.length - 1]?.score || -1);
+      if (qualifies && score > 0) {
+        const panel = arcadePanel();
+        panel.appendChild(arcadeTitle('Ny high score. Hvilket navn skal vi skrive på julemandens liste?'));
+        const input = arcadeInput(defaultPlayerName);
+        panel.appendChild(input);
+        const save = arcadeButton('Gem');
+        save.addEventListener('click', async () => {
+          const name = (input.value || defaultPlayerName).trim();
+          await submitScore('forste-advent', name, score);
+          hideOverlay();
+          await showHighScoresOverlay();
+        });
+        panel.appendChild(save);
+        showOverlay(panel);
+      } else {
+        await showHighScoresOverlay();
+      }
+    } catch (e) {
+      console.error('High score flow failed', e);
+    }
   }
 
   window.addEventListener('keydown', (e) => {
@@ -199,22 +221,101 @@
       return snake.length;
     },
   };
-  // High score helpers
+  // Overlay + High score helpers
+  let overlayEl = null;
+  function ensureOverlay() {
+    if (overlayEl) return overlayEl;
+    overlayEl = document.createElement('div');
+    overlayEl.id = 'overlay';
+    overlayEl.style.position = 'fixed';
+    overlayEl.style.inset = '0';
+    overlayEl.style.background = 'rgba(0,0,0,0.9)';
+    overlayEl.style.display = 'none';
+    overlayEl.style.alignItems = 'center';
+    overlayEl.style.justifyContent = 'center';
+    overlayEl.style.zIndex = '1000';
+    document.body.appendChild(overlayEl);
+    return overlayEl;
+  }
+  function showOverlay(inner) {
+    const el = ensureOverlay();
+    el.innerHTML = '';
+    el.appendChild(inner);
+    el.style.display = 'flex';
+  }
+  function hideOverlay() {
+    if (overlayEl) overlayEl.style.display = 'none';
+  }
+  function arcadePanel() {
+    const panel = document.createElement('div');
+    panel.style.background = '#000';
+    panel.style.color = '#0f0';
+    panel.style.border = '4px solid #0f0';
+    panel.style.boxShadow = '0 0 20px #0f0';
+    panel.style.padding = '1rem 2rem';
+    panel.style.fontFamily = 'monospace';
+    panel.style.textShadow = '0 0 6px #0f0';
+    panel.style.maxWidth = '480px';
+    panel.style.width = '90%';
+    panel.style.borderRadius = '8px';
+    return panel;
+  }
+  function arcadeTitle(text) {
+    const h = document.createElement('h2');
+    h.textContent = text;
+    h.style.margin = '0 0 1rem 0';
+    h.style.textAlign = 'center';
+    return h;
+  }
+  function arcadeButton(text) {
+    const b = document.createElement('button');
+    b.textContent = text;
+    b.style.background = '#0f0';
+    b.style.color = '#000';
+    b.style.border = '2px solid #0f0';
+    b.style.padding = '0.5rem 1rem';
+    b.style.fontFamily = 'monospace';
+    b.style.cursor = 'pointer';
+    b.style.marginTop = '1rem';
+    return b;
+  }
+  function arcadeInput(value) {
+    const i = document.createElement('input');
+    i.value = value || '';
+    i.style.width = '100%';
+    i.style.padding = '0.5rem';
+    i.style.background = '#001100';
+    i.style.border = '2px solid #0f0';
+    i.style.color = '#0f0';
+    i.style.fontFamily = 'monospace';
+    return i;
+  }
+  function renderScoresList(scores) {
+    const ul = document.createElement('ol');
+    ul.style.listStyle = 'none';
+    ul.style.padding = '0';
+    ul.style.margin = '0';
+    scores.forEach((s, idx) => {
+      const li = document.createElement('li');
+      li.textContent = `${String(idx + 1).padStart(2, '0')} — ${s.name} — ${s.score}`;
+      li.style.padding = '0.25rem 0';
+      ul.appendChild(li);
+    });
+    return ul;
+  }
   async function fetchScores() {
-    try {
-      const resp = await fetch('/api/scores/forste-advent');
-      const data = await resp.json();
-      const list = document.getElementById('high-scores');
-      if (!list) return;
-      list.innerHTML = '';
-      for (const item of data.scores) {
-        const li = document.createElement('li');
-        li.textContent = `${item.name} — ${item.score}`;
-        list.appendChild(li);
-      }
-    } catch (e) {
-      console.error('Failed to fetch scores', e);
-    }
+    const resp = await fetch('/api/scores/forste-advent');
+    return resp.json();
+  }
+  async function showHighScoresOverlay() {
+    const data = await fetchScores();
+    const panel = arcadePanel();
+    panel.appendChild(arcadeTitle('HØJE SCORER — Jule Snake'));
+    panel.appendChild(renderScoresList(data.scores || []));
+    const close = arcadeButton('Luk');
+    close.addEventListener('click', hideOverlay);
+    panel.appendChild(close);
+    showOverlay(panel);
   }
 
   async function submitScore(game, name, score) {
@@ -231,7 +332,7 @@
     }
   }
 
-  fetchScores();
+  // No initial high score list; shown after game over.
 
   // Sound effects via WebAudio
   const AudioCtx = window.AudioContext || window.webkitAudioContext;

@@ -39,10 +39,11 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
 
-SCORES_DB = os.environ.get('SCORES_DB', os.path.join(os.getcwd(), 'scores.sqlite3'))
+def scores_db_path():
+    return os.environ.get('SCORES_DB', os.path.join(os.getcwd(), 'scores.sqlite3'))
 
 def init_scores_db():
-    con = sqlite3.connect(SCORES_DB)
+    con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
         cur.execute(
@@ -114,7 +115,8 @@ def glaedelig_jul():
 
 @app.route('/api/scores/<game>', methods=['GET'])
 def get_scores(game: str):
-    con = sqlite3.connect(SCORES_DB)
+    init_scores_db()
+    con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
         cur.execute(
@@ -132,6 +134,7 @@ def get_scores(game: str):
 
 @app.route('/api/scores/<game>', methods=['POST'])
 def post_score(game: str):
+    init_scores_db()
     data = request.get_json() or {}
     name = (data.get('name') or '').strip() or session.get('user') or 'Guest'
     try:
@@ -141,7 +144,7 @@ def post_score(game: str):
     if score < 0:
         return jsonify({"success": False, "error": "Invalid score"}), 400
     created_at = datetime.utcnow().isoformat()
-    con = sqlite3.connect(SCORES_DB)
+    con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
         cur.execute(

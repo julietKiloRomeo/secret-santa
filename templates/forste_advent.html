@@ -4,10 +4,6 @@
   <div class="container" style="max-width: 640px;">
     <h1>Første Advent – Jule Snake</h1>
     <p>Styr nissen med piletasterne. Saml gaverne og bliv længere! 🎁</p>
-    <div style="display:flex; gap:0.5rem; align-items:center; justify-content:center; margin-bottom: 0.5rem;">
-      <label for="player-name">Navn:</label>
-      <input id="player-name" value="{{ default_name }}" style="max-width:200px;" />
-    </div>
     <div style="display:flex; gap:1rem; align-items:center; justify-content:center; margin-bottom: 0.5rem;">
       <div id="score">Score: 0</div>
       <div id="status"></div>
@@ -16,10 +12,7 @@
     <div style="margin-top:0.5rem; font-size: 0.9rem; opacity: 0.9;">
       Tip: Brug piletasterne. Ram ikke væggen eller dig selv!
     </div>
-    <div style="margin-top:1rem; text-align:left;">
-      <h2>Top 10</h2>
-      <ol id="high-scores" style="padding-left:1.25rem;"></ol>
-    </div>
   </div>
+  <script>window.__defaultPlayerName__ = {{ default_name|tojson }};</script>
   <script src="{{ url_for('static', filename='forste_advent.js') }}"></script>
 {% endblock %}
