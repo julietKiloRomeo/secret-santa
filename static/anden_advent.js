@@ -135,6 +135,8 @@
   // reindeer is visually the front-most. SECOND_OFFSET_X sits slightly behind.
   const LEAD_OFFSET_X = 58; // front reindeer x offset from PLAYER_X (most forward)
   const SECOND_OFFSET_X = 34; // second reindeer x offset from PLAYER_X (behind lead)
+  // third reindeer offset (closest to sleigh); increase slightly to add spacing
+  const THIRD_OFFSET_X = SECOND_OFFSET_X - 8; // a bit more space to the sleigh
 
   // The `bird` now represents the front reindeer (the thing player controls)
   let bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
@@ -317,8 +319,12 @@
     if (!drawSpriteCentered(sprites.santaSleigh, centerX, centerY, sleighW, sleighH)) {
       // fallback: draw the simple sleigh and the santa.gif
       drawSleighAndReindeer(sx, sy);
-      if (santaImg.complete) ctx.drawImage(santaImg, sx, sy, bird.w, bird.h);
-      else {
+      if (santaImg.complete) {
+        // Draw Santa narrower — 66% of previous width to better fit sprite
+        const santaW = Math.round(bird.w * 0.66);
+        const santaH = Math.round(bird.h * 0.66);
+        ctx.drawImage(santaImg, Math.round(centerX - santaW / 2), Math.round(centerY - santaH / 2), santaW, santaH);
+      } else {
         ctx.fillStyle = '#fff';
         ctx.fillRect(sx, sy, bird.w, bird.h);
       }
@@ -388,14 +394,15 @@
     // horizontal positions are fixed offsets from the anchor (PLAYER_X)
     const r1x = PLAYER_X + LEAD_OFFSET_X;
     const r2x = PLAYER_X + SECOND_OFFSET_X;
-    const r3x = PLAYER_X + (SECOND_OFFSET_X - 18);
+    const r3x = PLAYER_X + THIRD_OFFSET_X;
     // Use the trail y directly so drawn reindeer align with collision y
     const leadY = (trail[leadIdx] || { y: bird.y }).y;
     const secondY = (trail[secondIdx] || { y: bird.y }).y;
     const thirdY = (trail[thirdIdx] || { y: bird.y }).y;
     // sizes for sprite drawing
-    const reW = Math.round(bird.w * 0.5);
-    const reH = Math.round(bird.h * 0.5);
+    // Make reindeers 10% larger than before (previously 50% of bird size)
+    const reW = Math.round(bird.w * 0.55);
+    const reH = Math.round(bird.h * 0.55);
     // draw leading reindeers (on top) at their fixed X, sampling Y from trail
     if (!drawSpriteCentered(sprites.reindeer1, r1x, leadY, reW, reH)) drawReindeerAt(r1x, leadY, 1);
     if (!drawSpriteCentered(sprites.reindeer2, r2x, secondY, reW, reH)) drawReindeerAt(r2x, secondY, 1);
@@ -580,15 +587,43 @@
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') {
-      if (!running) reset();
+    // Support Space key for flap, but avoid triggering actions when the
+    // high-score overlay is visible (prevent accidental submit/reset).
+    if (e.code === 'Space' || e.key === ' ') {
+      const overlay = document.getElementById('overlay');
+      const overlayVisible = overlay && overlay.style.display !== 'none';
+      const active = document.activeElement;
+      const activeTag = active && active.tagName && active.tagName.toLowerCase();
+      if (overlayVisible) {
+        // If the user is typing in an input/textarea, allow spaces to be entered.
+        if (activeTag === 'input' || activeTag === 'textarea') return;
+        // Otherwise prevent default to avoid activating focused buttons.
+        e.preventDefault();
+        return;
+      }
+      if (!running) {
+        reset();
+        return;
+      }
       flap();
     }
   });
+
+  // Canvas interactions: handle mouse and touch. Ignore taps when overlay is visible.
   canvas.addEventListener('mousedown', (e) => {
+    const overlay = document.getElementById('overlay');
+    if (overlay && overlay.style.display !== 'none') return;
     if (!running) reset();
     flap();
   });
+  // Touch support for phones
+  canvas.addEventListener('touchstart', (e) => {
+    const overlay = document.getElementById('overlay');
+    if (overlay && overlay.style.display !== 'none') return;
+    e.preventDefault();
+    if (!running) reset();
+    flap();
+  }, { passive: false });
 
   setInterval(tick, 1000 / 60);
   // initial draw
