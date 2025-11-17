@@ -273,6 +273,18 @@ def post_score(game: str):
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
+        # Determine whether this score would qualify for the top-10 list.
+        cur.execute(
+            "SELECT name, score FROM scores WHERE game = ? ORDER BY score DESC, id ASC LIMIT 10",
+            (game,)
+        )
+        rows = cur.fetchall()
+        lowest = rows[-1][1] if rows and len(rows) >= 10 else None
+        # If there are already 10 entries and this score is not strictly greater than
+        # the lowest score, do not insert it.
+        if lowest is not None and score <= lowest:
+            return jsonify({"success": False, "error": "Score does not qualify for leaderboard"})
+
         # Upsert: keep only one row per (game, name). If a new score is higher, update it.
         cur.execute(
             """
@@ -294,7 +306,10 @@ def post_score(game: str):
 def admin_page():
     if session['user'] not in {"jimmy", "ditte"}:
         return jsonify({"error": "Forbidden"}), 403
-    return render_template('admin.html', year=SS.year)
+    # Expose draw-locked flag to the template so the button can be disabled
+    draw_locked = os.environ.get('DRAW_LOCKED', '')
+    draw_locked = str(draw_locked).lower() in ('1', 'true', 'yes', 'on')
+    return render_template('admin.html', year=SS.year, draw_locked=draw_locked)
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -329,6 +344,14 @@ def admin_set_password():
 @app.route('/api/admin/run_matches', methods=['POST'])
 @admin_required
 def admin_run_matches():
+    # Respect DRAW_LOCKED environment variable to prevent accidental redraws
+    def _is_draw_locked():
+        v = os.environ.get('DRAW_LOCKED', '')
+        return str(v).lower() in ('1', 'true', 'yes', 'on')
+
+    if _is_draw_locked():
+        return jsonify({"success": False, "error": "Draw locked by server configuration"}), 403
+
     global SS, ASSIGNMENTS
     SS = SecretSanta()
     SS.draw()

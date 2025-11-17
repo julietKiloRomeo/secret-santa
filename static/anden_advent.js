@@ -12,6 +12,29 @@
   const santaImg = new Image();
   santaImg.src = '/static/santa.gif';
 
+  // Sprite assets (PNG) placed in static/sprites/
+  const SPRITE_DIR = '/static/sprites';
+  const SPRITE_PATHS = {
+    reindeer1: `${SPRITE_DIR}/reindeer1.png`,
+    reindeer2: `${SPRITE_DIR}/reindeer2.png`,
+    reindeer3: `${SPRITE_DIR}/reindeer3.png`,
+    santaSleigh: `${SPRITE_DIR}/santa_sleigh.png`,
+  };
+  const sprites = {};
+  function loadSprite(name, path) {
+    const img = new Image();
+    img.src = path;
+    img.onload = () => { sprites[name] = img; };
+    img.onerror = () => { sprites[name] = null; };
+    sprites[name] = img; // store object immediately so callers can check .complete
+    return img;
+  }
+  // Start loading (non-blocking)
+  loadSprite('reindeer1', SPRITE_PATHS.reindeer1);
+  loadSprite('reindeer2', SPRITE_PATHS.reindeer2);
+  loadSprite('reindeer3', SPRITE_PATHS.reindeer3);
+  loadSprite('santaSleigh', SPRITE_PATHS.santaSleigh);
+
   // Background parallax: clouds and silhouettes
   const cloudsFar = [];
   const cloudsNear = [];
@@ -106,7 +129,20 @@
     }
   }
 
-  let bird = { x: 80, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
+  // Layout constants: keep a fixed anchor (where Santa is centered on screen)
+  const PLAYER_X = 80; // where Santa/sleigh are centered
+  // LEAD_OFFSET_X should be the most-forward (largest) offset so the lead
+  // reindeer is visually the front-most. SECOND_OFFSET_X sits slightly behind.
+  const LEAD_OFFSET_X = 58; // front reindeer x offset from PLAYER_X (most forward)
+  const SECOND_OFFSET_X = 34; // second reindeer x offset from PLAYER_X (behind lead)
+
+  // The `bird` now represents the front reindeer (the thing player controls)
+  let bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
+  // Trail for chain-following: record the vertical path (y) of the lead reindeer
+  // at the anchor X (PLAYER_X). Trailing parts sample earlier entries so they
+  // follow the exact same vertical trajectory but with a frame delay.
+  const TRAIL_LENGTH = 220;
+  let trail = [];
   // Make Santa fall a little bit slower for gentler gameplay
   const GRAVITY = 0.45;
   // Reduce jump height so the game is playable
@@ -131,12 +167,15 @@
   }
 
   function reset() {
-    bird = { x: 80, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
+    bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
     chimneys.length = 0;
     frame = 0;
     score = 0;
     running = true;
     setStatus('');
+    // initialize trail so the chain has sensible starting values (anchor X)
+    trail.length = 0;
+    for (let i = 0; i < TRAIL_LENGTH; i++) trail.push({ x: PLAYER_X, y: bird.y });
     try { hideOverlay(); } catch (e) {}
   }
 
@@ -176,6 +215,10 @@
     // Physics
     bird.vy += GRAVITY;
     bird.y += bird.vy;
+    // Record current lead position in the trail at the anchor X so trailing
+    // parts can follow the exact same vertical path (delayed)
+    trail.unshift({ x: PLAYER_X, y: bird.y });
+    if (trail.length > TRAIL_LENGTH) trail.pop();
 
     // Spawn chimneys
     if (frame % SPAWN_INTERVAL === 0) spawnChimney();
@@ -183,8 +226,9 @@
     const moveSpeed = BASE_SPEED + score * SPEED_PER_SCORE + Math.floor(frame / 600) * 0.02;
     for (let i = chimneys.length - 1; i >= 0; i--) {
       chimneys[i].x -= moveSpeed;
-      // Score when passing
-      if (!chimneys[i].passed && chimneys[i].x + 40 < bird.x) {
+      // Score when passing (use lead reindeer X)
+      const leadX = PLAYER_X + LEAD_OFFSET_X;
+      if (!chimneys[i].passed && chimneys[i].x + 40 < leadX) {
         chimneys[i].passed = true;
         score += 1;
         scoreEl.textContent = `Score: ${score}`;
@@ -209,8 +253,10 @@
       if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
     }
 
-    // Collisions
-    if (bird.y + bird.h / 2 >= HEIGHT || bird.y - bird.h / 2 <= 0) {
+    // Collisions: use the lead reindeer position (front of the chain)
+    const leadX = PLAYER_X + LEAD_OFFSET_X;
+    const leadY = (trail[0] || { y: bird.y }).y;
+    if (leadY + bird.h / 2 >= HEIGHT || leadY - bird.h / 2 <= 0) {
       return gameOver();
     }
     for (const c of chimneys) {
@@ -218,8 +264,8 @@
       const topH = c.top;
       const bottomY = topH + GAP;
       // chimney rectangles: top (0, topH), bottom (bottomY, HEIGHT)
-      if (bird.x + bird.w / 2 > cx && bird.x - bird.w / 2 < cx + 40) {
-        if (bird.y - bird.h / 2 < topH || bird.y + bird.h / 2 > bottomY) {
+      if (leadX + bird.w / 2 > cx && leadX - bird.w / 2 < cx + 40) {
+        if (leadY - bird.h / 2 < topH || leadY + bird.h / 2 > bottomY) {
           return gameOver();
         }
       }
@@ -239,6 +285,8 @@
     // far clouds
     for (const cl of cloudsFar) drawCloud(cl, 'far');
 
+    // near clouds and silhouettes should be in the background behind chimneys
+    for (const cl of cloudsNear) drawCloud(cl, 'near');
     // silhouettes (trees/houses)
     drawSilhouettes();
 
@@ -255,19 +303,28 @@
       ctx.fillRect(c.x - 4, c.top + GAP, 48, 8);
     }
 
-    // near clouds on top of chimneys for depth
-    for (const cl of cloudsNear) drawCloud(cl, 'near');
-
-    // santa (bird)
-    const sx = bird.x - bird.w / 2;
-    const sy = bird.y - bird.h / 2;
-    // draw sleigh + reindeer behind/around santa
-    drawSleighAndReindeer(sx, sy);
-    if (santaImg.complete) ctx.drawImage(santaImg, sx, sy, bird.w, bird.h);
-    else {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(sx, sy, bird.w, bird.h);
+    // santa (bird) + chain-following parts
+    // Santa and sleigh follow the lead reindeer's vertical trajectory with a delay
+    const santaTrailIndex = Math.min(trail.length - 1, 18);
+    const santaPos = trail[santaTrailIndex] || { x: PLAYER_X, y: bird.y };
+    const sx = santaPos.x - bird.w / 2;
+    const sy = santaPos.y - bird.h / 2;
+    // draw sleigh + Santa (prefer sprite, fallback to drawn sleigh + santa.gif)
+    const centerX = PLAYER_X;
+    const centerY = santaPos.y;
+    const sleighW = Math.round(bird.w * 1.8);
+    const sleighH = Math.round(bird.h * 1.4);
+    if (!drawSpriteCentered(sprites.santaSleigh, centerX, centerY, sleighW, sleighH)) {
+      // fallback: draw the simple sleigh and the santa.gif
+      drawSleighAndReindeer(sx, sy);
+      if (santaImg.complete) ctx.drawImage(santaImg, sx, sy, bird.w, bird.h);
+      else {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(sx, sy, bird.w, bird.h);
+      }
     }
+    // draw the reindeers based on the trail (draw after Santa so they appear on top)
+    drawReindeersFromTrail();
   }
 
   function drawSleighAndReindeer(sx, sy) {
@@ -284,22 +341,65 @@
     ctx.lineTo(sx + bird.w + 8, sy + 22);
     ctx.stroke();
     ctx.restore();
+  }
 
-    // Reindeers ahead of Santa (simple stylized shapes)
-    const r1x = sx + bird.w + 10;
-    const r2x = sx + bird.w + 34;
-    const ry = sy + 4;
+  function drawReindeerAt(cx, cy, scale = 1) {
+    // Draw a small stylized reindeer centered at (cx, cy)
+    const s = scale || 1;
+    ctx.save();
     ctx.fillStyle = '#7a4d20';
-    // bodies
-    ctx.fillRect(r1x, ry, 12, 8);
-    ctx.fillRect(r2x, ry - 2, 12, 8);
-    // heads
-    ctx.beginPath(); ctx.arc(r1x + 3, ry + 2, 3, 0, 2 * Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(r2x + 3, ry + 1, 3, 0, 2 * Math.PI); ctx.fill();
+    // body
+    const bw = 12 * s;
+    const bh = 8 * s;
+    const bx = Math.round(cx - bw / 2);
+    const by = Math.round(cy - bh / 2 + 2 * s);
+    ctx.fillRect(bx, by, bw, bh);
+    // head
+    const hx = bx - 4 * s;
+    const hy = by + 2 * s;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 3 * s, 0, Math.PI * 2);
+    ctx.fill();
     // antlers
-    ctx.strokeStyle = '#5b3a12'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(r1x + 1, ry); ctx.lineTo(r1x - 4, ry - 6); ctx.moveTo(r1x + 2, ry); ctx.lineTo(r1x - 1, ry - 6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(r2x + 1, ry - 1); ctx.lineTo(r2x - 4, ry - 7); ctx.moveTo(r2x + 2, ry - 1); ctx.lineTo(r2x - 1, ry - 7); ctx.stroke();
+    ctx.strokeStyle = '#5b3a12';
+    ctx.lineWidth = Math.max(1, s);
+    ctx.beginPath();
+    ctx.moveTo(hx - 1 * s, hy - 2 * s);
+    ctx.lineTo(hx - 6 * s, hy - 8 * s);
+    ctx.moveTo(hx + 0 * s, hy - 1 * s);
+    ctx.lineTo(hx - 3 * s, hy - 8 * s);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSpriteCentered(img, cx, cy, w, h) {
+    if (!img) return false;
+    if (!img.complete) return false;
+    ctx.drawImage(img, Math.round(cx - w / 2), Math.round(cy - h / 2), w, h);
+    return true;
+  }
+
+  function drawReindeersFromTrail() {
+    if (!trail || trail.length === 0) return;
+    // Indices into the trail to space parts along the path (frames behind)
+    const leadIdx = 0;
+    const secondIdx = Math.min(trail.length - 1, 8);
+    const thirdIdx = Math.min(trail.length - 1, 16);
+    // horizontal positions are fixed offsets from the anchor (PLAYER_X)
+    const r1x = PLAYER_X + LEAD_OFFSET_X;
+    const r2x = PLAYER_X + SECOND_OFFSET_X;
+    const r3x = PLAYER_X + (SECOND_OFFSET_X - 18);
+    // Use the trail y directly so drawn reindeer align with collision y
+    const leadY = (trail[leadIdx] || { y: bird.y }).y;
+    const secondY = (trail[secondIdx] || { y: bird.y }).y;
+    const thirdY = (trail[thirdIdx] || { y: bird.y }).y;
+    // sizes for sprite drawing
+    const reW = Math.round(bird.w * 0.5);
+    const reH = Math.round(bird.h * 0.5);
+    // draw leading reindeers (on top) at their fixed X, sampling Y from trail
+    if (!drawSpriteCentered(sprites.reindeer1, r1x, leadY, reW, reH)) drawReindeerAt(r1x, leadY, 1);
+    if (!drawSpriteCentered(sprites.reindeer2, r2x, secondY, reW, reH)) drawReindeerAt(r2x, secondY, 1);
+    if (!drawSpriteCentered(sprites.reindeer3, r3x, thirdY, reW, reH)) drawReindeerAt(r3x, thirdY, 1);
   }
 
   function drawCloud(cloud, layer) {

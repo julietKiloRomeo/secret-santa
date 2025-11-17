@@ -7,7 +7,8 @@ Overview
 - The application is a lightweight Flask web app serving a small number of pages and JSON APIs.
 - Two small in-browser mini-games are available for advent pages:
   - `Første Advent` — Jule Snake (classic snake game)
-  - `Anden Advent` — Flappy Santa (santa flapping through chimneys)
+- `Anden Advent` — Flappy Santa (santa flapping through chimneys)
+  - `Reindeer Rush` — (planned) Endless runner/dodger: Guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. Could have a simple tap-to-jump mechanic (one tap = small jump, hold = big jump) with gradually increasing speed. Stars or special items could give temporary flying boosts with a trail of sparkles.
 - Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
 
 API Endpoints
@@ -133,4 +134,3 @@ Developer notes
 - The server is configured to run under `gunicorn` inside the provided `Dockerfile` for production usage.
 
 If a behavior in this document becomes out-of-sync with tests in the repository, update SPECS.md by re-generating the appropriate summaries from tests and commit the change.
-

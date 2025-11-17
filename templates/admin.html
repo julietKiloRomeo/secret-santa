@@ -16,7 +16,10 @@
 
     <section style="margin-top: 2rem;">
       <h2>Kør årets matcher</h2>
-      <button onclick="runMatches()">Kør matcher</button>
+      <button id="runMatchesBtn" onclick="runMatches()" {% if draw_locked %}disabled{% endif %}>Kør matcher</button>
+      {% if draw_locked %}
+        <div style="color: #f44; margin-top: 0.5rem;">Drawing is locked by server configuration (DRAW_LOCKED).</div>
+      {% endif %}
       <div id="matchesMsg"></div>
     </section>
 
@@ -47,6 +50,11 @@
     }
 
     async function runMatches() {
+      const btn = document.getElementById('runMatchesBtn');
+      if (btn && btn.disabled) {
+        document.getElementById('matchesMsg').textContent = 'Drawing of matches is locked by server configuration (DRAW_LOCKED).';
+        return;
+      }
       const resp = await fetch('/api/admin/run_matches', { method: 'POST' });
       const data = await resp.json();
       document.getElementById('matchesMsg').textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
