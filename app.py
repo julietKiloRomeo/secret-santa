@@ -159,6 +159,18 @@ def get_games():
     finally:
         con.close()
 
+
+@app.context_processor
+def inject_game_helpers():
+    def is_admin_user():
+        return 'user' in session and session['user'] in {"jimmy", "ditte"}
+    def game_enabled_for_user(game):
+        # Admins always have access
+        if is_admin_user():
+            return True
+        return is_game_enabled(game)
+    return dict(is_admin_user=is_admin_user, game_enabled_for_user=game_enabled_for_user)
+
 def reset_scores_for_game(game: str):
     con = sqlite3.connect(scores_db_path())
     try:

@@ -29,6 +29,12 @@ body {
     text-decoration: none;
     margin-left: 1rem;
 }
+
+.nav a.disabled {
+    opacity: 0.5;
+    filter: grayscale(80%);
+    cursor: not-allowed;
+}
 .brand {
     font-weight: bold;
 }

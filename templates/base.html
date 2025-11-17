@@ -13,12 +13,25 @@
     </div>
     <div class="nav-right">
       {% if session.get('user') %}
-        <a href="/forste-advent">Første Advent</a>
-        <a href="/anden-advent">Anden Advent</a>
-        <a href="/tredje-advent">Tredje Advent</a>
-        <a href="/fjerde-advent">Fjerde Advent</a>
-        <a href="/glaedelig-jul">Glædelig Jul</a>
-        {% if session.get('user') in ['jimmy','ditte'] %}
+        {# First Advent #}
+        {% set _disabled = not game_enabled_for_user('forste-advent') %}
+        <a href="/forste-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>
+
+        {# Second Advent #}
+        {% set _disabled = not game_enabled_for_user('anden-advent') %}
+        <a href="/anden-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Anden Advent</a>
+
+        {# Third & Fourth and Glaedelig (still shown) #}
+        {% set _disabled = not game_enabled_for_user('tredje-advent') %}
+        <a href="/tredje-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Tredje Advent</a>
+
+        {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
+        <a href="/fjerde-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
+
+        {% set _disabled = not game_enabled_for_user('glaedelig-jul') %}
+        <a href="/glaedelig-jul" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Glædelig Jul</a>
+
+        {% if is_admin_user() %}
           <a id="admin-link" href="/admin">Admin</a>
         {% endif %}
       {% endif %}
@@ -27,5 +40,40 @@
   <main class="main">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    // Intercept clicks on disabled game links and show a friendly message
+    document.addEventListener('click', function (ev) {
+      const a = ev.target.closest && ev.target.closest('a[data-disabled="1"]');
+      if (a) {
+        ev.preventDefault();
+        // Friendly Danish message
+        const msg = 'Hov hov. Den låge må du ikke åbne endnu!';
+        // show a temporary toast
+        let t = document.getElementById('locked-toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'locked-toast';
+          t.style.position = 'fixed';
+          t.style.top = '72px';
+          t.style.left = '50%';
+          t.style.transform = 'translateX(-50%)';
+          t.style.background = 'rgba(0,0,0,0.85)';
+          t.style.color = '#fff';
+          t.style.padding = '0.75rem 1.25rem';
+          t.style.borderRadius = '6px';
+          t.style.zIndex = 2000;
+          t.style.boxShadow = '0 4px 12px rgba(0,0,0,0.6)';
+          document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.style.opacity = 1;
+        clearTimeout(t._timeout);
+        t._timeout = setTimeout(() => {
+          t.style.transition = 'opacity 0.4s ease';
+          t.style.opacity = 0;
+        }, 2200);
+      }
+    });
+  </script>
 </body>
 </html>
