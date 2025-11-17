@@ -12,6 +12,68 @@
   const santaImg = new Image();
   santaImg.src = '/static/santa.gif';
 
+  // Background parallax: clouds and silhouettes
+  const cloudsFar = [];
+  const cloudsNear = [];
+  const silhouettes = [];
+  const CLOUD_COUNTS = { far: 4, near: 3 };
+
+  function mkCloud(x, y, w, h, opacity) {
+    return { x, y, w, h, opacity };
+  }
+
+  function mkSilhouette(x, w, h, type) {
+    return { x, w, h, type };
+  }
+
+  function initBackground() {
+    cloudsFar.length = 0;
+    cloudsNear.length = 0;
+    silhouettes.length = 0;
+    for (let i = 0; i < CLOUD_COUNTS.far; i++) {
+      cloudsFar.push(mkCloud(Math.random() * WIDTH, Math.random() * (HEIGHT * 0.35), 90 + Math.random() * 140, 30 + Math.random() * 20, 0.35 + Math.random() * 0.25));
+    }
+    for (let i = 0; i < CLOUD_COUNTS.near; i++) {
+      cloudsNear.push(mkCloud(Math.random() * WIDTH, Math.random() * (HEIGHT * 0.45), 120 + Math.random() * 180, 40 + Math.random() * 30, 0.55 + Math.random() * 0.3));
+    }
+    // silhouettes (trees/houses) at various x positions
+    const baseY = HEIGHT - 28;
+    let cursor = -40;
+    while (cursor < WIDTH * 2) {
+      const w = 40 + Math.floor(Math.random() * 80);
+      const h = 20 + Math.floor(Math.random() * 60);
+      const type = Math.random() > 0.6 ? 'house' : 'tree';
+      silhouettes.push(mkSilhouette(cursor, w, h, type));
+      cursor += w + 20 + Math.floor(Math.random() * 60);
+    }
+  }
+
+  initBackground();
+
+  // Audio: try to find a user-supplied audio file in /static
+  const AUDIO_CANDIDATES = [
+    'sleigh_bell.mp3', 'sleigh-bell.mp3', 'sleigh.mp3', 'jingle.mp3', 'bell.mp3', 'jingle.wav', 'bell.wav'
+  ];
+  let audioEl = null;
+  async function findAndLoadAudio() {
+    for (const name of AUDIO_CANDIDATES) {
+      try {
+        const res = await fetch('/static/' + name, { method: 'HEAD' });
+        if (res.ok) {
+          audioEl = new Audio('/static/' + name);
+          audioEl.preload = 'auto';
+          return audioEl;
+        }
+      } catch (e) {
+        // ignore and try next
+      }
+    }
+    return null;
+  }
+
+  // Try to locate an audio file in the background (non-blocking)
+  findAndLoadAudio().catch(() => {});
+
   // WebAudio bell-like jingle for flaps (sleigh bells)
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   const audioCtx = AudioCtx ? new AudioCtx() : null;
@@ -117,7 +179,6 @@
 
     // Spawn chimneys
     if (frame % SPAWN_INTERVAL === 0) spawnChimney();
-
     // Move chimneys (speed scales with score)
     const moveSpeed = BASE_SPEED + score * SPEED_PER_SCORE + Math.floor(frame / 600) * 0.02;
     for (let i = chimneys.length - 1; i >= 0; i--) {
@@ -129,6 +190,23 @@
         scoreEl.textContent = `Score: ${score}`;
       }
       if (chimneys[i].x < -80) chimneys.splice(i, 1);
+    }
+
+    // Move background clouds and silhouettes for parallax
+    const farSpeed = 0.25 + score * 0.01; // slow far clouds
+    const nearSpeed = 0.6 + score * 0.02; // faster near clouds
+    const silSpeed = 0.35 + score * 0.01;
+    for (const c of cloudsFar) {
+      c.x -= farSpeed;
+      if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
+    }
+    for (const c of cloudsNear) {
+      c.x -= nearSpeed;
+      if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
+    }
+    for (const s of silhouettes) {
+      s.x -= silSpeed;
+      if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
     }
 
     // Collisions
@@ -151,11 +229,20 @@
   }
 
   function draw() {
-    // background
-    ctx.fillStyle = '#88c';
+    // sky background gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    grad.addColorStop(0, '#7ec0ff');
+    grad.addColorStop(1, '#5aa0d8');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // chimneys
+    // far clouds
+    for (const cl of cloudsFar) drawCloud(cl, 'far');
+
+    // silhouettes (trees/houses)
+    drawSilhouettes();
+
+    // chimneys (foreground obstacles)
     for (const c of chimneys) {
       ctx.fillStyle = '#8b3';
       // top
@@ -167,6 +254,9 @@
       ctx.fillRect(c.x - 4, c.top - 8, 48, 8);
       ctx.fillRect(c.x - 4, c.top + GAP, 48, 8);
     }
+
+    // near clouds on top of chimneys for depth
+    for (const cl of cloudsNear) drawCloud(cl, 'near');
 
     // santa (bird)
     const sx = bird.x - bird.w / 2;
@@ -212,12 +302,69 @@
     ctx.beginPath(); ctx.moveTo(r2x + 1, ry - 1); ctx.lineTo(r2x - 4, ry - 7); ctx.moveTo(r2x + 2, ry - 1); ctx.lineTo(r2x - 1, ry - 7); ctx.stroke();
   }
 
+  function drawCloud(cloud, layer) {
+    ctx.save();
+    ctx.globalAlpha = cloud.opacity || 0.6;
+    ctx.fillStyle = '#fff';
+    const cx = cloud.x;
+    const cy = cloud.y;
+    const w = cloud.w;
+    const h = cloud.h;
+    // draw three overlapping circles for a cloud
+    ctx.beginPath();
+    ctx.ellipse(cx + w * 0.2, cy + h * 0.2, w * 0.3, h * 0.6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + w * 0.5, cy + h * 0.1, w * 0.35, h * 0.7, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + w * 0.8, cy + h * 0.25, w * 0.28, h * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSilhouettes() {
+    const base = HEIGHT - 20;
+    ctx.save();
+    ctx.fillStyle = '#0b2b12';
+    for (const s of silhouettes) {
+      const x = s.x;
+      const w = s.w;
+      const h = s.h;
+      if (s.type === 'house') {
+        // box + roof
+        ctx.fillRect(x, base - h, w, h);
+        ctx.beginPath();
+        ctx.moveTo(x - 2, base - h);
+        ctx.lineTo(x + w / 2, base - h - 10);
+        ctx.lineTo(x + w + 2, base - h);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // tree: triangle
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, base - h - 6);
+        ctx.lineTo(x, base - 6);
+        ctx.lineTo(x + w, base - 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
   function flap() {
     bird.vy = FLAP;
     try {
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     } catch (e) {}
-    jingle();
+    // Prefer a user-supplied audio file if available, otherwise fallback to synthesized jingle
+    if (audioEl) {
+      try {
+        audioEl.currentTime = 0;
+        audioEl.play().catch(() => jingle());
+      } catch (e) {
+        jingle();
+      }
+    } else {
+      jingle();
+    }
   }
 
   // High score / overlay UI (mirrors forste_advent behavior)
