@@ -19,7 +19,17 @@
       <button onclick="runMatches()">Kør matcher</button>
       <div id="matchesMsg"></div>
     </section>
-  </div>
+
+    <section style="margin-top: 2rem;">
+      <h2>Spil (tænd/sluk)</h2>
+      <div id="gamesList">Indlæser...</div>
+    </section>
+
+    <section style="margin-top: 2rem;">
+      <h2>Nulstil high scores</h2>
+      <div id="resetMsg"></div>
+    </section>
+    </div>
 
   <script>
     async function setPassword(e) {
@@ -41,5 +51,47 @@
       const data = await resp.json();
       document.getElementById('matchesMsg').textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
     }
+
+    // Games management
+    async function loadGames() {
+      const resp = await fetch('/api/admin/games');
+      const data = await resp.json();
+      const list = document.getElementById('gamesList');
+      list.innerHTML = '';
+      data.games.forEach(g => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '0.5rem';
+        row.style.alignItems = 'center';
+        const label = document.createElement('div');
+        label.textContent = g.game;
+        const toggle = document.createElement('input');
+        toggle.type = 'checkbox';
+        toggle.checked = g.enabled;
+        toggle.addEventListener('change', async () => {
+          await toggleGame(g.game, toggle.checked);
+          loadGames();
+        });
+        const reset = document.createElement('button');
+        reset.textContent = 'Nulstil scores';
+        reset.addEventListener('click', async () => {
+          const r = await fetch('/api/admin/reset_scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g.game }) });
+          const d = await r.json();
+          document.getElementById('resetMsg').textContent = d.success ? `Scores nulstilt for ${g.game}` : (d.error || 'Fejl');
+          loadGames();
+        });
+        row.appendChild(label);
+        row.appendChild(toggle);
+        row.appendChild(reset);
+        list.appendChild(row);
+      });
+    }
+
+    async function toggleGame(game, enabled) {
+      await fetch('/api/admin/set_game', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game, enabled }) });
+    }
+
+    // Load games on page load
+    loadGames();
   </script>
 {% endblock %}

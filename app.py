@@ -87,6 +87,87 @@ def init_scores_db():
 
 init_scores_db()
 
+def init_games_db():
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS games (
+                game TEXT PRIMARY KEY,
+                enabled INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        # Ensure default games exist and are enabled by default
+        default_games = ["forste-advent", "anden-advent"]
+        for g in default_games:
+            cur.execute("INSERT OR IGNORE INTO games (game, enabled) VALUES (?, ?)", (g, 1))
+        con.commit()
+    finally:
+        con.close()
+
+init_games_db()
+
+def is_game_enabled(game: str) -> bool:
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        try:
+            cur.execute("SELECT enabled FROM games WHERE game = ?", (game,))
+        except sqlite3.OperationalError:
+            # games table missing in this DB file; initialize and retry
+            con.close()
+            init_games_db()
+            con2 = sqlite3.connect(scores_db_path())
+            try:
+                cur2 = con2.cursor()
+                cur2.execute("SELECT enabled FROM games WHERE game = ?", (game,))
+                row = cur2.fetchone()
+                if row is None:
+                    return True
+                return bool(row[0])
+            finally:
+                con2.close()
+        row = cur.fetchone()
+        if row is None:
+            return True
+        return bool(row[0])
+    finally:
+        con.close()
+
+def set_game_enabled(game: str, enabled: bool):
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "INSERT INTO games (game, enabled) VALUES (?, ?) "
+            "ON CONFLICT(game) DO UPDATE SET enabled = excluded.enabled",
+            (game, 1 if enabled else 0),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+def get_games():
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT game, enabled FROM games ORDER BY game")
+        rows = cur.fetchall()
+        return [{"game": g, "enabled": bool(e)} for (g, e) in rows]
+    finally:
+        con.close()
+
+def reset_scores_for_game(game: str):
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute("DELETE FROM scores WHERE game = ?", (game,))
+        con.commit()
+    finally:
+        con.close()
+
 def is_hashed(value: str) -> bool:
     return isinstance(value, str) and (value.startswith('pbkdf2:') or value.startswith('scrypt:'))
 
@@ -122,11 +203,16 @@ def healthz():
 @app.route('/forste-advent')
 def forste_advent():
     default_name = session.get('user', 'Nisse')
+    # If the game is disabled and the user is not an admin, show under construction
+    if not is_game_enabled('forste-advent') and session.get('user') not in {"jimmy", "ditte"}:
+        return render_template('under_construction.html', title='Første Advent')
     return render_template('forste_advent.html', default_name=default_name)
 
 @app.route('/anden-advent')
 def anden_advent():
     default_name = session.get('user', 'Nisse')
+    if not is_game_enabled('anden-advent') and session.get('user') not in {"jimmy", "ditte"}:
+        return render_template('under_construction.html', title='Anden Advent')
     return render_template('anden_advent.html', default_name=default_name)
 
 @app.route('/tredje-advent')
@@ -238,6 +324,36 @@ def admin_run_matches():
     SS.load()
     ASSIGNMENTS = SS.config
     return jsonify({"success": True, "year": SS.year})
+
+
+@app.route('/api/admin/games', methods=['GET'])
+@admin_required
+def admin_get_games():
+    games = get_games()
+    return jsonify({"games": games})
+
+
+@app.route('/api/admin/set_game', methods=['POST'])
+@admin_required
+def admin_set_game():
+    data = request.get_json() or {}
+    game = data.get('game')
+    enabled = data.get('enabled')
+    if not game or enabled is None:
+        return jsonify({"success": False, "error": "Missing game or enabled flag"}), 400
+    set_game_enabled(game, bool(enabled))
+    return jsonify({"success": True, "game": game, "enabled": bool(enabled)})
+
+
+@app.route('/api/admin/reset_scores', methods=['POST'])
+@admin_required
+def admin_reset_scores():
+    data = request.get_json() or {}
+    game = data.get('game')
+    if not game:
+        return jsonify({"success": False, "error": "Missing game"}), 400
+    reset_scores_for_game(game)
+    return jsonify({"success": True, "game": game})
 
     
 
