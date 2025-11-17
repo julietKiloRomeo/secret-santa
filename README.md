@@ -7,6 +7,8 @@ A lightweight Secret Santa web app that lets participants securely log in with t
 - Backend: Flask server exposing a simple login API and a Jinja template UI (`app.py`).
 - Assignment logic: `secret_santa.py` generates valid assignments using `couples.yaml` and `previous.yaml`, then saves to `secret-santa-<year>.json`.
 - Frontend: `templates/index.html` + `static/styles.css` provides a festive login and reveal screen.
+
+See `SPECS.md` for a full, test-driven specification of the app surface (APIs, pages, mini-games, and admin behavior).
 - Data: Current year’s assignments in `secret-santa-2024.json`. Couples and previous pairings are YAML files.
 
 ## How It Works
@@ -123,6 +125,8 @@ uv run python -c "from secret_santa import SecretSanta; ss=SecretSanta(2024); ss
 ```
 uv run pytest
 ```
+
+All public expectations are mirrored in `SPECS.md` which is kept in sync with the test-suite.
 
 - Lint with `ruff` (if configured):
 
