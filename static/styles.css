@@ -129,3 +129,53 @@ button:hover {
     max-width: 400px; /* optional: to limit the maximum width */
     height: auto; /* maintain aspect ratio */
 }
+
+/* Simple local "framework" utilities for admin page */
+.card {
+  background: rgba(255,255,255,0.06);
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  text-align: left;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.form-row label {
+  font-size: 0.9rem;
+  color: #ffe;
+}
+
+select, .form-row input[type="text"], .form-row input[type="password"] {
+  padding: 0.65rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+}
+
+.btn {
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2c8a2c;
+  color: #fff;
+}
+
+.btn-danger {
+  background: #c42b2b;
+  color: #fff;
+}
+
+.muted {
+  margin-top: 0.75rem;
+  color: #ddd;
+  font-size: 0.95rem;
+}

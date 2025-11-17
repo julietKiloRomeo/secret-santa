@@ -104,3 +104,23 @@ def test_admin_access_and_set_password_and_run_matches():
     # The app should present current year's matches; verify file exists and app's state matches file contents
     saved = json.loads(Path(f"secret-santa-{year}.json").read_text())
     assert isinstance(saved, dict) and len(saved) == len(NAMES)
+
+
+def test_admin_set_password_rejects_unknown():
+    from app import app
+
+    client = app.test_client()
+
+    # Login as admin (jimmy)
+    resp = login_as(client, "jimmy", "cozy-winter-lantern")
+    assert resp.status_code == 200
+
+    # Try to set password for a non-existing user
+    resp = client.post(
+        "/api/admin/set_password",
+        data=json.dumps({"name": "ghost", "passphrase": "nope"}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert data["success"] is False

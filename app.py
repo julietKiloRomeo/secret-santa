@@ -317,7 +317,12 @@ def admin_page():
     # Expose draw-locked flag to the template so the button can be disabled
     draw_locked = os.environ.get('DRAW_LOCKED', '')
     draw_locked = str(draw_locked).lower() in ('1', 'true', 'yes', 'on')
-    return render_template('admin.html', year=SS.year, draw_locked=draw_locked)
+    # Provide a list of known users (participants) so the admin UI can restrict selections
+    try:
+        users = sorted(ASSIGNMENTS.keys())
+    except Exception:
+        users = []
+    return render_template('admin.html', year=SS.year, draw_locked=draw_locked, users=users)
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -341,6 +346,9 @@ def admin_set_password():
     passphrase = data.get('passphrase', '')
     if not name or not passphrase:
         return jsonify({"success": False, "error": "Missing name or passphrase"}), 400
+    # Ensure the admin can only set a password for an existing participant
+    if name not in ASSIGNMENTS:
+        return jsonify({"success": False, "error": "Unknown user"}), 400
     hashed = generate_password_hash(passphrase)
     key = f"LOGIN_{name}"
     set_key(ENV_FILE, key, hashed)

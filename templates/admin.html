@@ -6,12 +6,25 @@
 
     <section>
       <h2>Sæt adgangskode</h2>
-      <form onsubmit="return setPassword(event);">
-        <input type="text" id="userName" placeholder="Brugernavn (fornavn)" required />
-        <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required />
-        <button type="submit">Gem adgangskode</button>
-      </form>
-      <div id="setPassMsg"></div>
+      <div class="card">
+        <form class="form-row" onsubmit="return setPassword(event);">
+          <label for="userName">Vælg bruger</label>
+          <select id="userName" required>
+            <option value="" disabled selected>-- vælg bruger --</option>
+            {% for u in users %}
+              <option value="{{ u }}">{{ u }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="userPass">Passphrase</label>
+          <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required />
+
+          <div>
+            <button type="submit" class="btn btn-primary">Gem adgangskode</button>
+          </div>
+        </form>
+        <div id="setPassMsg" class="muted"></div>
+      </div>
     </section>
 
     <section style="margin-top: 2rem;">
