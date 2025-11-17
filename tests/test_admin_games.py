@@ -18,6 +18,7 @@ def setup_module(module):
         f"SECRET_KEY={os.environ['SECRET_KEY']}\n",
         f"LOGIN_jimmy={generate_password_hash('cozy-winter-lantern')}\n",
         f"LOGIN_ditte={generate_password_hash('horse-staple-orange')}\n",
+        f"LOGIN_emma={generate_password_hash('quiet-forest-breeze')}\n",
     ]
     env_path.write_text("".join(env_lines))
 
@@ -45,11 +46,9 @@ def test_admin_toggle_and_visibility():
 
     client = app.test_client()
 
-    # Non-admin sees the forste-advent by default
+    # Unauthenticated users should not be able to reach the subpage
     r = client.get('/forste-advent')
-    assert r.status_code == 200
-    html = r.get_data(as_text=True)
-    assert 'snake-canvas' in html
+    assert r.status_code in (401, 302)
 
     # Login as admin and disable the game
     resp = login_as(client, 'jimmy', 'cozy-winter-lantern')
@@ -57,8 +56,9 @@ def test_admin_toggle_and_visibility():
     r = client.post('/api/admin/set_game', data=json.dumps({'game': 'forste-advent', 'enabled': False}), content_type='application/json')
     assert r.status_code == 200
 
-    # Non-admin should now see Under Construction
+    # Non-admin (logged-in) should now see Under Construction
     client2 = app.test_client()
+    assert login_as(client2, 'emma', 'quiet-forest-breeze').status_code == 200
     r = client2.get('/forste-advent')
     html = r.get_data(as_text=True)
     assert 'snake-canvas' not in html

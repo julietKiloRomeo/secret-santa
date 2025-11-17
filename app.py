@@ -137,6 +137,9 @@ def is_game_enabled(game: str) -> bool:
         con.close()
 
 def set_game_enabled(game: str, enabled: bool):
+    # Ensure games table exists (handle cases where app was imported earlier
+    # with a different DB path or when the DB file is new)
+    init_games_db()
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
@@ -213,6 +216,7 @@ def healthz():
     return jsonify({"status": "ok"})
 
 @app.route('/forste-advent')
+@login_required
 def forste_advent():
     default_name = session.get('user', 'Nisse')
     # If the game is disabled and the user is not an admin, show under construction
@@ -221,6 +225,7 @@ def forste_advent():
     return render_template('forste_advent.html', default_name=default_name)
 
 @app.route('/anden-advent')
+@login_required
 def anden_advent():
     default_name = session.get('user', 'Nisse')
     if not is_game_enabled('anden-advent') and session.get('user') not in {"jimmy", "ditte"}:
@@ -228,14 +233,17 @@ def anden_advent():
     return render_template('anden_advent.html', default_name=default_name)
 
 @app.route('/tredje-advent')
+@login_required
 def tredje_advent():
     return render_template('tredje_advent.html')
 
 @app.route('/fjerde-advent')
+@login_required
 def fjerde_advent():
     return render_template('fjerde_advent.html')
 
 @app.route('/glaedelig-jul')
+@login_required
 def glaedelig_jul():
     return render_template('glaedelig_jul.html')
 

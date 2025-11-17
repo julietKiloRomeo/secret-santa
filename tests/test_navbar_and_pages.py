@@ -110,7 +110,13 @@ def test_advent_pages_exist_and_are_under_construction():
         "/fjerde-advent": "Fjerde Advent",
         "/glaedelig-jul": "Glædelig Jul",
     }
+    # Pages require login; unauthenticated access should be refused
+    for route, title in pages.items():
+        r = client.get(route)
+        assert r.status_code in (401, 302)
 
+    # After logging in as a normal user, the pages should be accessible
+    assert login_as(client, "emma", "quiet-forest-breeze").status_code == 200
     for route, title in pages.items():
         r = client.get(route)
         html = r.get_data(as_text=True)
