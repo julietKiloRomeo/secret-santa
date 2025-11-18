@@ -5,8 +5,9 @@
   const scoreEl = document.getElementById('santa-score');
   const statusEl = document.getElementById('santa-status');
 
-  const WIDTH = canvas.width;
-  const HEIGHT = canvas.height;
+  // Logical drawing width/height in CSS pixels (canvas is square)
+  let WIDTH = canvas.clientWidth || 400;
+  let HEIGHT = WIDTH;
 
   // Santa sprite (use existing santa.gif as a simple image)
   const santaImg = new Image();
@@ -73,6 +74,47 @@
 
   initBackground();
 
+  // Responsive canvas sizing and layout
+  function resizeCanvasAndLayout() {
+    try { canvas.style.width = '100%'; } catch (e) {}
+    const displayWidth = Math.max(120, Math.floor(canvas.parentElement ? canvas.parentElement.clientWidth : window.innerWidth * 0.9));
+    const DPR = window.devicePixelRatio || 1;
+    canvas.width = Math.round(displayWidth * DPR);
+    canvas.height = Math.round(displayWidth * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    WIDTH = displayWidth;
+    HEIGHT = displayWidth; // square canvas
+
+    // scale factor relative to legacy 400px canvas so game feel stays familiar
+    const scale = WIDTH / 400;
+
+    // load optional tuning from config file `static/anden_config.js`
+    const cfg = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
+
+    // geometry (ratios allow easy tuning in the config)
+    PLAYER_X = Math.round(WIDTH * (cfg.playerXRatio || 0.18));
+    LEAD_OFFSET_X = Math.round(WIDTH * (cfg.leadOffsetXRatio || 0.145));
+    SECOND_OFFSET_X = Math.round(WIDTH * (cfg.secondOffsetXRatio || 0.085));
+    THIRD_OFFSET_X = Math.max(8, SECOND_OFFSET_X + Math.round(WIDTH * (cfg.thirdOffsetXRatioAdjust || -0.03)));
+
+    // sizes
+    bird.w = Math.max(28, Math.round(WIDTH * 0.12));
+    bird.h = Math.max(20, Math.round(bird.w * 0.66));
+    TRAIL_LENGTH = Math.max(cfg.trailLengthMin || 80, Math.round(2.5 * 60 * scale));
+
+    // physics scaled (tuned values) - config holds base numbers which we scale
+    GRAVITY_PER_S = (cfg.gravityPerSecond || 800) * scale;
+    FLAP_VY = (cfg.flapVY || -240) * scale;
+    BASE_SPEED_PX_S = (cfg.baseSpeedPxPerS || 120) * scale;
+    SPEED_PER_SCORE_PX_S = (cfg.speedPerScorePxPerS || 6) * scale;
+    GAP = Math.max(cfg.gapMin || 48, Math.round(WIDTH * (cfg.gapRatio || 0.275)));
+    SPAWN_INTERVAL_MS = (typeof cfg.spawnIntervalMsBase !== 'undefined') ? cfg.spawnIntervalMsBase : SPAWN_INTERVAL_MS_BASE;
+
+    // initialize trail buffer
+    trail.length = 0;
+    for (let i = 0; i < TRAIL_LENGTH; i++) trail.push({ x: PLAYER_X, y: bird.y });
+  }
+
   // Audio: try to find a user-supplied audio file in /static
   const AUDIO_CANDIDATES = [
     'sleigh_bell.mp3', 'sleigh-bell.mp3', 'sleigh.mp3', 'jingle.mp3', 'bell.mp3', 'jingle.wav', 'bell.wav'
@@ -129,37 +171,40 @@
     }
   }
 
-  // Layout constants: keep a fixed anchor (where Santa is centered on screen)
-  const PLAYER_X = 80; // where Santa/sleigh are centered
-  // LEAD_OFFSET_X should be the most-forward (largest) offset so the lead
-  // reindeer is visually the front-most. SECOND_OFFSET_X sits slightly behind.
-  const LEAD_OFFSET_X = 58; // front reindeer x offset from PLAYER_X (most forward)
-  const SECOND_OFFSET_X = 34; // second reindeer x offset from PLAYER_X (behind lead)
-  // third reindeer offset (closest to sleigh); increase slightly to add spacing
-  const THIRD_OFFSET_X = SECOND_OFFSET_X - 8; // a bit more space to the sleigh
+  // Layout anchors (will be computed on resize)
+  let PLAYER_X = 80;
+  let LEAD_OFFSET_X = 800;
+  let SECOND_OFFSET_X = 50;
+  let THIRD_OFFSET_X = 20;
 
   // The `bird` now represents the front reindeer (the thing player controls)
   let bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
   // Trail for chain-following: record the vertical path (y) of the lead reindeer
   // at the anchor X (PLAYER_X). Trailing parts sample earlier entries so they
   // follow the exact same vertical trajectory but with a frame delay.
-  const TRAIL_LENGTH = 220;
+  // legacy marker: const TRAIL_LENGTH
+  let TRAIL_LENGTH = 300;
   let trail = [];
-  // Make Santa fall a little bit slower for gentler gameplay
-  const GRAVITY = 0.45;
-  // Reduce jump height so the game is playable
-  const FLAP = -6;
+  // Physics constants will be converted to px/sec and scaled to display size on resize
+  // tuned defaults are now pulled from config during resize; initialize reasonable placeholders
+  let GRAVITY_PER_S = 1000; // px/s^2 placeholder (will be overwritten on resize)
+  let FLAP_VY = -240; // px/s placeholder
 
-  // Speed scaling: increases slowly as the player scores
-  const BASE_SPEED = 2.0;
-  const SPEED_PER_SCORE = 0.1;
+  // Speed scaling per second (placeholders)
+  let BASE_SPEED_PX_S = 120;
+  let SPEED_PER_SCORE_PX_S = 6;
 
   const chimneys = [];
-  const GAP = 110;
-  const SPAWN_INTERVAL = 90; // frames
+  let GAP = 110;
+  const SPAWN_INTERVAL_MS_BASE = Math.round(90 * (1000 / 60)); // ~1500ms
+  let SPAWN_INTERVAL_MS = SPAWN_INTERVAL_MS_BASE;
+  let lastSpawnMs = 0;
   let frame = 0;
   let score = 0;
   let running = true;
+  // Grace period (ms) at start before falling begins; config may override on resize
+  let GRACE_MS = 1200;
+  let graceRemainingMs = 0;
 
   function setStatus(text) { statusEl.textContent = text || ''; }
 
@@ -169,7 +214,7 @@
   }
 
   function reset() {
-    bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
+    bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: bird.w, h: bird.h };
     chimneys.length = 0;
     frame = 0;
     score = 0;
@@ -178,6 +223,8 @@
     // initialize trail so the chain has sensible starting values (anchor X)
     trail.length = 0;
     for (let i = 0; i < TRAIL_LENGTH; i++) trail.push({ x: PLAYER_X, y: bird.y });
+    graceRemainingMs = GRACE_MS;
+    lastSpawnMs = performance.now() + graceRemainingMs;
     try { hideOverlay(); } catch (e) {}
   }
 
@@ -211,24 +258,64 @@
     }
   }
 
-  function tick() {
-    if (!running) return;
+  // Time-based tick using requestAnimationFrame for consistent timing on mobile
+  let lastFrameTs = null;
+  function frameLoop(ts) {
+    if (!lastFrameTs) lastFrameTs = ts;
+    const dtMs = ts - lastFrameTs;
+    const dt = dtMs / 1000; // seconds
+    lastFrameTs = ts;
+    if (!running) {
+      requestAnimationFrame(frameLoop);
+      return;
+    }
     frame += 1;
-    // Physics
-    bird.vy += GRAVITY;
-    bird.y += bird.vy;
-    // Record current lead position in the trail at the anchor X so trailing
-    // parts can follow the exact same vertical path (delayed)
+
+    // If in grace period: don't apply gravity or move chimneys, but keep clouds moving
+    if (graceRemainingMs > 0) {
+      graceRemainingMs -= dtMs;
+      // Keep the lead position steady in the trail so the chain looks idle
+      trail.unshift({ x: PLAYER_X, y: bird.y });
+      if (trail.length > TRAIL_LENGTH) trail.pop();
+      // Background parallax can still animate a little
+      const farSpeed = 0.25 + score * 0.01;
+      const nearSpeed = 0.6 + score * 0.02;
+      const silSpeed = 0.35 + score * 0.01;
+      for (const c of cloudsFar) {
+        c.x -= farSpeed * (dt * 60);
+        if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
+      }
+      for (const c of cloudsNear) {
+        c.x -= nearSpeed * (dt * 60);
+        if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
+      }
+      for (const s of silhouettes) {
+        s.x -= silSpeed * (dt * 60);
+        if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
+      }
+      // Draw state and wait
+      draw();
+      requestAnimationFrame(frameLoop);
+      return;
+    }
+
+    // Physics (vy in px/sec, y in px)
+    bird.vy += GRAVITY_PER_S * dt;
+    bird.y += bird.vy * dt;
+    // Record lead position into trail
     trail.unshift({ x: PLAYER_X, y: bird.y });
     if (trail.length > TRAIL_LENGTH) trail.pop();
 
-    // Spawn chimneys
-    if (frame % SPAWN_INTERVAL === 0) spawnChimney();
-    // Move chimneys (speed scales with score)
-    const moveSpeed = BASE_SPEED + score * SPEED_PER_SCORE + Math.floor(frame / 600) * 0.02;
+    // Spawn chimneys by elapsed time
+    if (ts - lastSpawnMs > SPAWN_INTERVAL_MS) {
+      spawnChimney();
+      lastSpawnMs = ts;
+    }
+
+    // Move chimneys using px/sec speed
+    const timeFactorSpeed = BASE_SPEED_PX_S + score * SPEED_PER_SCORE_PX_S + Math.floor(frame / 600) * 0.02 * 60;
     for (let i = chimneys.length - 1; i >= 0; i--) {
-      chimneys[i].x -= moveSpeed;
-      // Score when passing (use lead reindeer X)
+      chimneys[i].x -= timeFactorSpeed * dt;
       const leadX = PLAYER_X + LEAD_OFFSET_X;
       if (!chimneys[i].passed && chimneys[i].x + 40 < leadX) {
         chimneys[i].passed = true;
@@ -238,42 +325,42 @@
       if (chimneys[i].x < -80) chimneys.splice(i, 1);
     }
 
-    // Move background clouds and silhouettes for parallax
-    const farSpeed = 0.25 + score * 0.01; // slow far clouds
-    const nearSpeed = 0.6 + score * 0.02; // faster near clouds
+    // Background parallax
+    const farSpeed = 0.25 + score * 0.01;
+    const nearSpeed = 0.6 + score * 0.02;
     const silSpeed = 0.35 + score * 0.01;
     for (const c of cloudsFar) {
-      c.x -= farSpeed;
+      c.x -= farSpeed * (dt * 60);
       if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
     }
     for (const c of cloudsNear) {
-      c.x -= nearSpeed;
+      c.x -= nearSpeed * (dt * 60);
       if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
     }
     for (const s of silhouettes) {
-      s.x -= silSpeed;
+      s.x -= silSpeed * (dt * 60);
       if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
     }
 
-    // Collisions: use the lead reindeer position (front of the chain)
+    // Collisions
     const leadX = PLAYER_X + LEAD_OFFSET_X;
     const leadY = (trail[0] || { y: bird.y }).y;
     if (leadY + bird.h / 2 >= HEIGHT || leadY - bird.h / 2 <= 0) {
-      return gameOver();
+      gameOver();
     }
     for (const c of chimneys) {
       const cx = c.x;
       const topH = c.top;
       const bottomY = topH + GAP;
-      // chimney rectangles: top (0, topH), bottom (bottomY, HEIGHT)
       if (leadX + bird.w / 2 > cx && leadX - bird.w / 2 < cx + 40) {
         if (leadY - bird.h / 2 < topH || leadY + bird.h / 2 > bottomY) {
-          return gameOver();
+          gameOver();
         }
       }
     }
 
     draw();
+    requestAnimationFrame(frameLoop);
   }
 
   function draw() {
@@ -457,7 +544,7 @@
   }
 
   function flap() {
-    bird.vy = FLAP;
+    bird.vy = FLAP_VY;
     try {
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     } catch (e) {}
@@ -625,7 +712,21 @@
     flap();
   }, { passive: false });
 
-  setInterval(tick, 1000 / 60);
-  // initial draw
+  // Responsive handling and start loop
+  window.addEventListener('resize', () => {
+    const wasRunning = running;
+    running = false;
+    resizeCanvasAndLayout();
+    reset();
+    draw();
+    if (wasRunning) {
+      running = true;
+    }
+  });
+
+  // initial setup
+  resizeCanvasAndLayout();
+  reset();
   draw();
+  requestAnimationFrame(frameLoop);
 })();
