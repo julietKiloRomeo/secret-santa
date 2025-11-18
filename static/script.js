@@ -4,9 +4,9 @@ const API_URL = '';  // Empty string since we're serving from same origin
 async function login() {
     const nameInput = document.getElementById('name').value;
     const codeInput = document.getElementById('code').value;
-    const errorMessage = document.querySelector('.error-message');
-    const loginForm = document.querySelector('.login-form');
-    const wheelContainer = document.querySelector('.wheel-container');
+    const errorMessage = document.querySelector('[data-js="error"]');
+    const loginForm = document.querySelector('[data-js="login-form"]');
+    const wheelContainer = document.querySelector('[data-js="wheel-container"]');
 
     try {
         const response = await fetch(`${API_URL}/api/login`, {
@@ -23,13 +23,13 @@ async function login() {
 
         const data = await response.json();
 
-        if (data.success) {
-            errorMessage.style.display = 'none';
-            loginForm.style.display = 'none';
-            wheelContainer.style.display = 'block';
+            if (data.success) {
+            if (errorMessage) errorMessage.style.display = 'none';
+            if (loginForm) loginForm.style.display = 'none';
+            if (wheelContainer) wheelContainer.style.display = 'block';
             initializeWheel();
         } else {
-            errorMessage.style.display = 'block';
+            if (errorMessage) errorMessage.style.display = 'block';
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -83,8 +83,10 @@ async function spinWheel(eligibleNames) {
             wheel.style.transform = `rotate(${finalAngle}deg)`;
             
             setTimeout(() => {
-                document.getElementById('result').textContent = data.recipient;
-                document.querySelector('.success-message').style.display = 'block';
+                const resultEl = document.querySelector('[data-js="result"]') || document.getElementById('result');
+                if (resultEl) resultEl.textContent = data.recipient;
+                const successEl = document.querySelector('[data-js="success"]');
+                if (successEl) successEl.style.display = 'block';
             }, 4000);
         }
     } catch (error) {

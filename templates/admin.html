@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}Admin{% endblock %}
 {% block content %}
-  <div class="container">
-    <h1>Admin Panel (Year {{ year }})</h1>
+  <div class="bg-red-900 bg-opacity-80 rounded-xl shadow-lg p-6 max-w-2xl mx-auto w-full">
+    <h1 class="text-2xl font-bold mb-4">Admin Panel (Year {{ year }})</h1>
 
     <section>
-      <h2>Sæt adgangskode</h2>
-      <div class="card">
-        <form class="form-row" onsubmit="return setPassword(event);">
+      <h2 class="text-lg font-semibold mb-2">Sæt adgangskode</h2>
+      <div class="bg-white/5 p-4 rounded-lg shadow mb-4">
+        <form data-js="set-password-form" class="grid grid-cols-1 gap-3" onsubmit="return setPassword(event);">
           <label for="userName">Vælg bruger</label>
           <select id="userName" required>
             <option value="" disabled selected>-- vælg bruger --</option>
@@ -20,32 +20,32 @@
           <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required />
 
           <div>
-            <button type="submit" class="btn btn-primary">Gem adgangskode</button>
+            <button type="submit" class="btn btn-primary bg-green-600 text-white py-2 px-3 rounded">Gem adgangskode</button>
           </div>
         </form>
-        <div id="setPassMsg" class="muted"></div>
+        <div id="setPassMsg" data-js="set-pass-msg" class="mt-2 text-gray-300"></div>
       </div>
     </section>
 
-    <section style="margin-top: 2rem;">
-      <h2>Kør årets matcher</h2>
-      <button id="runMatchesBtn" onclick="runMatches()" {% if draw_locked %}disabled{% endif %}>Kør matcher</button>
+    <section class="mt-4">
+      <h2 class="text-lg font-semibold mb-2">Kør årets matcher</h2>
+      <button id="runMatchesBtn" data-js="run-matches-btn" onclick="runMatches()" class="btn btn-primary bg-blue-600 text-white py-2 px-3 rounded" {% if draw_locked %}disabled{% endif %}>Kør matcher</button>
       {% if draw_locked %}
-        <div style="color: #f44; margin-top: 0.5rem;">Drawing is locked by server configuration (DRAW_LOCKED).</div>
+        <div class="text-red-400 mt-2">Drawing is locked by server configuration (DRAW_LOCKED).</div>
       {% endif %}
-      <div id="matchesMsg"></div>
+      <div id="matchesMsg" data-js="matches-msg" class="mt-2"></div>
     </section>
 
-    <section style="margin-top: 2rem;">
-      <h2>Spil (tænd/sluk)</h2>
-      <div id="gamesList">Indlæser...</div>
+    <section class="mt-4">
+      <h2 class="text-lg font-semibold mb-2">Spil (tænd/sluk)</h2>
+      <div id="gamesList" data-js="games-list">Indlæser...</div>
     </section>
 
-    <section style="margin-top: 2rem;">
-      <h2>Nulstil high scores</h2>
-      <div id="resetMsg"></div>
+    <section class="mt-4">
+      <h2 class="text-lg font-semibold mb-2">Nulstil high scores</h2>
+      <div id="resetMsg" data-js="reset-msg"></div>
     </section>
-    </div>
+  </div>
 
   <script>
     async function setPassword(e) {
@@ -58,26 +58,28 @@
         body: JSON.stringify({ name, passphrase })
       });
       const data = await resp.json();
-      document.getElementById('setPassMsg').textContent = data.success ? 'Adgangskode gemt' : (data.error || 'Fejl');
+      const setPassMsg = document.querySelector('[data-js="set-pass-msg"]') || document.getElementById('setPassMsg');
+      if (setPassMsg) setPassMsg.textContent = data.success ? 'Adgangskode gemt' : (data.error || 'Fejl');
       return false;
     }
 
     async function runMatches() {
-      const btn = document.getElementById('runMatchesBtn');
+      const btn = document.querySelector('[data-js="run-matches-btn"]') || document.getElementById('runMatchesBtn');
+      const matchesMsg = document.querySelector('[data-js="matches-msg"]') || document.getElementById('matchesMsg');
       if (btn && btn.disabled) {
-        document.getElementById('matchesMsg').textContent = 'Drawing of matches is locked by server configuration (DRAW_LOCKED).';
+        if (matchesMsg) matchesMsg.textContent = 'Drawing of matches is locked by server configuration (DRAW_LOCKED).';
         return;
       }
       const resp = await fetch('/api/admin/run_matches', { method: 'POST' });
       const data = await resp.json();
-      document.getElementById('matchesMsg').textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
+      if (matchesMsg) matchesMsg.textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
     }
 
     // Games management
     async function loadGames() {
       const resp = await fetch('/api/admin/games');
       const data = await resp.json();
-      const list = document.getElementById('gamesList');
+      const list = document.querySelector('[data-js="games-list"]') || document.getElementById('gamesList');
       list.innerHTML = '';
       data.games.forEach(g => {
         const row = document.createElement('div');
@@ -98,7 +100,8 @@
         reset.addEventListener('click', async () => {
           const r = await fetch('/api/admin/reset_scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g.game }) });
           const d = await r.json();
-          document.getElementById('resetMsg').textContent = d.success ? `Scores nulstilt for ${g.game}` : (d.error || 'Fejl');
+          const resetMsg = document.querySelector('[data-js="reset-msg"]') || document.getElementById('resetMsg');
+          if (resetMsg) resetMsg.textContent = d.success ? `Scores nulstilt for ${g.game}` : (d.error || 'Fejl');
           loadGames();
         });
         row.appendChild(label);
