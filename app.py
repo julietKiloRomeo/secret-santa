@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, jsonify, request, session, render_template
+from flask import Flask, jsonify, request, session, render_template, redirect, url_for
 import os
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -192,7 +192,12 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            return jsonify({"error": "Unauthorized"}), 401
+            # Prefer JSON for API endpoints, but redirect to the front page
+            # for regular HTML page requests so users see the login form.
+            accept = (request.headers.get('Accept') or '').lower()
+            if request.path.startswith('/api') or 'application/json' in accept or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({"error": "Unauthorized"}), 401
+            return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -246,6 +251,20 @@ def fjerde_advent():
 @login_required
 def glaedelig_jul():
     return render_template('glaedelig_jul.html')
+
+@app.route('/lodtraekning')
+@login_required
+def lodtraekning():
+    # Server-rendered Lodtrækning page: show the recipient for the logged-in user
+    user = session.get('user')
+    recipient = ''
+    try:
+        if isinstance(ASSIGNMENTS, dict) and user:
+            recipient = ASSIGNMENTS.get(user) or ''
+    except Exception:
+        recipient = ''
+    recipient_text = recipient.capitalize() if recipient else ''
+    return render_template('lodtraekning.html', name=user, recipient=recipient_text)
 
 @app.route('/api/scores/<game>', methods=['GET'])
 def get_scores(game: str):
@@ -334,7 +353,10 @@ def login():
         stored = logins[name]
         if is_hashed(stored) and check_password_hash(stored, code):
             session['user'] = name
-            return jsonify({"success": True, "name": name, "recipient": ASSIGNMENTS[name].capitalize()})
+            # Some tests or env setups may not have a mapping for every login
+            recipient = ASSIGNMENTS.get(name) if isinstance(ASSIGNMENTS, dict) else None
+            recipient_text = recipient.capitalize() if recipient else ''
+            return jsonify({"success": True, "name": name, "recipient": recipient_text})
 
     return jsonify({"success": False, "error": "Invalid credentials"}), 401
 

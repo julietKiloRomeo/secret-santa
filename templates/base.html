@@ -4,76 +4,130 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Secret Santa{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <!-- Tailwind CDN for quick integration (suitable for development) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Small custom overrides that are easier to keep here than inlined HTML */
+    #locked-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: .75rem 1.25rem; border-radius: .5rem; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: opacity .4s ease; }
+    body { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/api/placeholder/1920/1080'); background-size: cover; }
+  </style>
 </head>
-<body>
-  <nav class="nav">
-    <div class="nav-left">
-      <a href="/" class="brand">🎄 Secret Santa</a>
+<body class="text-white min-h-screen">
+  <nav class="bg-red-800 bg-opacity-95 fixed w-full top-0 z-50 shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center">
+          <a href="/" class="text-white font-bold text-lg">🎄 Secret Santa</a>
+        </div>
+        <div class="flex items-center">
+          <div class="hidden md:block">
+            <div class="ml-4 flex items-baseline space-x-4">
+              {% if session.get('user') %}
+                {# Lodtrækning (gift-drawing) - quick access to your recipient #}
+                <a href="/lodtraekning" class="text-white hover:underline">Lodtrækning</a>
+
+                {# First Advent #}
+                {% set _disabled = not game_enabled_for_user('forste-advent') %}
+                <a href="/forste-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>
+
+                {# Second Advent #}
+                {% set _disabled = not game_enabled_for_user('anden-advent') %}
+                <a href="/anden-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Anden Advent</a>
+
+                {# Third & Fourth and Glaedelig (still shown) #}
+                {% set _disabled = not game_enabled_for_user('tredje-advent') %}
+                <a href="/tredje-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Tredje Advent</a>
+
+                {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
+                <a href="/fjerde-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
+
+                {% set _disabled = not game_enabled_for_user('glaedelig-jul') %}
+                <a href="/glaedelig-jul" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Glædelig Jul</a>
+
+                {% if is_admin_user() %}
+                  <a id="admin-link" href="/admin" class="text-white hover:underline">Admin</a>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Mobile menu button -->
+          <button id="nav-toggle" aria-label="Open main menu" class="ml-2 inline-flex items-center justify-center p-2 rounded-md text-white md:hidden" aria-controls="mobile-menu" aria-expanded="false">
+            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="nav-right">
+
+    <!-- Mobile menu, toggle with JS -->
+    <div id="mobile-menu" role="navigation" class="md:hidden hidden px-2 pt-2 pb-3 space-y-1">
       {% if session.get('user') %}
-        {# First Advent #}
+        <a href="/lodtraekning" class="block px-3 py-2 rounded-md text-base font-medium text-white">Lodtrækning</a>
+
         {% set _disabled = not game_enabled_for_user('forste-advent') %}
-        <a href="/forste-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>
+        <a href="/forste-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>
 
-        {# Second Advent #}
         {% set _disabled = not game_enabled_for_user('anden-advent') %}
-        <a href="/anden-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Anden Advent</a>
+        <a href="/anden-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Anden Advent</a>
 
-        {# Third & Fourth and Glaedelig (still shown) #}
         {% set _disabled = not game_enabled_for_user('tredje-advent') %}
-        <a href="/tredje-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Tredje Advent</a>
+        <a href="/tredje-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Tredje Advent</a>
 
         {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
-        <a href="/fjerde-advent" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
+        <a href="/fjerde-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
 
         {% set _disabled = not game_enabled_for_user('glaedelig-jul') %}
-        <a href="/glaedelig-jul" class="{{ 'disabled' if _disabled else '' }}" data-disabled="{{ '1' if _disabled else '0' }}">Glædelig Jul</a>
+        <a href="/glaedelig-jul" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Glædelig Jul</a>
 
         {% if is_admin_user() %}
-          <a id="admin-link" href="/admin">Admin</a>
+          <a id="admin-link" href="/admin" class="block px-3 py-2 rounded-md text-base font-medium text-white">Admin</a>
         {% endif %}
       {% endif %}
     </div>
   </nav>
-  <main class="main">
-    {% block content %}{% endblock %}
+
+  <main class="pt-16 px-4">
+    <div class="max-w-3xl mx-auto">
+      {% block content %}{% endblock %}
+    </div>
   </main>
+
   <script>
     // Intercept clicks on disabled game links and show a friendly message
     document.addEventListener('click', function (ev) {
       const a = ev.target.closest && ev.target.closest('a[data-disabled="1"]');
       if (a) {
         ev.preventDefault();
-        // Friendly Danish message
         const msg = 'Hov hov. Den låge må du ikke åbne endnu!';
-        // show a temporary toast
         let t = document.getElementById('locked-toast');
         if (!t) {
           t = document.createElement('div');
           t.id = 'locked-toast';
-          t.style.position = 'fixed';
-          t.style.top = '72px';
-          t.style.left = '50%';
-          t.style.transform = 'translateX(-50%)';
-          t.style.background = 'rgba(0,0,0,0.85)';
-          t.style.color = '#fff';
-          t.style.padding = '0.75rem 1.25rem';
-          t.style.borderRadius = '6px';
-          t.style.zIndex = 2000;
-          t.style.boxShadow = '0 4px 12px rgba(0,0,0,0.6)';
           document.body.appendChild(t);
         }
         t.textContent = msg;
         t.style.opacity = 1;
         clearTimeout(t._timeout);
         t._timeout = setTimeout(() => {
-          t.style.transition = 'opacity 0.4s ease';
           t.style.opacity = 0;
         }, 2200);
       }
     });
+
+    // Mobile menu toggle
+    const toggle = document.getElementById('nav-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (menu) {
+          const hidden = menu.classList.toggle('hidden');
+          // Update aria-expanded to reflect open state for screen readers
+          toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+        }
+      });
+    }
   </script>
 </body>
 </html>

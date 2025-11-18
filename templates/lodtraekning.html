@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Lodtrækning{% endblock %}
+{% block content %}
+  <div class="bg-red-900 bg-opacity-80 rounded-xl shadow-lg p-6 max-w-md mx-auto w-full text-center">
+    <h1 class="text-2xl font-bold mb-4">Lodtrækning</h1>
+    {% if name %}
+      <p class="mb-4">Du er logget ind som <strong>{{ name }}</strong>.</p>
+        {% if recipient %}
+        <p class="text-green-200 text-lg">🎁 Du skal give en gave til: <strong id="recipient" data-js="result">{{ recipient }}</strong></p>
+      {% else %}
+        <p class="text-yellow-200">Der er endnu ingen tildeling for dig. Kontakt en administrator hvis der er problemer.</p>
+      {% endif %}
+    {% else %}
+      <p class="mb-4">Du er ikke logget ind. Gå til forsiden for at logge ind og trække et navn.</p>
+      <a href="/" class="inline-block mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">Gå til login</a>
+    {% endif %}
+  </div>
+{% endblock %}
