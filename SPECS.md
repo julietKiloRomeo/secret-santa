@@ -82,6 +82,7 @@ Client behavior / Mini-games
 
 - Jule Snake (`/forste-advent`, `static/forste_advent.js`):
   - Classic snake movement with arrow keys.
+  - On touch devices swiping in a direction also controls the snake; a decorative on-screen D-pad is present but does not obscure gameplay.
   - Presents a high-score overlay titled "Søde Børn" when the game ends and the score qualifies.
   - High score submission uses `/api/scores/forste-advent` and respects the upsert semantics.
 
