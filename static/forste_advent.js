@@ -6,9 +6,11 @@
   const statusEl = document.getElementById('status');
   const defaultPlayerName = window.__defaultPlayerName__ || 'Guest';
 
-  const CELL = 20; // pixels per grid cell
-  const GRID = { cols: canvas.width / CELL, rows: canvas.height / CELL };
-  const SPEED_MS = 150; // tick speed
+  // Responsive grid: keep number of columns consistent and compute cell size
+  const NUM_COLS = 20;
+  let CELL = 20; // computed per-resize (CSS pixels)
+  let GRID = { cols: NUM_COLS, rows: 20 };
+  const SPEED_MS = 150; // tick speed (ms) -- unchanged for gameplay feel
 
   const COLORS = {
     bg: '#002',
@@ -30,15 +32,35 @@
 
   // Snake represented as segments, each with x,y and optional skin (emoji)
   // Start length 5
-  let snake = [
-    { x: 7, y: 10 },
-    { x: 6, y: 10 },
-    { x: 5, y: 10 },
-    { x: 4, y: 10 },
-    { x: 3, y: 10 },
-  ];
+  let snake = [];
   let forcedNextSkin = null;
-  let gift = placeGift();
+  let gift = null;
+
+  // Responsive resize: set canvas pixel size and compute CELL/GRID
+  function resizeCanvasAndGrid() {
+    // Ensure the canvas fills its container width
+    try { canvas.style.width = '100%'; } catch (e) {}
+    const displayWidth = Math.max(64, Math.floor(canvas.parentElement ? canvas.parentElement.clientWidth : window.innerWidth * 0.9));
+    const DPR = window.devicePixelRatio || 1;
+    canvas.width = Math.round(displayWidth * DPR);
+    canvas.height = Math.round(displayWidth * DPR);
+    // Make drawing units match CSS pixels by applying transform
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    CELL = Math.max(6, Math.floor(displayWidth / NUM_COLS));
+    GRID = { cols: NUM_COLS, rows: Math.floor(displayWidth / CELL) };
+  }
+
+  function initSnakeAndGift() {
+    // centre the snake in the grid
+    const cx = Math.floor(GRID.cols / 2);
+    const cy = Math.floor(GRID.rows / 2);
+    snake = [];
+    for (let i = 0; i < 5; i++) {
+      snake.push({ x: cx - i, y: cy, skin: null });
+    }
+    gift = placeGift();
+  }
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -60,9 +82,12 @@
 
   function placeGift() {
     let gx, gy;
+    // Ensure GRID has been computed
+    const cols = GRID.cols || NUM_COLS;
+    const rows = GRID.rows || NUM_COLS;
     do {
-      gx = randInt(GRID.cols);
-      gy = randInt(GRID.rows);
+      gx = randInt(cols);
+      gy = randInt(rows);
     } while (snake.some(seg => seg.x === gx && seg.y === gy));
     const skin = nextGiftSkin();
     return { x: gx, y: gy, skin };
@@ -73,21 +98,22 @@
   }
 
   function drawGrid() {
+    // Background / grid drawn in CSS pixels (ctx is transformed)
     ctx.fillStyle = COLORS.bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
     ctx.strokeStyle = COLORS.grid;
     ctx.lineWidth = 1;
-    for (let x = 0; x <= canvas.width; x += CELL) {
+    for (let x = 0; x <= canvas.clientWidth; x += CELL) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(x, canvas.clientHeight);
       ctx.stroke();
     }
-    for (let y = 0; y <= canvas.height; y += CELL) {
+    for (let y = 0; y <= canvas.clientHeight; y += CELL) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      ctx.lineTo(canvas.clientWidth, y);
       ctx.stroke();
     }
   }
@@ -112,9 +138,10 @@
   }
 
   function drawGift() {
+    if (!gift) return;
     const px = gift.x * CELL;
     const py = gift.y * CELL;
-    ctx.font = `${CELL - 4}px serif`;
+    ctx.font = `${Math.max(8, CELL - 4)}px serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(gift.skin, px + CELL / 2, py + CELL / 2);
@@ -146,7 +173,7 @@
 
     // Move
     snake.unshift(head);
-    if (head.x === gift.x && head.y === gift.y) {
+    if (gift && head.x === gift.x && head.y === gift.y) {
       // Grow: keep tail and record gift in queue preserving order
       skinQueue.push(gift.skin);
       score += 1;
@@ -165,7 +192,12 @@
     drawSnake();
   }
 
-  let timer = setInterval(tick, SPEED_MS);
+  // Start the ticker
+  let timer = null;
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick, SPEED_MS);
+  }
 
   async function gameOver() {
     running = false;
@@ -207,10 +239,114 @@
     playMove();
   });
 
+  // Mobile controls: touch arrows and swipe
+  function createMobileControls() {
+    const container = canvas.parentElement || document.body;
+    try { container.style.position = container.style.position || 'relative'; } catch (e) {}
+    // Avoid duplicate
+    if (document.getElementById('snake-controls')) return;
+    const controls = document.createElement('div');
+    controls.id = 'snake-controls';
+    controls.style.position = 'absolute';
+    controls.style.left = '50%';
+    controls.style.bottom = '8px';
+    controls.style.transform = 'translateX(-50%)';
+    controls.style.zIndex = 1200;
+    // Cross layout: 3x3 grid with empty center
+    controls.style.display = 'grid';
+    controls.style.gridTemplateColumns = '48px 48px 48px';
+    controls.style.gridTemplateRows = '48px 48px 48px';
+    controls.style.gap = '8px';
+    controls.style.justifyItems = 'center';
+    controls.style.alignItems = 'center';
+
+    const mkCell = (content) => {
+      const cell = document.createElement('div');
+      cell.style.width = '48px';
+      cell.style.height = '48px';
+      cell.style.display = 'flex';
+      cell.style.justifyContent = 'center';
+      cell.style.alignItems = 'center';
+      if (!content) return cell;
+      const b = document.createElement('button');
+      b.textContent = content.glyph;
+      b.setAttribute('data-dir', content.dir);
+      b.style.fontSize = '20px';
+      b.style.width = '44px';
+      b.style.height = '44px';
+      b.style.borderRadius = '8px';
+      b.style.border = 'none';
+      b.style.background = 'rgba(255,255,255,0.06)';
+      b.style.color = '#fff';
+      b.addEventListener('touchstart', (ev) => { ev.preventDefault(); pendingDirection = b.getAttribute('data-dir'); playMove(); });
+      b.addEventListener('mousedown', (ev) => { ev.preventDefault(); pendingDirection = b.getAttribute('data-dir'); playMove(); });
+      cell.appendChild(b);
+      return cell;
+    };
+
+    // Row 1: placeholder, up, placeholder
+    controls.appendChild(mkCell(null));
+    controls.appendChild(mkCell({ dir: 'up', glyph: '⬆' }));
+    controls.appendChild(mkCell(null));
+    // Row 2: left, center(empty), right
+    controls.appendChild(mkCell({ dir: 'left', glyph: '⬅' }));
+    controls.appendChild(mkCell(null));
+    controls.appendChild(mkCell({ dir: 'right', glyph: '➡' }));
+    // Row 3: placeholder, down, placeholder
+    controls.appendChild(mkCell(null));
+    controls.appendChild(mkCell({ dir: 'down', glyph: '⬇' }));
+    controls.appendChild(mkCell(null));
+
+    container.appendChild(controls);
+  }
+
+  // Swipe support
+  let touchStart = null;
+  canvas.addEventListener('touchstart', (ev) => {
+    if (!ev.touches || ev.touches.length !== 1) return;
+    const t = ev.touches[0];
+    touchStart = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }, { passive: true });
+  canvas.addEventListener('touchend', (ev) => {
+    if (!touchStart) return;
+    const t = ev.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
+      pendingDirection = dx > 0 ? 'right' : 'left';
+    } else if (Math.abs(dy) > 20) {
+      pendingDirection = dy > 0 ? 'down' : 'up';
+    }
+    playMove();
+    touchStart = null;
+  }, { passive: true });
+
+  // Recompute sizes on resize
+  window.addEventListener('resize', () => {
+    const wasRunning = running;
+    running = false;
+    if (timer) clearInterval(timer);
+    resizeCanvasAndGrid();
+    initSnakeAndGift();
+    drawGrid();
+    drawGift();
+    drawSnake();
+    createMobileControls();
+    if (wasRunning) {
+      running = true;
+      startTimer();
+    }
+  });
+
   // Initial draw so the page isn't blank
+  // Initial setup: resize, init snake/gift, controls and start timer
+  resizeCanvasAndGrid();
+  initSnakeAndGift();
   drawGrid();
   drawGift();
   drawSnake();
+  createMobileControls();
+  startTimer();
 
   function applySkinsFromQueue() {
     // Clear all skins first
