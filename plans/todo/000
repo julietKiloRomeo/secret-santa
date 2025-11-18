@@ -26,3 +26,10 @@ stick around when the snake leaves. fix that.
 
 the d-pad overlay is on top of the board. fix that - and allow swiping in a direction to 
 control the snake
+
+DONE: Fixed Snake grid drawing and mobile controls.
+  - Grid now uses `Math.ceil` for row calculation so the grid covers the full canvas (`static/forste_advent.js`).
+  - Drawing clears the entire canvas before painting the grid so stale colored squares are removed.
+  - Mobile D-pad is inserted behind the canvas (canvas z-index increased) so it no longer obscures gameplay; swipe handlers on the canvas continue to control the snake.
+
+REMAINING (flappy): simplify the game loop — still TODO. Sprite/config tuning appears wired up in `static/anden_config.js` and `static/anden_advent.js` but the loop needs refactor.

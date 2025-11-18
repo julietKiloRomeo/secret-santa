@@ -48,7 +48,9 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
     CELL = Math.max(6, Math.floor(displayWidth / NUM_COLS));
-    GRID = { cols: NUM_COLS, rows: Math.floor(displayWidth / CELL) };
+    // Use ceil for rows so the grid covers the entire canvas even when
+    // `displayWidth` isn't an exact multiple of `CELL`.
+    GRID = { cols: NUM_COLS, rows: Math.ceil(displayWidth / CELL) };
   }
 
   function initSnakeAndGift() {
@@ -98,22 +100,29 @@
   }
 
   function drawGrid() {
-    // Background / grid drawn in CSS pixels (ctx is transformed)
+    // Clear the entire surface and draw the background so no stale pixels
+    // remain (previously some areas outside the computed grid were left
+    // untouched causing colored squares to stick around).
+    const totalWidth = GRID.cols * CELL;
+    const totalHeight = GRID.rows * CELL;
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
     ctx.strokeStyle = COLORS.grid;
     ctx.lineWidth = 1;
-    for (let x = 0; x <= canvas.clientWidth; x += CELL) {
+    // Draw vertical lines across the computed grid area
+    for (let x = 0; x <= totalWidth; x += CELL) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.clientHeight);
+      ctx.lineTo(x, totalHeight);
       ctx.stroke();
     }
-    for (let y = 0; y <= canvas.clientHeight; y += CELL) {
+    // Draw horizontal lines across the computed grid area
+    for (let y = 0; y <= totalHeight; y += CELL) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.clientWidth, y);
+      ctx.lineTo(totalWidth, y);
       ctx.stroke();
     }
   }
@@ -249,9 +258,14 @@
     controls.id = 'snake-controls';
     controls.style.position = 'absolute';
     controls.style.left = '50%';
+    // Keep controls visually near the bottom of the container but ensure
+    // they do not sit above the game canvas (they are decorative). We
+    // insert the controls before the canvas and give the canvas a
+    // higher z-index so the controls do not obscure gameplay or intercept
+    // swipe gestures.
     controls.style.bottom = '8px';
     controls.style.transform = 'translateX(-50%)';
-    controls.style.zIndex = 1200;
+    controls.style.zIndex = '0';
     // Cross layout: 3x3 grid with empty center
     controls.style.display = 'grid';
     controls.style.gridTemplateColumns = '48px 48px 48px';
@@ -297,7 +311,17 @@
     controls.appendChild(mkCell({ dir: 'down', glyph: '⬇' }));
     controls.appendChild(mkCell(null));
 
-    container.appendChild(controls);
+    // Insert the controls before the canvas so they are behind it. The
+    // canvas is given a higher z-index to ensure it paints above the
+    // controls and still receives touch events for swiping.
+    if (canvas && canvas.parentElement === container) {
+      // ensure canvas is in a positioned stacking context
+      try { canvas.style.position = canvas.style.position || 'relative'; } catch (e) {}
+      try { canvas.style.zIndex = '10'; } catch (e) {}
+      container.insertBefore(controls, canvas);
+    } else {
+      container.appendChild(controls);
+    }
   }
 
   // Swipe support
