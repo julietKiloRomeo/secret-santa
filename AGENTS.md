@@ -22,5 +22,6 @@ We use uv add to add python packages. We do NOT use pip.
 Use Jest and React Testing Library. All new components must have at
 least 80% test coverage for critical paths.
 
-Always run the tests after code changes.
+Always run the tests after code changes, and commit after each change.
 
+Note: Commit each logical change as its own commit so it's easy to review and revert if needed.
