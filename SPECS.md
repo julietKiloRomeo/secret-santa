@@ -134,3 +134,14 @@ Developer notes
 - The server is configured to run under `gunicorn` inside the provided `Dockerfile` for production usage.
 
 If a behavior in this document becomes out-of-sync with tests in the repository, update SPECS.md by re-generating the appropriate summaries from tests and commit the change.
+
+Testing learnings
+-----------------
+Practical notes from recent mobile UI work have been collected in `TESTING.md`. Highlights:
+
+- Use `uv run pytest` for Python tests and `npx playwright test` for E2E; Playwright can auto-start the dev server via the `webServer` setting in `playwright.config.ts` (it runs `uv run python app.py`).
+- Prefer UI interactions in Playwright tests (fill form + submit) rather than `page.evaluate` fetch calls because server-side errors may return HTML debug pages which break JSON parsing.
+- Ensure test accounts exist both in the `.env` used by tests and in the `secret-santa-<year>.json` assignments — missing mappings can raise server KeyErrors seen as HTML debug responses.
+- Keep DOM IDs and debug hooks stable (e.g., `snake-canvas`, `santa-canvas`, `window.__snakeDebug__`) so tests remain robust.
+
+See `TESTING.md` for the full checklist and commands.
