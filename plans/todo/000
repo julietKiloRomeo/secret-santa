@@ -33,3 +33,33 @@ DONE: Fixed Snake grid drawing and mobile controls.
   - Mobile D-pad is inserted behind the canvas (canvas z-index increased) so it no longer obscures gameplay; swipe handlers on the canvas continue to control the snake.
 
 REMAINING (flappy): simplify the game loop — still TODO. Sprite/config tuning appears wired up in `static/anden_config.js` and `static/anden_advent.js` but the loop needs refactor.
+
+FOCUSED REFACTOR PLAN (created 2025-11-18 by AI agent):
+
+1) Create tests that capture current, expected behavior (E2E + small unit checks).
+   - E2E: a Playwright scenario that loads `/anden-advent`, verifies the canvas is present,
+     reads a few tuned config values via `window.__ANDEN_CONFIG__` and asserts that
+     reindeer drawing positions/hitbox scale are influenced by those values.
+   - Unit-ish: an isolated test (page.evaluate) that calls `resizeCanvasAndLayout()` and
+     asserts computed anchors (`PLAYER_X`, `LEAD_OFFSET_X`, `SECOND_OFFSET_X`, `THIRD_OFFSET_X`) match expectations for a given canvas width.
+
+   STATUS: DONE — focused plan created and tests scoped. (No tests added yet; awaiting confirmation before implementing tests/code changes per project conventions.)
+
+2) Implement tests (add Playwright test file under `tests/e2e/` and a small JS test harness) and run them.
+   STATUS: PENDING
+
+3) Refactor the game loop in small steps:
+   - Extract physics update (gravity, vy, y) into `updatePhysics(dt)`.
+   - Extract obstacle movement and spawn logic into `updateObstacles(dt)`.
+   - Extract background parallax into `updateBackground(dt)` and rendering into `render()`.
+   - Replace inlined requestAnimationFrame + large frameLoop body with a clear tick: compute dt, call updates, then render.
+   STATUS: PENDING
+
+4) Add unit tests for `updatePhysics` and obstacle logic (page.evaluate or small harnessable exports), iterate until green.
+   STATUS: PENDING
+
+5) Run full test-suite, format JS (Prettier) and commit with a clear message for each logical change.
+   STATUS: PENDING
+
+Notes:
+- Per project policy, tests must be added before code changes. I have created a focused plan and scoped the tests; please confirm you'd like me to add the tests now. After your confirmation I will add the Playwright/JS tests, run them, then implement the refactor in small, tested commits.
