@@ -18,6 +18,9 @@ def test_anden_config_file_exists_and_keys():
         'leadOffsetXRatio',
         'secondOffsetXRatio',
         'thirdOffsetXRatioAdjust',
+        'reindeerSpriteScale',
+        'santaSpriteScale',
+        'reindeerHitBoxScale',
         'gapRatio',
         'gapMin',
         'trailLengthMin',
@@ -25,4 +28,3 @@ def test_anden_config_file_exists_and_keys():
     ]
     missing = [k for k in keys if k not in s]
     assert not missing, f"Missing config keys in static/anden_config.js: {missing}"
-

@@ -1,0 +1,28 @@
+# flappy santa
+
+simplify the game loop. It has become too convoluted and hard to maintain.
+
+The sprite offsets do not seem to be loaded from the config file - or are overwritten
+by similar variables in the js file. I dont even think the first definition of those
+vars have any effect but are themselves overwritten???
+
+make sure that the config file actually controls the game parameters. and add a parameter
+for the scale of the reindeer sprites and the santa sprite
+
+DONE: Added config keys to allow tuning sprite scale and hitbox.
+  - `reindeerSpriteScale`, `santaSpriteScale`, and `reindeerHitBoxScale` added to `static/anden_config.js`.
+  - `static/anden_advent.js` now reads these values and applies them to sprite drawing and collision hitbox.
+  - Default hitbox reduced (hitbox scale = 0.9) to make collisions feel fairer.
+
+decrease the hit box on the reindeer slightly - it never looks like the reindeer actually hit
+that makes it feel unfair
+
+# snake
+
+the grid does not extend to the entires canvas. fix that.
+
+on the parts of the canvas where there is no grid - snake-colored squares
+stick around when the snake leaves. fix that.
+
+the d-pad overlay is on top of the board. fix that - and allow swiping in a direction to 
+control the snake

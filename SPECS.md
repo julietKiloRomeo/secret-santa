@@ -93,6 +93,7 @@ Client behavior / Mini-games
   - Speed slowly increases as score grows.
   - Audio: The game attempts to detect a user-provided audio file in `static/` (e.g. `sleigh_bell.mp3`, `jingle.mp3`, etc.) and will use it for the flap jingle; otherwise a synthesized jingle is played.
   - On game over the same high-score overlay flow appears and submits to `/api/scores/anden-advent`.
+  - Tuning: `static/anden_config.js` exposes additional tuning keys for sprite and hitbox sizing: `reindeerSpriteScale`, `santaSpriteScale`, and `reindeerHitBoxScale`.
 
 Authentication & Admins
 -----------------------

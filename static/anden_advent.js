@@ -342,18 +342,23 @@
       if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
     }
 
-    // Collisions
-    const leadX = PLAYER_X + LEAD_OFFSET_X;
-    const leadY = (trail[0] || { y: bird.y }).y;
-    if (leadY + bird.h / 2 >= HEIGHT || leadY - bird.h / 2 <= 0) {
+  // Collisions
+  const leadX = PLAYER_X + LEAD_OFFSET_X;
+  const leadY = (trail[0] || { y: bird.y }).y;
+    // allow tuning of the hitbox via config to make collisions feel fairer
+    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
+    const hitScale = (typeof cfgLocal.reindeerHitBoxScale !== 'undefined') ? cfgLocal.reindeerHitBoxScale : 0.9;
+    const halfW = Math.round((bird.w * hitScale) / 2);
+    const halfH = Math.round((bird.h * hitScale) / 2);
+    if (leadY + halfH >= HEIGHT || leadY - halfH <= 0) {
       gameOver();
     }
     for (const c of chimneys) {
       const cx = c.x;
       const topH = c.top;
       const bottomY = topH + GAP;
-      if (leadX + bird.w / 2 > cx && leadX - bird.w / 2 < cx + 40) {
-        if (leadY - bird.h / 2 < topH || leadY + bird.h / 2 > bottomY) {
+      if (leadX + halfW > cx && leadX - halfW < cx + 40) {
+        if (leadY - halfH < topH || leadY + halfH > bottomY) {
           gameOver();
         }
       }
@@ -364,6 +369,7 @@
   }
 
   function draw() {
+    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
     // sky background gradient
     const grad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
     grad.addColorStop(0, '#7ec0ff');
@@ -407,9 +413,10 @@
       // fallback: draw the simple sleigh and the santa.gif
       drawSleighAndReindeer(sx, sy);
       if (santaImg.complete) {
-        // Draw Santa narrower — 66% of previous width to better fit sprite
-        const santaW = Math.round(bird.w * 0.66);
-        const santaH = Math.round(bird.h * 0.66);
+        // Draw Santa using configurable sprite scale (default keeps previous 0.66)
+        const santaScale = (typeof cfgLocal.santaSpriteScale !== 'undefined') ? cfgLocal.santaSpriteScale : 0.66;
+        const santaW = Math.round(bird.w * santaScale);
+        const santaH = Math.round(bird.h * santaScale);
         ctx.drawImage(santaImg, Math.round(centerX - santaW / 2), Math.round(centerY - santaH / 2), santaW, santaH);
       } else {
         ctx.fillStyle = '#fff';
@@ -487,9 +494,12 @@
     const secondY = (trail[secondIdx] || { y: bird.y }).y;
     const thirdY = (trail[thirdIdx] || { y: bird.y }).y;
     // sizes for sprite drawing
-    // Make reindeers 10% larger than before (previously 50% of bird size)
-    const reW = Math.round(bird.w * 0.55);
-    const reH = Math.round(bird.h * 0.55);
+    // Allow tuning of sprite scale from the config (default keeps previous behavior)
+    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
+    const reScale = (typeof cfgLocal.reindeerSpriteScale !== 'undefined') ? cfgLocal.reindeerSpriteScale : 1.0;
+    // Make reindeers ~55% of bird size and then apply optional scale multiplier
+    const reW = Math.round(bird.w * 0.55 * reScale);
+    const reH = Math.round(bird.h * 0.55 * reScale);
     // draw leading reindeers (on top) at their fixed X, sampling Y from trail
     if (!drawSpriteCentered(sprites.reindeer1, r1x, leadY, reW, reH)) drawReindeerAt(r1x, leadY, 1);
     if (!drawSpriteCentered(sprites.reindeer2, r2x, secondY, reW, reH)) drawReindeerAt(r2x, secondY, 1);

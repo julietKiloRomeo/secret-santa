@@ -50,7 +50,13 @@ window.__ANDEN_CONFIG__ = window.__ANDEN_CONFIG__ || {
 
   // Grace period at start (ms)
   graceMs: 1200,
+  // Sprite scaling: multipliers applied to default sprite sizes
+  // 1.0 = default size; values <1 shrink, >1 enlarge
+  reindeerSpriteScale: 1.0,
+  santaSpriteScale: 0.66,
+  // Hitbox scale: fraction of the bird's width/height used for collision checks
+  // Values <1 shrink the hitbox making collisions more forgiving
+  reindeerHitBoxScale: 0.9,
 };
 
 /* End of config */
-
