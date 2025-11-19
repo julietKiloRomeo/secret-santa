@@ -99,6 +99,8 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
         };
       });
       console.log('DEBUG CANVAS:', JSON.stringify(debugInfo, null, 2));
+      const details = stillSticky.map(coord => ({ coord, before: sample.map[coord], after: after[coord] || null }));
+      console.log('DEBUG STICKY DETAILS:', JSON.stringify(details, null, 2));
       const path = `out/snake_sticky_${v.w}x${v.h}.png`;
       await page.screenshot({ path, fullPage: false });
       throw new Error(`Found sticky snake pixels after resize for viewport ${v.w}x${v.h}: ${stillSticky.slice(0,10).join('; ')} (screenshot: ${path})`);
