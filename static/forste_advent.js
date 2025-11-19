@@ -38,9 +38,12 @@
 
   // Responsive resize: set canvas pixel size and compute CELL/GRID
   function resizeCanvasAndGrid() {
-    // Ensure the canvas fills its container width
+    // Ensure the canvas fills its container width and prefer the canvas's
+    // actual rendered width (clientWidth) when computing the grid so that
+    // CELL/GRID match what is actually visible on screen.
     try { canvas.style.width = '100%'; } catch (e) {}
-    const displayWidth = Math.max(64, Math.floor(canvas.parentElement ? canvas.parentElement.clientWidth : window.innerWidth * 0.9));
+    const computedClientWidth = canvas.clientWidth || (canvas.parentElement ? canvas.parentElement.clientWidth : Math.floor(window.innerWidth * 0.9));
+    const displayWidth = Math.max(64, Math.floor(computedClientWidth));
     const DPR = window.devicePixelRatio || 1;
     canvas.width = Math.round(displayWidth * DPR);
     canvas.height = Math.round(displayWidth * DPR);
