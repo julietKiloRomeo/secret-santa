@@ -92,7 +92,7 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
       return (window.__snakeDebug__?.getSnakeCoords?.() || []).map((p: any) => `${p.x},${p.y}`);
     });
     const stickyNotSnake = Object.entries(after).filter(([k, hex]) => snakeHexes.has(hex) && !snakeCoords.includes(k)).map(([k]) => k);
-    if (stillSticky.length) {
+    if (stickyNotSnake.length) {
       // Capture debug information from the page and save a screenshot
       const debugInfo = await page.evaluate(() => {
         const c = document.getElementById('snake-canvas') as HTMLCanvasElement;
