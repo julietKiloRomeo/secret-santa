@@ -1,8 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}Tredje Advent{% endblock %}
 {% block content %}
-  <div class="container">
-    <h1>Tredje Advent</h1>
-    <p>Under Construction</p>
+  <div class="max-w-3xl mx-auto p-6 text-center">
+    <h1 class="text-3xl font-bold mb-4">Tredje Advent — 🦌 Reindeer Rush</h1>
+    <p class="mb-4">A fast, festive endless-runner is planned here. This is a lightweight playable skeleton with a simple leaderboard integration.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      <div>
+        <div class="mb-2 text-left">Score: <span id="reindeer-score">0 m</span></div>
+        <div class="border rounded p-2 bg-white" style="height:260px; display:flex; align-items:center; justify-content:center;">
+          <!-- Placeholder canvas / viewport for the game -->
+          <div id="reindeer-canvas" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#666">Game area (placeholder)</div>
+        </div>
+        <div class="mt-4">
+          <button id="reindeer-start" class="px-4 py-2 bg-green-600 text-white rounded">Start</button>
+          <button id="reindeer-stop" class="px-4 py-2 bg-red-600 text-white rounded" disabled>Stop</button>
+          <button id="reindeer-jump" class="px-4 py-2 bg-blue-600 text-white rounded">Jump</button>
+        </div>
+      </div>
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Leaderboard</h2>
+        <div id="reindeer-leaderboard" class="border rounded p-2 bg-white" style="min-height:200px"></div>
+      </div>
+    </div>
   </div>
+  <script>window.__defaultPlayerName__ = "{{ default_name|default('Nisse') }}";</script>
+  <script src="/static/reindeer_rush.js"></script>
 {% endblock %}

@@ -128,5 +128,8 @@ def test_advent_pages_exist_and_are_under_construction():
         elif route == "/anden-advent":
             # Second minigame (Flappy Santa) should have a canvas
             assert "santa-canvas" in html
+        elif route == "/tredje-advent":
+            # Third minigame: Reindeer Rush should be present on the page
+            assert "reindeer-canvas" in html
         else:
             assert "Under Construction" in html or "Under construction" in html
