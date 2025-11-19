@@ -415,6 +415,7 @@
     getSnakeLength() {
       return snake.length;
     },
+    getSnakeCoords() { return snake.map(s => ({ x: s.x, y: s.y })); },
     tickOnce() { tick(); },
     getSkinsFiltered() { return snake.slice(1).map(s => s.skin).filter(Boolean); },
     setNextGiftSkin(skin) { forcedNextSkin = skin; },
