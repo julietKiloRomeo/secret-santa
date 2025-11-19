@@ -8,7 +8,8 @@ Progress:
 - [DONE] Added game to defaults: `reindeer-rush` now included in DB defaults.
 - [DONE] Added route and placeholder template: `/reindeer-rush` -> `templates/reindeer_rush.html`.
 - [DONE] Added automated tests: `tests/test_reindeer_rush.py`.
-- [TODO] Client gameplay implementation (JS physics, controls, sprites, collisions).
+- [DONE] Minimal client skeleton and leaderboard UI added (`static/reindeer_rush.js`, template updated).
+- [TODO] Full client gameplay implementation (physics, controls, sprites, collisions).
 - [TODO] Art assets: sprites (~20), background tiles.
 - [TODO] Sounds and music (~8 assets) and volume/mute support.
 - [TODO] Power-ups and polish (shield bell, flying boost, particle effects).

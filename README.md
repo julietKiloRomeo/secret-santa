@@ -30,7 +30,7 @@ See `SPECS.md` for a full, test-driven specification of the app surface (APIs, p
 - `secret-santa-2024.json` — current year’s assignments.
 - `templates/index.html` — UI template.
 - `static/styles.css` — app styling.
-- `reindeer-rush` — backend placeholder route and leaderboard integration implemented at `/reindeer-rush` and `/api/scores/reindeer-rush` (client gameplay and assets still TODO).
+- `reindeer-rush` — backend placeholder route and leaderboard integration implemented at `/reindeer-rush` and `/api/scores/reindeer-rush`. A minimal client skeleton and leaderboard UI live in `static/reindeer_rush.js` and `templates/reindeer_rush.html` (full gameplay, art and sounds remain TODO).
 - `Dockerfile` — container build for production.
 - `pyproject.toml` — Python project config and dependencies.
 
