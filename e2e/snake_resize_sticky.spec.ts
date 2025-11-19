@@ -85,6 +85,13 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
     });
 
     const stillSticky = occupied.filter(coord => after[coord] && snakeHexes.has(after[coord]));
+    // Also fetch the game's current snake coordinates and consider any
+    // green cells that are not part of the live snake to be sticky.
+    const snakeCoords = await page.evaluate(() => {
+      // @ts-ignore
+      return (window.__snakeDebug__?.getSnakeCoords?.() || []).map((p: any) => `${p.x},${p.y}`);
+    });
+    const stickyNotSnake = Object.entries(after).filter(([k, hex]) => snakeHexes.has(hex) && !snakeCoords.includes(k)).map(([k]) => k);
     if (stillSticky.length) {
       // Capture debug information from the page and save a screenshot
       const debugInfo = await page.evaluate(() => {
@@ -101,9 +108,11 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
       console.log('DEBUG CANVAS:', JSON.stringify(debugInfo, null, 2));
       const details = stillSticky.map(coord => ({ coord, before: sample.map[coord], after: after[coord] || null }));
       console.log('DEBUG STICKY DETAILS:', JSON.stringify(details, null, 2));
+      console.log('DEBUG SNAKE COORDS:', JSON.stringify(snakeCoords));
+      console.log('DEBUG STICKY_NOT_SNAKE:', JSON.stringify(stickyNotSnake));
       const path = `out/snake_sticky_${v.w}x${v.h}.png`;
       await page.screenshot({ path, fullPage: false });
-      throw new Error(`Found sticky snake pixels after resize for viewport ${v.w}x${v.h}: ${stillSticky.slice(0,10).join('; ')} (screenshot: ${path})`);
+      throw new Error(`Found sticky snake pixels after resize for viewport ${v.w}x${v.h}: ${stillSticky.slice(0,10).join('; ')} (stickyNotSnake: ${stickyNotSnake.slice(0,10).join('; ')} -- screenshot: ${path})`);
     }
   }
 });
