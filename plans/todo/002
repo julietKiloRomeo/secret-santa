@@ -1,0 +1,87 @@
+# Reindeer Rush
+
+advent game 3
+
+Progress:
+
+- [DONE] Backend leaderboard support exists via `/api/scores/<game>` (already in app).
+- [DONE] Added game to defaults: `reindeer-rush` now included in DB defaults.
+- [DONE] Added route and placeholder template: `/reindeer-rush` -> `templates/reindeer_rush.html`.
+- [DONE] Added automated tests: `tests/test_reindeer_rush.py`.
+- [TODO] Client gameplay implementation (JS physics, controls, sprites, collisions).
+- [TODO] Art assets: sprites (~20), background tiles.
+- [TODO] Sounds and music (~8 assets) and volume/mute support.
+- [TODO] Power-ups and polish (shield bell, flying boost, particle effects).
+
+  - `Reindeer Rush` — Endless runner/dodger: Guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. Could have a simple tap-to-jump mechanic (one tap = small jump, hold = big jump) with gradually increasing speed. Stars or special items could give temporary flying boosts with a trail of sparkles.
+- Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
+
+# Reindeer Rush - Simple Spec
+
+## Core Gameplay
+Endless runner - reindeer auto-runs, tap to jump over obstacles, swipe down to duck under them. Speed increases gradually.
+
+---
+
+## Controls
+- **Tap** = Jump
+- **Swipe down** = Duck
+- That's it!
+
+---
+
+## Obstacles
+**Jump over:**
+- Frozen ponds
+- Snow boulders
+- Gift boxes
+
+**Duck under:**
+- Icicles
+- Tree branches
+
+---
+
+## Collectibles
+- **Carrots** (10 pts) - common
+- **Candy canes** (50 pts) - occasional
+- **Stars** (100 pts) - rare
+
+**One power-up:**
+- **Shield bell** - survive one hit
+
+---
+
+## Sprites Needed (~20 total)
+- Reindeer (run, jump, duck animations - 8 frames)
+- 3-4 obstacle types
+- 3 collectibles
+- Simple scrolling background (mountains, trees)
+- Ground tile
+
+---
+
+## Sounds (~8 total)
+- Jump sound
+- Land sound
+- Collect item (ding!)
+- Hit obstacle (bonk!)
+- Background music (simple loop)
+- Power-up chime
+
+---
+
+## Scoring
+- Distance in meters (main score)
+- Bonus points for collecting items
+- High score saved
+
+---
+
+## Game Flow
+1. Tap to start
+2. Play until you crash
+3. Show distance + score
+4. Tap to restart
+
+Simple, fun, 5-minute mini-game vibes!

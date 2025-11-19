@@ -1,0 +1,71 @@
+# Reindeer Rush - Simple Spec
+
+christmas game
+
+## Core Gameplay
+Endless runner - reindeer auto-runs, tap to jump over obstacles, swipe down to duck under them. Speed increases gradually.
+
+---
+
+## Controls
+- **Tap** = Jump
+- **Swipe down** = Duck
+- That's it!
+
+---
+
+## Obstacles
+**Jump over:**
+- Frozen ponds
+- Snow boulders
+- Gift boxes
+
+**Duck under:**
+- Icicles
+- Tree branches
+
+---
+
+## Collectibles
+- **Carrots** (10 pts) - common
+- **Candy canes** (50 pts) - occasional
+- **Stars** (100 pts) - rare
+
+**One power-up:**
+- **Shield bell** - survive one hit
+
+---
+
+## Sprites Needed (~20 total)
+- Reindeer (run, jump, duck animations - 8 frames)
+- 3-4 obstacle types
+- 3 collectibles
+- Simple scrolling background (mountains, trees)
+- Ground tile
+
+---
+
+## Sounds (~8 total)
+- Jump sound
+- Land sound
+- Collect item (ding!)
+- Hit obstacle (bonk!)
+- Background music (simple loop)
+- Power-up chime
+
+---
+
+## Scoring
+- Distance in meters (main score)
+- Bonus points for collecting items
+- High score saved
+
+---
+
+## Game Flow
+1. Tap to start
+2. Play until you crash
+3. Show distance + score
+4. Tap to restart
+
+Simple, fun, 5-minute mini-game vibes!

@@ -1,0 +1,55 @@
+ 
+# UI update
+
+## css
+make sure we are using tailwind for all styles. Minimize the use
+of custom css class and use pre-made components instead.
+
+
+## navbar
+make sure the navbar works both on mobile, tablet and pc
+
+
+## login
+login dialog should appear when unauthorized. If possible
+the input fields should avoid having pop-up from password helpers
+since they make the next input or button almost impossible to choose
+
+## gift-giving
+add a point in the navbar where the user can see who they are giving
+a gift - make this a separate thing from the login. Call the point "Lodtrækning"
+
+## games
+use pre-made components where possible and design for mobile first
+
+## tests
+take screenshots of all screens and dialogs and make sure they look good
+at all 3 screen sizes
+
+
+## PROGRESS
+- [x] Gift-giving: Added a "Lodtrækning" entry in the navbar (desktop + mobile).
+  - Created `static/lodtraekning.html` (static client-side flow) so a lightweight page is available immediately.
+  - Added server-side route `/lodtraekning` rendering `templates/lodtraekning.html` so the assignment can be shown using the logged-in session.
+  - Added tests: `tests/test_lodtraekning_route.py` verifies redirect when unauthenticated and shows recipient when logged in.
+- [x] Navbar & accessibility updates
+  - Updated `templates/base.html` to link to `/lodtraekning` (server route) and replaced custom `.disabled` usage with Tailwind utilities (`opacity-60 filter grayscale`) so styles rely on Tailwind rather than a local CSS rule.
+  - Removed the `.disabled` override from the base inline style block (legacy `.disabled` still present in `static/styles.css` for compatibility).
+  - Improved mobile toggle button: added `aria-label` and updated JS to toggle `aria-expanded` for screen readers.
+ - [x] Tailwind cleanup (initial pass)
+   - Migrated `templates/index.html` and `templates/admin.html` away from legacy classes (`card`, `form-row`, `form-message`, `error-message`, `success-message`, `muted`, `grinch`) and replaced with Tailwind utilities.
+   - Added `data-js` attributes to key interactive elements to decouple styling from behavior (`data-js="login-form"`, `data-js="form-message"`, `data-js="error"`, `data-js="success"`, `data-js="gif-container"`, `data-js="result"`, `data-js="set-password-form"`, `data-js="set-pass-msg"`, `data-js="run-matches-btn"`, `data-js="games-list"`, `data-js="reset-msg"`).
+   - Updated client JS (`static/script.js`, inline admin scripts, static lodtraekning) to prefer `data-js` selectors with class/id fallbacks for compatibility.
+   - Added pytest checks (`tests/test_tailwind_cleanup_scan_templates.py`, `tests/test_tailwind_js_selectors.py`) to detect legacy classes and to assert presence of `data-js` hooks.
+
+- [x] Tailwind cleanup (second pass)
+  - Removed legacy helper rules from `static/styles.css` (`.card`, `.form-row`, `.muted`, `.error-message`, `.success-message`) and left a compatibility note and the `#gif-container` and `.disabled` helpers.
+  - Updated static and inline JS to prefer `data-js` selectors (removed legacy selector fallbacks in `static/script.js`) to complete the migration in scripts.
+
+Remaining:
+- CSS: review usage of Tailwind and minimize custom CSS classes where appropriate.
+- Navbar: further QA on tablet breakpoints and ARIA accessibility checks.
+- Login: improve modal/dialog behavior when unauthorized (consider a client-side overlay for login when accessing protected pages).
+- Games: migrate UI components to pre-made components where possible and ensure mobile-first design.
+- Tests: add visual regression screenshots for the new page and other screens.
+

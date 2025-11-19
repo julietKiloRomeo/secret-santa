@@ -100,7 +100,7 @@ def init_games_db():
             """
         )
         # Ensure default games exist and are enabled by default
-        default_games = ["forste-advent", "anden-advent"]
+        default_games = ["forste-advent", "anden-advent", "reindeer-rush"]
         for g in default_games:
             cur.execute("INSERT OR IGNORE INTO games (game, enabled) VALUES (?, ?)", (g, 1))
         con.commit()
@@ -236,6 +236,15 @@ def anden_advent():
     if not is_game_enabled('anden-advent') and session.get('user') not in {"jimmy", "ditte"}:
         return render_template('under_construction.html', title='Anden Advent')
     return render_template('anden_advent.html', default_name=default_name)
+
+@app.route('/reindeer-rush')
+@login_required
+def reindeer_rush():
+    default_name = session.get('user', 'Nisse')
+    # If the game is disabled and the user is not an admin, show under construction
+    if not is_game_enabled('reindeer-rush') and session.get('user') not in {"jimmy", "ditte"}:
+        return render_template('under_construction.html', title='Reindeer Rush')
+    return render_template('reindeer_rush.html', default_name=default_name)
 
 @app.route('/tredje-advent')
 @login_required

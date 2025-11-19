@@ -1,0 +1,236 @@
+# Pac-Santa Specification
+
+advent game 4
+
+## Game Overview
+Navigate Santa through a snowy maze, collecting cookies and candy canes while avoiding enemies. Eat magic stars to turn the tables and chase down the baddies.
+
+---
+
+## Core Gameplay Mechanics
+
+### Player Character
+- **Santa** moves continuously in the current direction
+- **Controls (Mobile):** Swipe gestures or virtual D-pad overlay
+  - Swipe up/down/left/right to change direction
+  - Alternative: 4-button directional pad in corners or bottom of screen
+  - Santa only changes direction when the path is available (queued inputs for smoother feel)
+
+### Maze Layout
+- Classic Pac-Man style grid with snowy paths
+- **Walls:** Ice blocks, snow banks, candy cane fences
+- **Warp tunnels:** Chimney portals on left/right sides
+- Approximately 28x31 tile grid (scaled for mobile portrait or landscape)
+
+### Collectibles
+- **Cookies** (dots): 240+ small cookies throughout maze - 10 points each
+- **Candy Canes** (power pellets): 4 large candy canes in corners - 50 points each
+- **Bonus Items** (fruits): Appear in center, cycle through:
+  - Gingerbread man - 100 pts
+  - Present - 300 pts
+  - Christmas tree - 500 pts
+  - Ornament - 700 pts
+  - Sleigh - 1000 pts
+
+### Enemies (4 Ghosts)
+**Characters:**
+1. **Grinch** (Red) - Aggressive, chases Santa directly
+2. **Krampus** (Purple) - Tries to ambush by targeting ahead of Santa
+3. **Grumpy Snowman** (Blue) - Patrols, less aggressive
+4. **Jack Frost** (Cyan) - Random/unpredictable movement
+
+**States:**
+- **Chase mode:** Normal behavior, hunting Santa
+- **Scatter mode:** Return to home corners (alternates with chase)
+- **Frightened mode:** Turn blue/white, flee randomly when Santa eats magic star (15 seconds)
+- **Eaten:** Eyes return to center ghost house to respawn
+
+**Points for eating frightened enemies:** 200, 400, 800, 1600 (consecutive)
+
+---
+
+## Mobile Optimization
+
+### Screen Layout (Portrait recommended)
+```
+┌─────────────────────┐
+│   Score    Hi-Score │ ← Status bar (50px)
+│     Lives: ❤️❤️❤️    │
+├─────────────────────┤
+│                     │
+│                     │
+│    MAZE AREA        │ ← Main game (80% height)
+│                     │
+│                     │
+├─────────────────────┤
+│  [↑]                │ ← Controls (15% height)
+│[←][→]  OR  Swipe   │
+│  [↓]     Area       │
+└─────────────────────┘
+```
+
+### Control Schemes (Give players option)
+**Option A: Swipe Controls**
+- Swipe anywhere on screen to queue direction
+- Most intuitive for mobile
+- May have accidental inputs
+
+**Option B: Virtual D-Pad**
+- 4 directional buttons in bottom-left or center-bottom
+- More precise
+- Buttons semi-transparent (40% opacity)
+
+**Option C: Tap Navigation**
+- Tap on maze where you want Santa to turn
+- Auto-pathfinding to that direction
+- Simplest for casual players
+
+### Performance Considerations
+- Target 60 FPS
+- Tile-based rendering (reuse sprites)
+- Simple collision detection (grid-based)
+- Particle effects for collecting items (limit to 20 particles max)
+
+---
+
+## Sprites Needed
+
+### Characters (animate 3-4 frames each)
+1. **Santa** 
+   - Moving up (2 frames)
+   - Moving down (2 frames)
+   - Moving left (2 frames)
+   - Moving right (2 frames)
+   - Death animation (5-6 frames - spinning/shrinking)
+
+2. **Grinch** (Red enemy)
+   - Normal (2 frames - floating animation)
+   - Frightened (2 frames - blue/shaking)
+   - Eyes only (for eaten state - 4 directions)
+
+3. **Krampus** (Purple enemy)
+   - Same states as Grinch
+
+4. **Grumpy Snowman** (Blue enemy)
+   - Same states as Grinch
+
+5. **Jack Frost** (Cyan enemy)
+   - Same states as Grinch
+
+### Maze Elements
+6. **Wall tiles** (can be modular pieces):
+   - Horizontal ice block
+   - Vertical ice block
+   - Corner pieces (4 variations)
+   - T-junctions (4 variations)
+   - Candy cane fence posts
+
+7. **Collectibles**:
+   - Cookie (small dot - can be simple circle)
+   - Candy cane (large, striped - 2 frames pulse/glow)
+   - Magic star (2-3 frames sparkle)
+
+8. **Bonus Items**:
+   - Gingerbread man
+   - Wrapped present
+   - Small Christmas tree
+   - Ornament ball
+   - Mini sleigh
+
+### UI Elements
+9. **Life icon** - Small Santa face/hat
+10. **Score numbers** - Festive font
+11. **Ready/Game Over text** - Snowy letters
+
+**Total Sprite Count:** ~40-50 individual sprites (with animations)
+
+---
+
+## Sound Effects Needed
+
+### Gameplay Sounds
+1. **Wakka wakka** - Cookie eating sound (continuous loop while moving and eating)
+   - *Replacement:* "Munch munch" or sleigh bell jingles in rhythm
+   
+2. **Power-up eat** - Candy cane consumption
+   - *Sound:* Magical chime/sparkle sound
+   
+3. **Magic star active** - Background loop during frightened mode
+   - *Sound:* Twinkling bells or urgent sleigh bell ringing
+   
+4. **Eat enemy** - Catching frightened ghost
+   - *Sound:* "Ho ho ho!" or satisfying *poof* with bells
+   
+5. **Bonus item appears** - Fruit spawning
+   - *Sound:* Gentle sparkle/pop
+   
+6. **Bonus item eaten** - Collecting bonus
+   - *Sound:* Cash register "ching!" or triumphant jingle
+   
+7. **Death sound** - Santa caught
+   - *Sound:* Descending "oh no!" or sad trombone + falling whistle
+   
+8. **Extra life** - Earning 10,000 points
+   - *Sound:* Fanfare with bells
+
+9. **Level complete** - Finishing maze
+   - *Sound:* Victory jingle (3-4 seconds)
+
+10. **Siren** - Enemy movement ambience (optional)
+    - *Sound:* Subtle wind or very quiet "here they come" tension music
+
+### Music
+11. **Title screen music** - Short loop of cheerful Christmas tune
+12. **Game start jingle** - 2-second ready sound
+13. **Background music** (optional) - Very subtle, low-volume Christmas melody
+
+**Total Sounds:** ~13 sound effects + 2 music tracks
+
+---
+
+## Audio Implementation Notes
+- Keep file sizes small (compressed MP3/OGG, under 50KB each for SFX)
+- Wakka sound should be short loop (0.1-0.2 seconds) that repeats
+- Use Web Audio API for precise timing and overlapping sounds
+- Mobile: Implement sound toggle (some players prefer silent)
+- Preload all audio before game starts
+
+---
+
+## Progression System
+
+### Levels
+- **Level 1:** Normal speed, standard enemy AI
+- **Level 2+:** Slight speed increase for enemies, shorter frightened duration
+- **Level 5+:** Faster enemies, faster scatter/chase mode switching
+- **Level 9+:** Enemies spend more time chasing, less time scared
+- Max difficulty caps around level 21 (classic Pac-Man style)
+
+### Scoring
+- Cookie: 10 points
+- Candy cane: 50 points
+- Eating 1st frightened enemy: 200
+- Eating 2nd: 400
+- Eating 3rd: 800
+- Eating 4th: 1600
+- Bonus items: 100-1000
+- Extra life at 10,000 points
+
+---
+
+## Win/Lose Conditions
+- **Win level:** Collect all cookies and candy canes
+- **Lose life:** Enemy touches Santa (when not frightened)
+- **Game Over:** Lose all 3 lives
+- **Continue:** Show hi-score, option to restart
+
+---
+
+## Mobile-Specific Polish
+- Vibration feedback on collecting power-ups and dying (with toggle)
+- Larger hit boxes for Santa (more forgiving on mobile)
+- Pause button easily accessible (top-right)
+- Game auto-pauses when app loses focus
+- Quick restart button on game over
+- Share score feature (optional)
+

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin</title>
+  <style>/* static/styles.css */
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/api/placeholder/1920/1080');
+    background-size: cover;
+    color: white;
+}
+
+.nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    background: rgba(139, 0, 0, 0.95);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+.nav a {
+    color: #fff;
+    text-decoration: none;
+    margin-left: 1rem;
+}
+
+.nav a.disabled {
+    opacity: 0.5;
+    filter: grayscale(80%);
+    cursor: not-allowed;
+}
+.brand {
+    font-weight: bold;
+}
+
+.main {
+    margin-top: 72px;
+}
+
+.container {
+    background: rgba(139, 0, 0, 0.9);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+}
+
+h1 {
+    color: #fff;
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+input {
+    padding: 0.8rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+button {
+    padding: 1rem;
+    background: #2c8a2c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #1e5e1e;
+}
+
+.error-message {
+    display: none;
+    color: #ff4444;
+    margin-top: 1rem;
+    font-weight: bold;
+}
+
+.grinch {
+    font-size: 2rem;
+    margin-top: 1rem;
+}
+
+.success-message {
+    display: none;
+    color: #4CAF50;
+    margin-top: 1rem;
+    font-weight: bold;
+}
+
+.snowflake {
+    position: fixed;
+    color: white;
+    font-size: 1.5em;
+    user-select: none;
+    z-index: 1;
+    animation: fall linear forwards;
+}
+
+@keyframes fall {
+    to {
+        transform: translateY(100vh);
+    }
+}
+
+
+/* static/styles.css */
+#gif-container img {
+    width: 100%; /* or any specific width like 300px */
+    max-width: 400px; /* optional: to limit the maximum width */
+    height: auto; /* maintain aspect ratio */
+}
+
+/* Preview cleanup: migrated some admin preview markup to inline styles
+   so the preview no longer depends on legacy helper classes. This is a
+   one-off static preview; the live templates use Tailwind and data-js hooks.
+*/
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-left">
+      <a href="/" class="brand">🎄 Secret Santa</a>
+    </div>
+    <div class="nav-right">
+      
+        
+        
+        <a href="/forste-advent" class="" data-disabled="0">Første Advent</a>
+
+        
+        
+        <a href="/anden-advent" class="" data-disabled="0">Anden Advent</a>
+
+        
+        
+        <a href="/tredje-advent" class="" data-disabled="0">Tredje Advent</a>
+
+        
+        <a href="/fjerde-advent" class="" data-disabled="0">Fjerde Advent</a>
+
+        
+        <a href="/glaedelig-jul" class="" data-disabled="0">Glædelig Jul</a>
+
+        
+          <a id="admin-link" href="/admin">Admin</a>
+        
+      
+    </div>
+  </nav>
+  <main class="main">
+    
+  <div class="container">
+    <h1>Admin Panel (Year 2025)</h1>
+
+    <section>
+      <h2>Sæt adgangskode</h2>
+      <div style="background: rgba(255,255,255,0.06); padding: 1rem; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.45); text-align: left;">
+        <form style="display:grid; grid-template-columns:1fr; gap:0.5rem;" onsubmit="return setPassword(event);">
+          <label for="userName">Vælg bruger</label>
+          <select id="userName" required>
+            <option value="" disabled selected>-- vælg bruger --</option>
+            
+              <option value="andreas">andreas</option>
+            
+              <option value="camilla">camilla</option>
+            
+              <option value="ditte">ditte</option>
+            
+              <option value="emma">emma</option>
+            
+              <option value="jimmy">jimmy</option>
+            
+              <option value="jonna">jonna</option>
+            
+              <option value="klaus">klaus</option>
+            
+              <option value="mathias">mathias</option>
+            
+              <option value="sara">sara</option>
+            
+              <option value="tommy">tommy</option>
+            
+          </select>
+
+          <label for="userPass">Passphrase</label>
+          <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required />
+
+          <div>
+            <button type="submit" class="btn btn-primary">Gem adgangskode</button>
+          </div>
+        </form>
+        <div id="setPassMsg" style="margin-top: 0.75rem; color: #ddd; font-size: 0.95rem;"></div>
+      </div>
+    </section>
+
+    <section style="margin-top: 2rem;">
+      <h2>Kør årets matcher</h2>
+      <button id="runMatchesBtn" onclick="runMatches()" style="padding:0.65rem 0.9rem; border-radius:8px; border:none; cursor:pointer; background:#2c8a2c; color:#fff;">Kør matcher</button>
+      
+      <div id="matchesMsg"></div>
+    </section>
+
+    <section style="margin-top: 2rem;">
+      <h2>Spil (tænd/sluk)</h2>
+      <div id="gamesList">Indlæser...</div>
+    </section>
+
+    <section style="margin-top: 2rem;">
+      <h2>Nulstil high scores</h2>
+      <div id="resetMsg"></div>
+    </section>
+    </div>
+
+  <script>
+    async function setPassword(e) {
+      e.preventDefault();
+      const name = document.getElementById('userName').value.trim();
+      const passphrase = document.getElementById('userPass').value.trim();
+      const resp = await fetch('/api/admin/set_password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, passphrase })
+      });
+      const data = await resp.json();
+      document.getElementById('setPassMsg').textContent = data.success ? 'Adgangskode gemt' : (data.error || 'Fejl');
+      return false;
+    }
+
+    async function runMatches() {
+      const btn = document.getElementById('runMatchesBtn');
+      if (btn && btn.disabled) {
+        document.getElementById('matchesMsg').textContent = 'Drawing of matches is locked by server configuration (DRAW_LOCKED).';
+        return;
+      }
+      const resp = await fetch('/api/admin/run_matches', { method: 'POST' });
+      const data = await resp.json();
+      document.getElementById('matchesMsg').textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
+    }
+
+    // Games management
+    async function loadGames() {
+      const resp = await fetch('/api/admin/games');
+      const data = await resp.json();
+      const list = document.getElementById('gamesList');
+      list.innerHTML = '';
+      data.games.forEach(g => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '0.5rem';
+        row.style.alignItems = 'center';
+        const label = document.createElement('div');
+        label.textContent = g.game;
+        const toggle = document.createElement('input');
+        toggle.type = 'checkbox';
+        toggle.checked = g.enabled;
+        toggle.addEventListener('change', async () => {
+          await toggleGame(g.game, toggle.checked);
+          loadGames();
+        });
+        const reset = document.createElement('button');
+        reset.textContent = 'Nulstil scores';
+        reset.addEventListener('click', async () => {
+          const r = await fetch('/api/admin/reset_scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g.game }) });
+          const d = await r.json();
+          document.getElementById('resetMsg').textContent = d.success ? `Scores nulstilt for ${g.game}` : (d.error || 'Fejl');
+          loadGames();
+        });
+        row.appendChild(label);
+        row.appendChild(toggle);
+        row.appendChild(reset);
+        list.appendChild(row);
+      });
+    }
+
+    async function toggleGame(game, enabled) {
+      await fetch('/api/admin/set_game', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game, enabled }) });
+    }
+
+    // Load games on page load
+    loadGames();
+  </script>
+
+  </main>
+  <script>
+    // Intercept clicks on disabled game links and show a friendly message
+    document.addEventListener('click', function (ev) {
+      const a = ev.target.closest && ev.target.closest('a[data-disabled="1"]');
+      if (a) {
+        ev.preventDefault();
+        // Friendly Danish message
+        const msg = 'Hov hov. Den låge må du ikke åbne endnu!';
+        // show a temporary toast
+        let t = document.getElementById('locked-toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'locked-toast';
+          t.style.position = 'fixed';
+          t.style.top = '72px';
+          t.style.left = '50%';
+          t.style.transform = 'translateX(-50%)';
+          t.style.background = 'rgba(0,0,0,0.85)';
+          t.style.color = '#fff';
+          t.style.padding = '0.75rem 1.25rem';
+          t.style.borderRadius = '6px';
+          t.style.zIndex = 2000;
+          t.style.boxShadow = '0 4px 12px rgba(0,0,0,0.6)';
+          document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.style.opacity = 1;
+        clearTimeout(t._timeout);
+        t._timeout = setTimeout(() => {
+          t.style.transition = 'opacity 0.4s ease';
+          t.style.opacity = 0;
+        }, 2200);
+      }
+    });
+  </script>
+</body>
+</html>

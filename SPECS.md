@@ -8,7 +8,7 @@ Overview
 - Two small in-browser mini-games are available for advent pages:
   - `Første Advent` — Jule Snake (classic snake game)
 - `Anden Advent` — Flappy Santa (santa flapping through chimneys)
-  - `Reindeer Rush` — (planned) Endless runner/dodger: Guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. Could have a simple tap-to-jump mechanic (one tap = small jump, hold = big jump) with gradually increasing speed. Stars or special items could give temporary flying boosts with a trail of sparkles.
+  - `Reindeer Rush` — Endless runner/dodger: Guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. Backend placeholder implemented: route `/reindeer-rush`, leaderboard support via `/api/scores/reindeer-rush`, and automated tests (`tests/test_reindeer_rush.py`) were added. Client gameplay, sprites and sounds remain TODO.
 - Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
 
 API Endpoints

@@ -7,7 +7,9 @@ When adding new functionality ALWAYS start by adding tests and asking the
 user if the test is ok.
 
 We keep as much application logic as possible on the python side - use
-fastapi for that.
+fastapi for that. UX takes precedence over that principle, if fast interactions
+are important, for example for mini games, put everything in the js side.
+Prefer python, but UX is king.
 
 During development we prefer sqlite for the database, but are open to
 expand to postgres or mongo later.
