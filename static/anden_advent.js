@@ -258,6 +258,84 @@
     }
   }
 
+  // --- Refactored helpers for clearer game loop ---
+  function updatePhysics(dt) {
+    // Physics (vy in px/sec, y in px)
+    bird.vy += GRAVITY_PER_S * dt;
+    bird.y += bird.vy * dt;
+    // Record lead position into trail
+    trail.unshift({ x: PLAYER_X, y: bird.y });
+    if (trail.length > TRAIL_LENGTH) trail.pop();
+  }
+
+  function updateObstacles(dt, ts) {
+    // Spawn chimneys by elapsed time
+    if (ts - lastSpawnMs > SPAWN_INTERVAL_MS) {
+      spawnChimney();
+      lastSpawnMs = ts;
+    }
+
+    // Move chimneys using px/sec speed
+    const timeFactorSpeed = BASE_SPEED_PX_S + score * SPEED_PER_SCORE_PX_S + Math.floor(frame / 600) * 0.02 * 60;
+    for (let i = chimneys.length - 1; i >= 0; i--) {
+      chimneys[i].x -= timeFactorSpeed * dt;
+      const leadX = PLAYER_X + LEAD_OFFSET_X;
+      if (!chimneys[i].passed && chimneys[i].x + 40 < leadX) {
+        chimneys[i].passed = true;
+        score += 1;
+        scoreEl.textContent = `Score: ${score}`;
+      }
+      if (chimneys[i].x < -80) chimneys.splice(i, 1);
+    }
+  }
+
+  function updateBackground(dt) {
+    const farSpeed = 0.25 + score * 0.01;
+    const nearSpeed = 0.6 + score * 0.02;
+    const silSpeed = 0.35 + score * 0.01;
+    for (const c of cloudsFar) {
+      c.x -= farSpeed * (dt * 60);
+      if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
+    }
+    for (const c of cloudsNear) {
+      c.x -= nearSpeed * (dt * 60);
+      if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
+    }
+    for (const s of silhouettes) {
+      s.x -= silSpeed * (dt * 60);
+      if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
+    }
+  }
+
+  function checkCollisions() {
+    const leadX = PLAYER_X + LEAD_OFFSET_X;
+    const leadY = (trail[0] || { y: bird.y }).y;
+    // allow tuning of the hitbox via config to make collisions feel fairer
+    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
+    const hitScale = (typeof cfgLocal.reindeerHitBoxScale !== 'undefined') ? cfgLocal.reindeerHitBoxScale : 0.9;
+    const halfW = Math.round((bird.w * hitScale) / 2);
+    const halfH = Math.round((bird.h * hitScale) / 2);
+    if (leadY + halfH >= HEIGHT || leadY - halfH <= 0) {
+      gameOver();
+      return;
+    }
+    for (const c of chimneys) {
+      const cx = c.x;
+      const topH = c.top;
+      const bottomY = topH + GAP;
+      if (leadX + halfW > cx && leadX - halfW < cx + 40) {
+        if (leadY - halfH < topH || leadY + halfH > bottomY) {
+          gameOver();
+          return;
+        }
+      }
+    }
+  }
+
+  function render() {
+    draw();
+  }
+
   // Time-based tick using requestAnimationFrame for consistent timing on mobile
   let lastFrameTs = null;
   function frameLoop(ts) {
@@ -278,93 +356,21 @@
       trail.unshift({ x: PLAYER_X, y: bird.y });
       if (trail.length > TRAIL_LENGTH) trail.pop();
       // Background parallax can still animate a little
-      const farSpeed = 0.25 + score * 0.01;
-      const nearSpeed = 0.6 + score * 0.02;
-      const silSpeed = 0.35 + score * 0.01;
-      for (const c of cloudsFar) {
-        c.x -= farSpeed * (dt * 60);
-        if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
-      }
-      for (const c of cloudsNear) {
-        c.x -= nearSpeed * (dt * 60);
-        if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
-      }
-      for (const s of silhouettes) {
-        s.x -= silSpeed * (dt * 60);
-        if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
-      }
+      updateBackground(dt);
       // Draw state and wait
-      draw();
+      render();
       requestAnimationFrame(frameLoop);
       return;
     }
+    // Step physics, obstacles and background via dedicated helpers for clarity and testability
+    updatePhysics(dt);
+    updateObstacles(dt, ts);
+    updateBackground(dt);
 
-    // Physics (vy in px/sec, y in px)
-    bird.vy += GRAVITY_PER_S * dt;
-    bird.y += bird.vy * dt;
-    // Record lead position into trail
-    trail.unshift({ x: PLAYER_X, y: bird.y });
-    if (trail.length > TRAIL_LENGTH) trail.pop();
+    // Collision detection handled separately to keep updates focused
+    checkCollisions();
 
-    // Spawn chimneys by elapsed time
-    if (ts - lastSpawnMs > SPAWN_INTERVAL_MS) {
-      spawnChimney();
-      lastSpawnMs = ts;
-    }
-
-    // Move chimneys using px/sec speed
-    const timeFactorSpeed = BASE_SPEED_PX_S + score * SPEED_PER_SCORE_PX_S + Math.floor(frame / 600) * 0.02 * 60;
-    for (let i = chimneys.length - 1; i >= 0; i--) {
-      chimneys[i].x -= timeFactorSpeed * dt;
-      const leadX = PLAYER_X + LEAD_OFFSET_X;
-      if (!chimneys[i].passed && chimneys[i].x + 40 < leadX) {
-        chimneys[i].passed = true;
-        score += 1;
-        scoreEl.textContent = `Score: ${score}`;
-      }
-      if (chimneys[i].x < -80) chimneys.splice(i, 1);
-    }
-
-    // Background parallax
-    const farSpeed = 0.25 + score * 0.01;
-    const nearSpeed = 0.6 + score * 0.02;
-    const silSpeed = 0.35 + score * 0.01;
-    for (const c of cloudsFar) {
-      c.x -= farSpeed * (dt * 60);
-      if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
-    }
-    for (const c of cloudsNear) {
-      c.x -= nearSpeed * (dt * 60);
-      if (c.x + c.w < -40) c.x = WIDTH + Math.random() * 120;
-    }
-    for (const s of silhouettes) {
-      s.x -= silSpeed * (dt * 60);
-      if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
-    }
-
-  // Collisions
-  const leadX = PLAYER_X + LEAD_OFFSET_X;
-  const leadY = (trail[0] || { y: bird.y }).y;
-    // allow tuning of the hitbox via config to make collisions feel fairer
-    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
-    const hitScale = (typeof cfgLocal.reindeerHitBoxScale !== 'undefined') ? cfgLocal.reindeerHitBoxScale : 0.9;
-    const halfW = Math.round((bird.w * hitScale) / 2);
-    const halfH = Math.round((bird.h * hitScale) / 2);
-    if (leadY + halfH >= HEIGHT || leadY - halfH <= 0) {
-      gameOver();
-    }
-    for (const c of chimneys) {
-      const cx = c.x;
-      const topH = c.top;
-      const bottomY = topH + GAP;
-      if (leadX + halfW > cx && leadX - halfW < cx + 40) {
-        if (leadY - halfH < topH || leadY + halfH > bottomY) {
-          gameOver();
-        }
-      }
-    }
-
-    draw();
+    render();
     requestAnimationFrame(frameLoop);
   }
 

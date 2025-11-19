@@ -55,13 +55,20 @@ FOCUSED REFACTOR PLAN (created 2025-11-18 by AI agent):
    - Extract obstacle movement and spawn logic into `updateObstacles(dt)`.
    - Extract background parallax into `updateBackground(dt)` and rendering into `render()`.
    - Replace inlined requestAnimationFrame + large frameLoop body with a clear tick: compute dt, call updates, then render.
-   STATUS: PENDING
+   STATUS: DONE
+   - Completed: extracted `updatePhysics`, `updateObstacles`, `updateBackground`, `checkCollisions`, and `render` helpers and replaced the large `frameLoop` body to call these helpers for clarity and testability.
+   - Completed: updated the grace-period branch to reuse `updateBackground` and `render`.
+   - Completed: added a unit-style smoke test `tests/test_anden_advent_refactor.py` that asserts the presence of the new helpers.
+   - Tests: ran the Python test-suite (`uv run pytest`) — all tests passed (30 passed).
 
 4) Add unit tests for `updatePhysics` and obstacle logic (page.evaluate or small harnessable exports), iterate until green.
-   STATUS: PENDING
+   STATUS: PARTIAL
+   - Added smoke test for presence of helpers. Still TODO: add harnessed unit tests that exercise `updatePhysics` and obstacle movement (these would ideally run in a headless browser or via a JS harness so we can assert numerical state changes).
 
 5) Run full test-suite, format JS (Prettier) and commit with a clear message for each logical change.
-   STATUS: PENDING (partial: new E2E test run passed; full suite not run yet)
+   STATUS: PARTIAL
+   - Completed: Python test-suite executed and passed after changes.
+   - TODO: run/prettify JS formatting (Prettier) and add focused JS unit/browser tests for the refactored helpers.
 
 Notes:
 - Per project policy, tests were added before making any code changes.
