@@ -105,7 +105,19 @@
     // untouched causing colored squares to stick around).
     const totalWidth = GRID.cols * CELL;
     const totalHeight = GRID.rows * CELL;
-    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+    // Clear using device-pixel coordinates to ensure nothing is left in the
+    // backing store. We temporarily reset the transform so clearRect clears
+    // the full canvas buffer (which is in device pixels via canvas.width/height),
+    // then restore the transform used for drawing in CSS pixels.
+    try {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } finally {
+      ctx.restore();
+    }
+
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
@@ -453,24 +465,14 @@
   function arcadeButton(text) {
     const b = document.createElement('button');
     b.textContent = text;
-    b.style.background = '#0f0';
-    b.style.color = '#000';
-    b.style.border = '2px solid #0f0';
-    b.style.padding = '0.5rem 1rem';
-    b.style.fontFamily = 'monospace';
-    b.style.cursor = 'pointer';
+    b.className = 'inline-flex justify-center rounded-md border border-transparent py-2 px-4 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500';
     b.style.marginTop = '1rem';
     return b;
   }
   function arcadeInput(value) {
     const i = document.createElement('input');
     i.value = value || '';
-    i.style.width = '100%';
-    i.style.padding = '0.5rem';
-    i.style.background = '#001100';
-    i.style.border = '2px solid #0f0';
-    i.style.color = '#0f0';
-    i.style.fontFamily = 'monospace';
+    i.className = 'block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
     return i;
   }
   function renderScoresList(scores) {
