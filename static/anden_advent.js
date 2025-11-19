@@ -1,9 +1,9 @@
 // Simple Flappy-Santa implementation: press space or click to flap
 (function () {
-  const canvas = document.getElementById('santa-canvas');
-  const ctx = canvas.getContext('2d');
-  const scoreEl = document.getElementById('santa-score');
-  const statusEl = document.getElementById('santa-status');
+  const canvas = document.getElementById("santa-canvas");
+  const ctx = canvas.getContext("2d");
+  const scoreEl = document.getElementById("santa-score");
+  const statusEl = document.getElementById("santa-status");
 
   // Logical drawing width/height in CSS pixels (canvas is square)
   let WIDTH = canvas.clientWidth || 400;
@@ -11,10 +11,10 @@
 
   // Santa sprite (use existing santa.gif as a simple image)
   const santaImg = new Image();
-  santaImg.src = '/static/santa.gif';
+  santaImg.src = "/static/santa.gif";
 
   // Sprite assets (PNG) placed in static/sprites/
-  const SPRITE_DIR = '/static/sprites';
+  const SPRITE_DIR = "/static/sprites";
   const SPRITE_PATHS = {
     reindeer1: `${SPRITE_DIR}/reindeer1.png`,
     reindeer2: `${SPRITE_DIR}/reindeer2.png`,
@@ -25,16 +25,20 @@
   function loadSprite(name, path) {
     const img = new Image();
     img.src = path;
-    img.onload = () => { sprites[name] = img; };
-    img.onerror = () => { sprites[name] = null; };
+    img.onload = () => {
+      sprites[name] = img;
+    };
+    img.onerror = () => {
+      sprites[name] = null;
+    };
     sprites[name] = img; // store object immediately so callers can check .complete
     return img;
   }
   // Start loading (non-blocking)
-  loadSprite('reindeer1', SPRITE_PATHS.reindeer1);
-  loadSprite('reindeer2', SPRITE_PATHS.reindeer2);
-  loadSprite('reindeer3', SPRITE_PATHS.reindeer3);
-  loadSprite('santaSleigh', SPRITE_PATHS.santaSleigh);
+  loadSprite("reindeer1", SPRITE_PATHS.reindeer1);
+  loadSprite("reindeer2", SPRITE_PATHS.reindeer2);
+  loadSprite("reindeer3", SPRITE_PATHS.reindeer3);
+  loadSprite("santaSleigh", SPRITE_PATHS.santaSleigh);
 
   // Background parallax: clouds and silhouettes
   const cloudsFar = [];
@@ -55,10 +59,26 @@
     cloudsNear.length = 0;
     silhouettes.length = 0;
     for (let i = 0; i < CLOUD_COUNTS.far; i++) {
-      cloudsFar.push(mkCloud(Math.random() * WIDTH, Math.random() * (HEIGHT * 0.35), 90 + Math.random() * 140, 30 + Math.random() * 20, 0.35 + Math.random() * 0.25));
+      cloudsFar.push(
+        mkCloud(
+          Math.random() * WIDTH,
+          Math.random() * (HEIGHT * 0.35),
+          90 + Math.random() * 140,
+          30 + Math.random() * 20,
+          0.35 + Math.random() * 0.25,
+        ),
+      );
     }
     for (let i = 0; i < CLOUD_COUNTS.near; i++) {
-      cloudsNear.push(mkCloud(Math.random() * WIDTH, Math.random() * (HEIGHT * 0.45), 120 + Math.random() * 180, 40 + Math.random() * 30, 0.55 + Math.random() * 0.3));
+      cloudsNear.push(
+        mkCloud(
+          Math.random() * WIDTH,
+          Math.random() * (HEIGHT * 0.45),
+          120 + Math.random() * 180,
+          40 + Math.random() * 30,
+          0.55 + Math.random() * 0.3,
+        ),
+      );
     }
     // silhouettes (trees/houses) at various x positions
     const baseY = HEIGHT - 28;
@@ -66,7 +86,7 @@
     while (cursor < WIDTH * 2) {
       const w = 40 + Math.floor(Math.random() * 80);
       const h = 20 + Math.floor(Math.random() * 60);
-      const type = Math.random() > 0.6 ? 'house' : 'tree';
+      const type = Math.random() > 0.6 ? "house" : "tree";
       silhouettes.push(mkSilhouette(cursor, w, h, type));
       cursor += w + 20 + Math.floor(Math.random() * 60);
     }
@@ -76,8 +96,17 @@
 
   // Responsive canvas sizing and layout
   function resizeCanvasAndLayout() {
-    try { canvas.style.width = '100%'; } catch (e) {}
-    const displayWidth = Math.max(120, Math.floor(canvas.parentElement ? canvas.parentElement.clientWidth : window.innerWidth * 0.9));
+    try {
+      canvas.style.width = "100%";
+    } catch (e) {}
+    const displayWidth = Math.max(
+      120,
+      Math.floor(
+        canvas.parentElement
+          ? canvas.parentElement.clientWidth
+          : window.innerWidth * 0.9,
+      ),
+    );
     const DPR = window.devicePixelRatio || 1;
     canvas.width = Math.round(displayWidth * DPR);
     canvas.height = Math.round(displayWidth * DPR);
@@ -89,44 +118,65 @@
     const scale = WIDTH / 400;
 
     // load optional tuning from config file `static/anden_config.js`
-    const cfg = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
+    const cfg =
+      window && window.__ANDEN_CONFIG__ ? window.__ANDEN_CONFIG__ : {};
 
     // geometry (ratios allow easy tuning in the config)
     PLAYER_X = Math.round(WIDTH * (cfg.playerXRatio || 0.18));
     LEAD_OFFSET_X = Math.round(WIDTH * (cfg.leadOffsetXRatio || 0.145));
     SECOND_OFFSET_X = Math.round(WIDTH * (cfg.secondOffsetXRatio || 0.085));
-    THIRD_OFFSET_X = Math.max(8, SECOND_OFFSET_X + Math.round(WIDTH * (cfg.thirdOffsetXRatioAdjust || -0.03)));
+    THIRD_OFFSET_X = Math.max(
+      8,
+      SECOND_OFFSET_X +
+        Math.round(WIDTH * (cfg.thirdOffsetXRatioAdjust || -0.03)),
+    );
 
     // sizes
     bird.w = Math.max(28, Math.round(WIDTH * 0.12));
     bird.h = Math.max(20, Math.round(bird.w * 0.66));
-    TRAIL_LENGTH = Math.max(cfg.trailLengthMin || 80, Math.round(2.5 * 60 * scale));
+    TRAIL_LENGTH = Math.max(
+      cfg.trailLengthMin || 80,
+      Math.round(2.5 * 60 * scale),
+    );
 
     // physics scaled (tuned values) - config holds base numbers which we scale
     GRAVITY_PER_S = (cfg.gravityPerSecond || 800) * scale;
     FLAP_VY = (cfg.flapVY || -240) * scale;
     BASE_SPEED_PX_S = (cfg.baseSpeedPxPerS || 120) * scale;
     SPEED_PER_SCORE_PX_S = (cfg.speedPerScorePxPerS || 6) * scale;
-    GAP = Math.max(cfg.gapMin || 48, Math.round(WIDTH * (cfg.gapRatio || 0.275)));
-    SPAWN_INTERVAL_MS = (typeof cfg.spawnIntervalMsBase !== 'undefined') ? cfg.spawnIntervalMsBase : SPAWN_INTERVAL_MS_BASE;
+    GAP = Math.max(
+      cfg.gapMin || 48,
+      Math.round(WIDTH * (cfg.gapRatio || 0.275)),
+    );
+    SPAWN_INTERVAL_MS =
+      typeof cfg.spawnIntervalMsBase !== "undefined"
+        ? cfg.spawnIntervalMsBase
+        : SPAWN_INTERVAL_MS_BASE;
 
     // initialize trail buffer
     trail.length = 0;
-    for (let i = 0; i < TRAIL_LENGTH; i++) trail.push({ x: PLAYER_X, y: bird.y });
+    for (let i = 0; i < TRAIL_LENGTH; i++)
+      trail.push({ x: PLAYER_X, y: bird.y });
   }
 
   // Audio: try to find a user-supplied audio file in /static
   const AUDIO_CANDIDATES = [
-    'sleigh_bell.mp3', 'sleigh-bell.mp3', 'sleigh.mp3', 'jingle.mp3', 'bell.mp3', 'jingle.wav', 'bell.wav'
+    "sleigh_bell.mp3",
+    "sleigh-bell.mp3",
+    "sleigh.mp3",
+    "jingle.mp3",
+    "bell.mp3",
+    "jingle.wav",
+    "bell.wav",
   ];
   let audioEl = null;
   async function findAndLoadAudio() {
     for (const name of AUDIO_CANDIDATES) {
       try {
-        const res = await fetch('/static/' + name, { method: 'HEAD' });
+        const res = await fetch("/static/" + name, { method: "HEAD" });
         if (res.ok) {
-          audioEl = new Audio('/static/' + name);
-          audioEl.preload = 'auto';
+          audioEl = new Audio("/static/" + name);
+          audioEl.preload = "auto";
           return audioEl;
         }
       } catch (e) {
@@ -149,8 +199,8 @@
       const o1 = audioCtx.createOscillator();
       const o2 = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      o1.type = 'sine';
-      o2.type = 'sine';
+      o1.type = "sine";
+      o2.type = "sine";
       o1.frequency.setValueAtTime(880, t);
       o2.frequency.setValueAtTime(1320, t);
       o1.connect(g);
@@ -167,7 +217,7 @@
       o1.stop(t + 0.9);
       o2.stop(t + 0.9);
     } catch (e) {
-      console.warn('Audio jingle failed', e);
+      console.warn("Audio jingle failed", e);
     }
   }
 
@@ -178,7 +228,13 @@
   let THIRD_OFFSET_X = 20;
 
   // The `bird` now represents the front reindeer (the thing player controls)
-  let bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: 48, h: 32 };
+  let bird = {
+    x: PLAYER_X + LEAD_OFFSET_X,
+    y: HEIGHT / 2,
+    vy: 0,
+    w: 48,
+    h: 32,
+  };
   // Trail for chain-following: record the vertical path (y) of the lead reindeer
   // at the anchor X (PLAYER_X). Trailing parts sample earlier entries so they
   // follow the exact same vertical trajectory but with a frame delay.
@@ -206,7 +262,9 @@
   let GRACE_MS = 1200;
   let graceRemainingMs = 0;
 
-  function setStatus(text) { statusEl.textContent = text || ''; }
+  function setStatus(text) {
+    statusEl.textContent = text || "";
+  }
 
   function spawnChimney() {
     const topHeight = 30 + Math.random() * (HEIGHT - GAP - 60);
@@ -214,37 +272,51 @@
   }
 
   function reset() {
-    bird = { x: PLAYER_X + LEAD_OFFSET_X, y: HEIGHT / 2, vy: 0, w: bird.w, h: bird.h };
+    bird = {
+      x: PLAYER_X + LEAD_OFFSET_X,
+      y: HEIGHT / 2,
+      vy: 0,
+      w: bird.w,
+      h: bird.h,
+    };
     chimneys.length = 0;
     frame = 0;
     score = 0;
     running = true;
-    setStatus('');
+    setStatus("");
     // initialize trail so the chain has sensible starting values (anchor X)
     trail.length = 0;
-    for (let i = 0; i < TRAIL_LENGTH; i++) trail.push({ x: PLAYER_X, y: bird.y });
+    for (let i = 0; i < TRAIL_LENGTH; i++)
+      trail.push({ x: PLAYER_X, y: bird.y });
     graceRemainingMs = GRACE_MS;
     lastSpawnMs = performance.now() + graceRemainingMs;
-    try { hideOverlay(); } catch (e) {}
+    try {
+      hideOverlay();
+    } catch (e) {}
   }
 
   async function gameOver() {
     running = false;
-    setStatus('Game Over! Try igen 🎅');
+    setStatus("Game Over! Try igen 🎅");
     // High-score flow similar to the snake game
     try {
       const data = await fetchScores();
       const scores = data.scores || [];
-      const qualifies = scores.length < 10 || score > (scores[scores.length - 1]?.score || -1);
+      const qualifies =
+        scores.length < 10 || score > (scores[scores.length - 1]?.score || -1);
       if (qualifies && score > 0) {
         const panel = arcadePanel();
-        panel.appendChild(arcadeTitle('Ny high score. Hvilket navn skal vi skrive på julemandens liste?'));
+        panel.appendChild(
+          arcadeTitle(
+            "Ny high score. Hvilket navn skal vi skrive på julemandens liste?",
+          ),
+        );
         const input = arcadeInput(defaultPlayerName);
         panel.appendChild(input);
-        const save = arcadeButton('Gem');
-        save.addEventListener('click', async () => {
+        const save = arcadeButton("Gem");
+        save.addEventListener("click", async () => {
           const name = (input.value || defaultPlayerName).trim();
-          await submitScore('anden-advent', name, score);
+          await submitScore("anden-advent", name, score);
           hideOverlay();
           await showHighScoresOverlay();
         });
@@ -254,7 +326,7 @@
         await showHighScoresOverlay();
       }
     } catch (e) {
-      console.error('High score flow failed', e);
+      console.error("High score flow failed", e);
     }
   }
 
@@ -276,7 +348,10 @@
     }
 
     // Move chimneys using px/sec speed
-    const timeFactorSpeed = BASE_SPEED_PX_S + score * SPEED_PER_SCORE_PX_S + Math.floor(frame / 600) * 0.02 * 60;
+    const timeFactorSpeed =
+      BASE_SPEED_PX_S +
+      score * SPEED_PER_SCORE_PX_S +
+      Math.floor(frame / 600) * 0.02 * 60;
     for (let i = chimneys.length - 1; i >= 0; i--) {
       chimneys[i].x -= timeFactorSpeed * dt;
       const leadX = PLAYER_X + LEAD_OFFSET_X;
@@ -311,8 +386,12 @@
     const leadX = PLAYER_X + LEAD_OFFSET_X;
     const leadY = (trail[0] || { y: bird.y }).y;
     // allow tuning of the hitbox via config to make collisions feel fairer
-    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
-    const hitScale = (typeof cfgLocal.reindeerHitBoxScale !== 'undefined') ? cfgLocal.reindeerHitBoxScale : 0.9;
+    const cfgLocal =
+      window && window.__ANDEN_CONFIG__ ? window.__ANDEN_CONFIG__ : {};
+    const hitScale =
+      typeof cfgLocal.reindeerHitBoxScale !== "undefined"
+        ? cfgLocal.reindeerHitBoxScale
+        : 0.9;
     const halfW = Math.round((bird.w * hitScale) / 2);
     const halfH = Math.round((bird.h * hitScale) / 2);
     if (leadY + halfH >= HEIGHT || leadY - halfH <= 0) {
@@ -375,31 +454,32 @@
   }
 
   function draw() {
-    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
+    const cfgLocal =
+      window && window.__ANDEN_CONFIG__ ? window.__ANDEN_CONFIG__ : {};
     // sky background gradient
     const grad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-    grad.addColorStop(0, '#7ec0ff');
-    grad.addColorStop(1, '#5aa0d8');
+    grad.addColorStop(0, "#7ec0ff");
+    grad.addColorStop(1, "#5aa0d8");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     // far clouds
-    for (const cl of cloudsFar) drawCloud(cl, 'far');
+    for (const cl of cloudsFar) drawCloud(cl, "far");
 
     // near clouds and silhouettes should be in the background behind chimneys
-    for (const cl of cloudsNear) drawCloud(cl, 'near');
+    for (const cl of cloudsNear) drawCloud(cl, "near");
     // silhouettes (trees/houses)
     drawSilhouettes();
 
     // chimneys (foreground obstacles)
     for (const c of chimneys) {
-      ctx.fillStyle = '#8b3';
+      ctx.fillStyle = "#8b3";
       // top
       ctx.fillRect(c.x, 0, 40, c.top);
       // bottom
       ctx.fillRect(c.x, c.top + GAP, 40, HEIGHT - (c.top + GAP));
       // cap
-      ctx.fillStyle = '#a33';
+      ctx.fillStyle = "#a33";
       ctx.fillRect(c.x - 4, c.top - 8, 48, 8);
       ctx.fillRect(c.x - 4, c.top + GAP, 48, 8);
     }
@@ -415,17 +495,34 @@
     const centerY = santaPos.y;
     const sleighW = Math.round(bird.w * 1.8);
     const sleighH = Math.round(bird.h * 1.4);
-    if (!drawSpriteCentered(sprites.santaSleigh, centerX, centerY, sleighW, sleighH)) {
+    if (
+      !drawSpriteCentered(
+        sprites.santaSleigh,
+        centerX,
+        centerY,
+        sleighW,
+        sleighH,
+      )
+    ) {
       // fallback: draw the simple sleigh and the santa.gif
       drawSleighAndReindeer(sx, sy);
       if (santaImg.complete) {
         // Draw Santa using configurable sprite scale (default keeps previous 0.66)
-        const santaScale = (typeof cfgLocal.santaSpriteScale !== 'undefined') ? cfgLocal.santaSpriteScale : 0.66;
+        const santaScale =
+          typeof cfgLocal.santaSpriteScale !== "undefined"
+            ? cfgLocal.santaSpriteScale
+            : 0.66;
         const santaW = Math.round(bird.w * santaScale);
         const santaH = Math.round(bird.h * santaScale);
-        ctx.drawImage(santaImg, Math.round(centerX - santaW / 2), Math.round(centerY - santaH / 2), santaW, santaH);
+        ctx.drawImage(
+          santaImg,
+          Math.round(centerX - santaW / 2),
+          Math.round(centerY - santaH / 2),
+          santaW,
+          santaH,
+        );
       } else {
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = "#fff";
         ctx.fillRect(sx, sy, bird.w, bird.h);
       }
     }
@@ -437,10 +534,10 @@
     // Sleigh behind Santa
     ctx.save();
     // sleigh body
-    ctx.fillStyle = '#8b0000';
+    ctx.fillStyle = "#8b0000";
     ctx.fillRect(sx - 28, sy + 8, bird.w + 36, 14);
     // sleigh runner
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(sx - 26, sy + 22);
@@ -453,7 +550,7 @@
     // Draw a small stylized reindeer centered at (cx, cy)
     const s = scale || 1;
     ctx.save();
-    ctx.fillStyle = '#7a4d20';
+    ctx.fillStyle = "#7a4d20";
     // body
     const bw = 12 * s;
     const bh = 8 * s;
@@ -467,7 +564,7 @@
     ctx.arc(hx, hy, 3 * s, 0, Math.PI * 2);
     ctx.fill();
     // antlers
-    ctx.strokeStyle = '#5b3a12';
+    ctx.strokeStyle = "#5b3a12";
     ctx.lineWidth = Math.max(1, s);
     ctx.beginPath();
     ctx.moveTo(hx - 1 * s, hy - 2 * s);
@@ -501,30 +598,61 @@
     const thirdY = (trail[thirdIdx] || { y: bird.y }).y;
     // sizes for sprite drawing
     // Allow tuning of sprite scale from the config (default keeps previous behavior)
-    const cfgLocal = (window && window.__ANDEN_CONFIG__) ? window.__ANDEN_CONFIG__ : {};
-    const reScale = (typeof cfgLocal.reindeerSpriteScale !== 'undefined') ? cfgLocal.reindeerSpriteScale : 1.0;
+    const cfgLocal =
+      window && window.__ANDEN_CONFIG__ ? window.__ANDEN_CONFIG__ : {};
+    const reScale =
+      typeof cfgLocal.reindeerSpriteScale !== "undefined"
+        ? cfgLocal.reindeerSpriteScale
+        : 1.0;
     // Make reindeers ~55% of bird size and then apply optional scale multiplier
     const reW = Math.round(bird.w * 0.55 * reScale);
     const reH = Math.round(bird.h * 0.55 * reScale);
     // draw leading reindeers (on top) at their fixed X, sampling Y from trail
-    if (!drawSpriteCentered(sprites.reindeer1, r1x, leadY, reW, reH)) drawReindeerAt(r1x, leadY, 1);
-    if (!drawSpriteCentered(sprites.reindeer2, r2x, secondY, reW, reH)) drawReindeerAt(r2x, secondY, 1);
-    if (!drawSpriteCentered(sprites.reindeer3, r3x, thirdY, reW, reH)) drawReindeerAt(r3x, thirdY, 1);
+    if (!drawSpriteCentered(sprites.reindeer1, r1x, leadY, reW, reH))
+      drawReindeerAt(r1x, leadY, 1);
+    if (!drawSpriteCentered(sprites.reindeer2, r2x, secondY, reW, reH))
+      drawReindeerAt(r2x, secondY, 1);
+    if (!drawSpriteCentered(sprites.reindeer3, r3x, thirdY, reW, reH))
+      drawReindeerAt(r3x, thirdY, 1);
   }
 
   function drawCloud(cloud, layer) {
     ctx.save();
     ctx.globalAlpha = cloud.opacity || 0.6;
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = "#fff";
     const cx = cloud.x;
     const cy = cloud.y;
     const w = cloud.w;
     const h = cloud.h;
     // draw three overlapping circles for a cloud
     ctx.beginPath();
-    ctx.ellipse(cx + w * 0.2, cy + h * 0.2, w * 0.3, h * 0.6, 0, 0, Math.PI * 2);
-    ctx.ellipse(cx + w * 0.5, cy + h * 0.1, w * 0.35, h * 0.7, 0, 0, Math.PI * 2);
-    ctx.ellipse(cx + w * 0.8, cy + h * 0.25, w * 0.28, h * 0.55, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      cx + w * 0.2,
+      cy + h * 0.2,
+      w * 0.3,
+      h * 0.6,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.ellipse(
+      cx + w * 0.5,
+      cy + h * 0.1,
+      w * 0.35,
+      h * 0.7,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.ellipse(
+      cx + w * 0.8,
+      cy + h * 0.25,
+      w * 0.28,
+      h * 0.55,
+      0,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
     ctx.restore();
   }
@@ -532,12 +660,12 @@
   function drawSilhouettes() {
     const base = HEIGHT - 20;
     ctx.save();
-    ctx.fillStyle = '#0b2b12';
+    ctx.fillStyle = "#0b2b12";
     for (const s of silhouettes) {
       const x = s.x;
       const w = s.w;
       const h = s.h;
-      if (s.type === 'house') {
+      if (s.type === "house") {
         // box + roof
         ctx.fillRect(x, base - h, w, h);
         ctx.beginPath();
@@ -562,7 +690,7 @@
   function flap() {
     bird.vy = FLAP_VY;
     try {
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
     } catch (e) {}
     // Prefer a user-supplied audio file if available, otherwise fallback to synthesized jingle
     if (audioEl) {
@@ -578,128 +706,129 @@
   }
 
   // High score / overlay UI (mirrors forste_advent behavior)
-  const defaultPlayerName = window.__defaultPlayerName__ || 'Guest';
+  const defaultPlayerName = window.__defaultPlayerName__ || "Guest";
 
   let overlayEl = null;
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
-    overlayEl = document.createElement('div');
-    overlayEl.id = 'overlay';
-    overlayEl.style.position = 'fixed';
-    overlayEl.style.inset = '0';
-    overlayEl.style.background = 'rgba(0,0,0,0.9)';
-    overlayEl.style.display = 'none';
-    overlayEl.style.alignItems = 'center';
-    overlayEl.style.justifyContent = 'center';
-    overlayEl.style.zIndex = '1000';
+    overlayEl = document.createElement("div");
+    overlayEl.id = "overlay";
+    overlayEl.style.position = "fixed";
+    overlayEl.style.inset = "0";
+    overlayEl.style.background = "rgba(0,0,0,0.9)";
+    overlayEl.style.display = "none";
+    overlayEl.style.alignItems = "center";
+    overlayEl.style.justifyContent = "center";
+    overlayEl.style.zIndex = "1000";
     document.body.appendChild(overlayEl);
     return overlayEl;
   }
   function showOverlay(inner) {
     const el = ensureOverlay();
-    el.innerHTML = '';
+    el.innerHTML = "";
     el.appendChild(inner);
-    el.style.display = 'flex';
+    el.style.display = "flex";
   }
   function hideOverlay() {
-    if (overlayEl) overlayEl.style.display = 'none';
+    if (overlayEl) overlayEl.style.display = "none";
   }
   function arcadePanel() {
-    const panel = document.createElement('div');
-    panel.style.background = '#000';
-    panel.style.color = '#0f0';
-    panel.style.border = '4px solid #0f0';
-    panel.style.boxShadow = '0 0 20px #0f0';
-    panel.style.padding = '1rem 2rem';
-    panel.style.fontFamily = 'monospace';
-    panel.style.textShadow = '0 0 6px #0f0';
-    panel.style.maxWidth = '480px';
-    panel.style.width = '90%';
-    panel.style.borderRadius = '8px';
+    const panel = document.createElement("div");
+    panel.style.background = "#000";
+    panel.style.color = "#0f0";
+    panel.style.border = "4px solid #0f0";
+    panel.style.boxShadow = "0 0 20px #0f0";
+    panel.style.padding = "1rem 2rem";
+    panel.style.fontFamily = "monospace";
+    panel.style.textShadow = "0 0 6px #0f0";
+    panel.style.maxWidth = "480px";
+    panel.style.width = "90%";
+    panel.style.borderRadius = "8px";
     return panel;
   }
   function arcadeTitle(text) {
-    const h = document.createElement('h2');
+    const h = document.createElement("h2");
     h.textContent = text;
-    h.style.margin = '0 0 1rem 0';
-    h.style.textAlign = 'center';
+    h.style.margin = "0 0 1rem 0";
+    h.style.textAlign = "center";
     return h;
   }
   function arcadeButton(text) {
-    const b = document.createElement('button');
+    const b = document.createElement("button");
     b.textContent = text;
-    b.style.background = '#0f0';
-    b.style.color = '#000';
-    b.style.border = '2px solid #0f0';
-    b.style.padding = '0.5rem 1rem';
-    b.style.fontFamily = 'monospace';
-    b.style.cursor = 'pointer';
-    b.style.marginTop = '1rem';
+    b.style.background = "#0f0";
+    b.style.color = "#000";
+    b.style.border = "2px solid #0f0";
+    b.style.padding = "0.5rem 1rem";
+    b.style.fontFamily = "monospace";
+    b.style.cursor = "pointer";
+    b.style.marginTop = "1rem";
     return b;
   }
   function arcadeInput(value) {
-    const i = document.createElement('input');
-    i.value = value || '';
-    i.style.width = '100%';
-    i.style.padding = '0.5rem';
-    i.style.background = '#001100';
-    i.style.border = '2px solid #0f0';
-    i.style.color = '#0f0';
-    i.style.fontFamily = 'monospace';
+    const i = document.createElement("input");
+    i.value = value || "";
+    i.style.width = "100%";
+    i.style.padding = "0.5rem";
+    i.style.background = "#001100";
+    i.style.border = "2px solid #0f0";
+    i.style.color = "#0f0";
+    i.style.fontFamily = "monospace";
     return i;
   }
   function renderScoresList(scores) {
-    const ul = document.createElement('ol');
-    ul.style.listStyle = 'none';
-    ul.style.padding = '0';
-    ul.style.margin = '0';
+    const ul = document.createElement("ol");
+    ul.style.listStyle = "none";
+    ul.style.padding = "0";
+    ul.style.margin = "0";
     scores.forEach((s, idx) => {
-      const li = document.createElement('li');
-      li.textContent = `${String(idx + 1).padStart(2, '0')} — ${s.name} — ${s.score}`;
-      li.style.padding = '0.25rem 0';
+      const li = document.createElement("li");
+      li.textContent = `${String(idx + 1).padStart(2, "0")} — ${s.name} — ${s.score}`;
+      li.style.padding = "0.25rem 0";
       ul.appendChild(li);
     });
     return ul;
   }
   async function fetchScores() {
-    const resp = await fetch('/api/scores/anden-advent');
+    const resp = await fetch("/api/scores/anden-advent");
     return resp.json();
   }
   async function showHighScoresOverlay() {
     const data = await fetchScores();
     const panel = arcadePanel();
-    panel.appendChild(arcadeTitle('Søde Børn'));
+    panel.appendChild(arcadeTitle("Søde Børn"));
     panel.appendChild(renderScoresList(data.scores || []));
-    const close = arcadeButton('Luk');
-    close.addEventListener('click', hideOverlay);
+    const close = arcadeButton("Luk");
+    close.addEventListener("click", hideOverlay);
     panel.appendChild(close);
     showOverlay(panel);
   }
   async function submitScore(game, name, score) {
     try {
       const resp = await fetch(`/api/scores/${game}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, score })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, score }),
       });
       return resp.ok;
     } catch (e) {
-      console.error('Failed to submit score', e);
+      console.error("Failed to submit score", e);
       return false;
     }
   }
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener("keydown", (e) => {
     // Support Space key for flap, but avoid triggering actions when the
     // high-score overlay is visible (prevent accidental submit/reset).
-    if (e.code === 'Space' || e.key === ' ') {
-      const overlay = document.getElementById('overlay');
-      const overlayVisible = overlay && overlay.style.display !== 'none';
+    if (e.code === "Space" || e.key === " ") {
+      const overlay = document.getElementById("overlay");
+      const overlayVisible = overlay && overlay.style.display !== "none";
       const active = document.activeElement;
-      const activeTag = active && active.tagName && active.tagName.toLowerCase();
+      const activeTag =
+        active && active.tagName && active.tagName.toLowerCase();
       if (overlayVisible) {
         // If the user is typing in an input/textarea, allow spaces to be entered.
-        if (activeTag === 'input' || activeTag === 'textarea') return;
+        if (activeTag === "input" || activeTag === "textarea") return;
         // Otherwise prevent default to avoid activating focused buttons.
         e.preventDefault();
         return;
@@ -713,23 +842,27 @@
   });
 
   // Canvas interactions: handle mouse and touch. Ignore taps when overlay is visible.
-  canvas.addEventListener('mousedown', (e) => {
-    const overlay = document.getElementById('overlay');
-    if (overlay && overlay.style.display !== 'none') return;
+  canvas.addEventListener("mousedown", (e) => {
+    const overlay = document.getElementById("overlay");
+    if (overlay && overlay.style.display !== "none") return;
     if (!running) reset();
     flap();
   });
   // Touch support for phones
-  canvas.addEventListener('touchstart', (e) => {
-    const overlay = document.getElementById('overlay');
-    if (overlay && overlay.style.display !== 'none') return;
-    e.preventDefault();
-    if (!running) reset();
-    flap();
-  }, { passive: false });
+  canvas.addEventListener(
+    "touchstart",
+    (e) => {
+      const overlay = document.getElementById("overlay");
+      if (overlay && overlay.style.display !== "none") return;
+      e.preventDefault();
+      if (!running) reset();
+      flap();
+    },
+    { passive: false },
+  );
 
   // Responsive handling and start loop
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     const wasRunning = running;
     running = false;
     resizeCanvasAndLayout();
@@ -745,4 +878,27 @@
   reset();
   draw();
   requestAnimationFrame(frameLoop);
+
+  // Expose minimal test hooks when running in a browser environment so
+  // automated tests can sample internal state without relying on unstable
+  // instrumentation. These are intentionally small and optional.
+  try {
+    if (typeof window !== "undefined") {
+      window.__ANDEN_TEST__ = window.__ANDEN_TEST__ || {};
+      window.__ANDEN_TEST__.getLeadY = function () {
+        return (trail[0] || { y: bird.y }).y;
+      };
+      window.__ANDEN_TEST__.getScore = function () {
+        return score;
+      };
+      window.__ANDEN_TEST__.stepPhysics = function (ms) {
+        return updatePhysics((ms || 0) / 1000);
+      };
+      window.__ANDEN_TEST__.getTrail = function (n) {
+        return trail.slice(0, n || 32);
+      };
+    }
+  } catch (e) {
+    // ignore errors in exotic runtimes
+  }
 })();

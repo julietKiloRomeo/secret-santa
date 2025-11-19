@@ -34,6 +34,8 @@ Debugging tips
 - For flaky UI timing, prefer `page.waitForResponse` (to observe the exact API reply) or `page.waitForSelector` on UI elements that the client updates after a successful action.
 - Use debug JS hooks when appropriate (e.g. `window.__snakeDebug__` exists in the Snake game to place gifts and step the game). These help keep tests deterministic.
 
+- Anden Advent test hooks: The Flappy-Santa page exposes a small optional helper on `window.__ANDEN_TEST__` used by Playwright tests. Available helpers include `getLeadY()`, `getScore()`, `stepPhysics(ms)`, and `getTrail(n)`.
+
 Quick commands
 --------------
 - Run unit tests: `uv run pytest -q`
@@ -41,4 +43,3 @@ Quick commands
 - Open Playwright in interactive mode (headed): `npx playwright test --headed --debug` or `npx playwright show-report`
 
 Always run tests after making frontend or game logic changes. The e2e tests are lightweight and capture mobile layout regressions (screenshots are in `out/`).
-
