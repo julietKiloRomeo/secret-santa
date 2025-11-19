@@ -3,6 +3,16 @@ import { test, expect } from '@playwright/test';
 // Detects whether canvas cells that previously contained snake pixels
 // leave behind colored artifacts after the snake moves away.
 test('snake canvas does not leave sticky pixels after movement', async ({ page }) => {
+  // Login first so the session cookie is set (the game pages are behind
+  // the login guard in the app). Use the same test account used by other
+  // Playwright specs.
+  await page.goto('/');
+  await page.fill('#name', 'playwright');
+  await page.fill('#code', 'pw-test-123');
+  await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
+    page.click('button[type=submit]'),
+  ]);
   await page.goto('/forste-advent');
   await page.waitForSelector('#snake-canvas', { state: 'visible' });
   // allow JS resize/init to complete
