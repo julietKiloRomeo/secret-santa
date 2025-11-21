@@ -10,6 +10,9 @@ Progress:
 - [DONE] Added automated tests: `tests/test_reindeer_rush.py`.
 - [DONE] Minimal client skeleton and leaderboard UI added (`static/reindeer_rush.js`, template updated).
 - [TODO] Full client gameplay implementation (physics, controls, sprites, collisions).
+ - [IN PROGRESS] Full client gameplay implementation (basic physics, controls, obstacles, collisions).
+   - Implemented a minimal playable client using a canvas in `static/reindeer_rush.js` (jump, spawn obstacles, collision detection, distance scoring, game-over + submit overlay).
+   - Added a small server-side smoke test: `tests/test_reindeer_rush_client.py` to verify the page and script are present.
 - [TODO] Art assets: sprites (~20), background tiles.
 - [TODO] Sounds and music (~8 assets) and volume/mute support.
 - [TODO] Power-ups and polish (shield bell, flying boost, particle effects).
