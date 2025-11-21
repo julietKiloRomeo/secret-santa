@@ -9,3 +9,20 @@
    use Tailwind utilities and explicit image classes now. Keep a minimal
    compatibility note here during transition.
 */
+
+:root {
+  --fallback-text: #111827; /* Tailwind gray-900 */
+  --fallback-muted: #6b7280; /* Tailwind gray-500 */
+}
+
+input,
+textarea,
+select {
+  color: var(--fallback-text);
+  background-color: #fff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--fallback-muted);
+}

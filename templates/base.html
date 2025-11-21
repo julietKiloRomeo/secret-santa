@@ -6,6 +6,7 @@
   <title>{% block title %}Secret Santa{% endblock %}</title>
   <!-- Tailwind CDN for quick integration (suitable for development) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
   <style>
     /* Small custom overrides that are easier to keep here than inlined HTML */
     #locked-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: .75rem 1.25rem; border-radius: .5rem; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: opacity .4s ease; }

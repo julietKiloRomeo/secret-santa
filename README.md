@@ -165,6 +165,22 @@ Use a production WSGI server if you prefer a direct host deployment. Example wit
 uv run gunicorn -w 2 -b 0.0.0.0:5000 app:app
 ```
 
+### Deploying on Render
+
+Render automatically detects the `Dockerfile`, so no extra build scripts are required:
+
+1. Push your changes to the branch Render tracks (e.g., `main`).
+2. In the Render dashboard create a **New Web Service**, connect your GitHub repo, and pick the branch.
+3. Choose the **Docker** environment; Render will run `docker build` using the `Dockerfile` in the repo (no custom build command needed).
+4. Set environment variables under **Environment**:
+   - `SECRET_KEY` (required, strong random string).
+   - `ENV_FILE` if you keep credentials in a non-default path.
+   - Any `LOGIN_*`, `DRAW_LOCKED`, `SCORES_DB`, etc., values you need.
+5. Expose port `5000` (Render auto-detects from the `EXPOSE 5000` directive). The app command is already defined in the Dockerfile: `uv run gunicorn -w 4 -b 0.0.0.0:5000 app:app`.
+6. (Optional) Add a persistent disk and mount it at `/app` if you want SQLite files (`scores.sqlite3`, `secret-santa-<year>.json`) to survive deploys. Otherwise, keep those files in git or move to a managed database.
+
+Trigger a deploy by pushing a new commit; Render will rebuild the container and restart the service with the new image.
+
 ## Configuration
 
 - Update `couples.yaml` to reflect current couples.
