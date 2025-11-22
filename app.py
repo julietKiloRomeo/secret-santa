@@ -34,6 +34,8 @@ def load_logins_from_env():
 
 logins = load_logins_from_env()
 
+ADMIN_USERS = {"jimmy", "ditte"}
+
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -100,7 +102,14 @@ def init_games_db():
             """
         )
         # Ensure default games exist and are enabled by default
-        default_games = ["forste-advent", "anden-advent", "reindeer-rush"]
+        default_games = [
+            "forste-advent",
+            "anden-advent",
+            "reindeer-rush",
+            "tredje-advent",
+            "fjerde-advent",
+            "glaedelig-jul",
+        ]
         for g in default_games:
             cur.execute("INSERT OR IGNORE INTO games (game, enabled) VALUES (?, ?)", (g, 1))
         con.commit()
@@ -163,16 +172,20 @@ def get_games():
         con.close()
 
 
+def is_admin_user():
+    return 'user' in session and session['user'] in ADMIN_USERS
+
+
+def game_enabled_for_user(game):
+    if is_admin_user():
+        return True
+    return is_game_enabled(game)
+
+
 @app.context_processor
 def inject_game_helpers():
-    def is_admin_user():
-        return 'user' in session and session['user'] in {"jimmy", "ditte"}
-    def game_enabled_for_user(game):
-        # Admins always have access
-        if is_admin_user():
-            return True
-        return is_game_enabled(game)
     return dict(is_admin_user=is_admin_user, game_enabled_for_user=game_enabled_for_user)
+
 
 def reset_scores_for_game(game: str):
     con = sqlite3.connect(scores_db_path())
@@ -212,7 +225,14 @@ def admin_required(f):
     return decorated_function
 
 
+def render_game_view(game_key: str, template_name: str, title: str, **context):
+    if not game_enabled_for_user(game_key):
+        return render_template('under_construction.html', title=title)
+    return render_template(template_name, **context)
+
+
 @app.route('/')
+
 def index():
     return render_template('index.html')
 
@@ -224,42 +244,35 @@ def healthz():
 @login_required
 def forste_advent():
     default_name = session.get('user', 'Nisse')
-    # If the game is disabled and the user is not an admin, show under construction
-    if not is_game_enabled('forste-advent') and session.get('user') not in {"jimmy", "ditte"}:
-        return render_template('under_construction.html', title='Første Advent')
-    return render_template('forste_advent.html', default_name=default_name)
+    return render_game_view('forste-advent', 'forste_advent.html', title='Første Advent', default_name=default_name)
 
 @app.route('/anden-advent')
 @login_required
 def anden_advent():
     default_name = session.get('user', 'Nisse')
-    if not is_game_enabled('anden-advent') and session.get('user') not in {"jimmy", "ditte"}:
-        return render_template('under_construction.html', title='Anden Advent')
-    return render_template('anden_advent.html', default_name=default_name)
+    return render_game_view('anden-advent', 'anden_advent.html', title='Anden Advent', default_name=default_name)
 
 @app.route('/reindeer-rush')
 @login_required
 def reindeer_rush():
     default_name = session.get('user', 'Nisse')
-    # If the game is disabled and the user is not an admin, show under construction
-    if not is_game_enabled('reindeer-rush') and session.get('user') not in {"jimmy", "ditte"}:
-        return render_template('under_construction.html', title='Reindeer Rush')
-    return render_template('reindeer_rush.html', default_name=default_name)
+    return render_game_view('reindeer-rush', 'reindeer_rush.html', title='Reindeer Rush', default_name=default_name)
 
 @app.route('/tredje-advent')
 @login_required
 def tredje_advent():
-    return render_template('tredje_advent.html')
+    default_name = session.get('user', 'Nisse')
+    return render_game_view('tredje-advent', 'tredje_advent.html', title='Tredje Advent', default_name=default_name)
 
 @app.route('/fjerde-advent')
 @login_required
 def fjerde_advent():
-    return render_template('fjerde_advent.html')
+    return render_game_view('fjerde-advent', 'fjerde_advent.html', title='Fjerde Advent')
 
 @app.route('/glaedelig-jul')
 @login_required
 def glaedelig_jul():
-    return render_template('glaedelig_jul.html')
+    return render_game_view('glaedelig-jul', 'glaedelig_jul.html', title='Glædelig Jul')
 
 @app.route('/lodtraekning')
 @login_required

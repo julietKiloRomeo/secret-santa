@@ -99,3 +99,28 @@ def test_admin_reset_scores():
     r = client.get('/api/scores/anden-advent')
     data = r.get_json()
     assert data['scores'] == []
+
+
+def test_all_mini_games_disable_flag():
+    from app import app
+
+    client = app.test_client()
+    assert login_as(client, 'jimmy', 'cozy-winter-lantern').status_code == 200
+    mini_games = [
+        ('forste-advent', '/forste-advent'),
+        ('anden-advent', '/anden-advent'),
+        ('reindeer-rush', '/reindeer-rush'),
+        ('tredje-advent', '/tredje-advent'),
+        ('fjerde-advent', '/fjerde-advent'),
+        ('glaedelig-jul', '/glaedelig-jul'),
+    ]
+    for game, path in mini_games:
+        resp = client.post('/api/admin/set_game', data=json.dumps({'game': game, 'enabled': False}), content_type='application/json')
+        assert resp.status_code == 200
+        non_admin = app.test_client()
+        assert login_as(non_admin, 'emma', 'quiet-forest-breeze').status_code == 200
+        r = non_admin.get(path)
+        html = r.get_data(as_text=True)
+        assert 'Under Construction' in html
+        resp = client.post('/api/admin/set_game', data=json.dumps({'game': game, 'enabled': True}), content_type='application/json')
+        assert resp.status_code == 200

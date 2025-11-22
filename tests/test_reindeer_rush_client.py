@@ -1,6 +1,3 @@
-import re
-
-
 def test_reindeer_rush_page_contains_canvas_and_script():
     from app import app
 
@@ -15,6 +12,7 @@ def test_reindeer_rush_page_contains_canvas_and_script():
     assert 'id="reindeer-canvas"' in html
     # Script include for client
     assert '/static/reindeer_rush.js' in html
-    # Start/Stop buttons present
-    assert 'id="reindeer-start"' in html
-    assert 'id="reindeer-stop"' in html
+    # New HUD controls and text should be present
+    assert 'id="reindeer-score"' in html
+    assert 'Controls:' in html
+    assert 'reindeer-next-item' in html
