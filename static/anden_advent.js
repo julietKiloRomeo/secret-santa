@@ -734,16 +734,9 @@
   }
   function arcadePanel() {
     const panel = document.createElement("div");
-    panel.style.background = "#000";
-    panel.style.color = "#0f0";
-    panel.style.border = "4px solid #0f0";
-    panel.style.boxShadow = "0 0 20px #0f0";
-    panel.style.padding = "1rem 2rem";
-    panel.style.fontFamily = "monospace";
-    panel.style.textShadow = "0 0 6px #0f0";
+    panel.className = 'p-4 rounded-md shadow-lg bg-black/80 text-white';
     panel.style.maxWidth = "480px";
     panel.style.width = "90%";
-    panel.style.borderRadius = "8px";
     return panel;
   }
   function arcadeTitle(text) {
@@ -756,24 +749,14 @@
   function arcadeButton(text) {
     const b = document.createElement("button");
     b.textContent = text;
-    b.style.background = "#0f0";
-    b.style.color = "#000";
-    b.style.border = "2px solid #0f0";
-    b.style.padding = "0.5rem 1rem";
-    b.style.fontFamily = "monospace";
-    b.style.cursor = "pointer";
-    b.style.marginTop = "1rem";
+    b.className = 'inline-flex justify-center rounded-md border border-transparent py-2 px-4 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500';
+    b.style.marginTop = '1rem';
     return b;
   }
   function arcadeInput(value) {
     const i = document.createElement("input");
     i.value = value || "";
-    i.style.width = "100%";
-    i.style.padding = "0.5rem";
-    i.style.background = "#001100";
-    i.style.border = "2px solid #0f0";
-    i.style.color = "#0f0";
-    i.style.fontFamily = "monospace";
+    i.className = 'block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
     return i;
   }
   function renderScoresList(scores) {

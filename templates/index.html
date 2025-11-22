@@ -5,13 +5,13 @@
         <h1 class="text-2xl font-bold mb-4">🎄 Jule rouletten 🎄</h1>
         <div data-js="form-message" class="block">
             <form data-js="login-form" class="flex flex-col gap-3" onsubmit="handleSubmit(event)">
-                <input class="p-3 rounded" type="text" id="name" placeholder="Fornavn" required>
-                <input class="p-3 rounded" type="password" id="code" placeholder="Kodeord (fx horse-staple-orange)" required>
+                <input class="block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" type="text" id="name" placeholder="Fornavn" required>
+                <input class="block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" type="password" id="code" placeholder="Kodeord (fx horse-staple-orange)" required>
                 <audio id="hohoSound">
                     <source src="https://cdn.glitch.global/e96496c4-8145-4241-967e-6b2e0fa0baf1/HOHOHOOOO.mp3?v=1731947562034" type="audio/mp3">
                  </audio>
                  
-                 <button class="mt-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded" type="submit">Træk et navn...</button>
+                 <button class="mt-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md" type="submit">Træk et navn...</button>
             </form>
         </div>
         <div data-js="error" class="hidden mt-4 text-red-400">

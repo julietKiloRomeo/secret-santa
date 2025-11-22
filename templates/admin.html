@@ -9,7 +9,7 @@
       <div class="bg-white/5 p-4 rounded-lg shadow mb-4">
         <form data-js="set-password-form" class="grid grid-cols-1 gap-3" onsubmit="return setPassword(event);">
           <label for="userName">Vælg bruger</label>
-          <select id="userName" required>
+          <select id="userName" required class="block w-full rounded-md border border-gray-300 bg-white text-gray-900 px-3 py-2 shadow-sm sm:text-sm">
             <option value="" disabled selected>-- vælg bruger --</option>
             {% for u in users %}
               <option value="{{ u }}">{{ u }}</option>
@@ -17,10 +17,10 @@
           </select>
 
           <label for="userPass">Passphrase</label>
-          <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required />
+          <input type="text" id="userPass" placeholder="Kodeord (fx horse-staple-orange)" required class="block w-full rounded-md border border-gray-300 bg-white text-gray-900 px-3 py-2 shadow-sm sm:text-sm" />
 
           <div>
-            <button type="submit" class="btn btn-primary bg-green-600 text-white py-2 px-3 rounded">Gem adgangskode</button>
+            <button type="submit" class="btn btn-primary bg-green-600 text-white py-2 px-3 rounded-md">Gem adgangskode</button>
           </div>
         </form>
         <div id="setPassMsg" data-js="set-pass-msg" class="mt-2 text-gray-300"></div>
@@ -29,7 +29,7 @@
 
     <section class="mt-4">
       <h2 class="text-lg font-semibold mb-2">Kør årets matcher</h2>
-      <button id="runMatchesBtn" data-js="run-matches-btn" onclick="runMatches()" class="btn btn-primary bg-blue-600 text-white py-2 px-3 rounded" {% if draw_locked %}disabled{% endif %}>Kør matcher</button>
+      <button id="runMatchesBtn" data-js="run-matches-btn" onclick="runMatches()" class="btn btn-primary bg-blue-600 text-white py-2 px-3 rounded-md" {% if draw_locked %}disabled{% endif %}>Kør matcher</button>
       {% if draw_locked %}
         <div class="text-red-400 mt-2">Drawing is locked by server configuration (DRAW_LOCKED).</div>
       {% endif %}
