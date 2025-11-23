@@ -4,9 +4,43 @@ from datetime import datetime
 from pathlib import Path
 
 
+def _clean_dir(path: str | None) -> str | None:
+    if not path:
+        return None
+    expanded = os.path.expanduser(path)
+    if not expanded:
+        return None
+    return os.path.abspath(expanded)
+
+
+def _dir_from_file(value: str | None) -> str | None:
+    if not value:
+        return None
+    directory = os.path.dirname(value)
+    if not directory:
+        directory = os.getcwd()
+    return _clean_dir(directory)
+
+
+def _derive_data_dir() -> str | None:
+    direct = _clean_dir(os.environ.get('DATA_DIR'))
+    if direct:
+        return direct
+    scores_dir = _dir_from_file(os.environ.get('SCORES_DB'))
+    if scores_dir:
+        return scores_dir
+    env_file_dir = _dir_from_file(os.environ.get('ENV_FILE'))
+    if env_file_dir:
+        return env_file_dir
+    return None
+
+
 def get_data_dir() -> str:
     """Return the directory used for writable data (env, DB, matches)."""
-    return os.environ.get('DATA_DIR') or os.getcwd()
+    derived = _derive_data_dir()
+    if derived:
+        return derived
+    return os.getcwd()
 
 
 def ensure_dir(path: str) -> str:
@@ -20,7 +54,7 @@ def ensure_data_dir() -> str:
 
 
 def _existing_in_data_dir(filename: str) -> str | None:
-    data_dir = os.environ.get('DATA_DIR')
+    data_dir = _derive_data_dir()
     if not data_dir:
         return None
     ensure_dir(data_dir)

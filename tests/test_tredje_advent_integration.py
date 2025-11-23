@@ -22,14 +22,14 @@ def teardown_module(module):
             pass
 
 
-def test_reindeer_rush_score_submission_flow():
+def test_tredje_advent_score_submission_flow():
     from app import app
 
     client = app.test_client()
 
     payload = {'name': 'elf-test', 'score': 128}
     response = client.post(
-        '/api/scores/reindeer-rush',
+        '/api/scores/tredje-advent',
         data=json.dumps(payload),
         content_type='application/json'
     )
@@ -37,10 +37,10 @@ def test_reindeer_rush_score_submission_flow():
     resp_json = response.get_json()
     assert resp_json['success'] is True
 
-    leaderboard_resp = client.get('/api/scores/reindeer-rush')
+    leaderboard_resp = client.get('/api/scores/tredje-advent')
     assert leaderboard_resp.status_code == 200
     data = leaderboard_resp.get_json()
-    assert data['game'] == 'reindeer-rush'
+    assert data['game'] == 'tredje-advent'
     assert data['scores'], 'Expected at least one leaderboard entry'
     top_score = data['scores'][0]
     assert top_score['name'] == 'elf-test'

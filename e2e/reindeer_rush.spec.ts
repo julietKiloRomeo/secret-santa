@@ -14,7 +14,7 @@ test('reindeer rush handles obstacles, scoring, and collision', async ({ page })
   expect(loginResp.ok()).toBe(true);
   await page.waitForLoadState('networkidle');
 
-  await page.goto('/reindeer-rush');
+  await page.goto('/tredje-advent');
   const canvas = page.locator('#reindeer-canvas canvas');
   await canvas.waitFor({ state: 'visible' });
   await canvas.click();

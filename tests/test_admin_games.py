@@ -109,7 +109,6 @@ def test_all_mini_games_disable_flag():
     mini_games = [
         ('forste-advent', '/forste-advent'),
         ('anden-advent', '/anden-advent'),
-        ('reindeer-rush', '/reindeer-rush'),
         ('tredje-advent', '/tredje-advent'),
         ('fjerde-advent', '/fjerde-advent'),
         ('glaedelig-jul', '/glaedelig-jul'),

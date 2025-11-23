@@ -111,7 +111,6 @@ def init_games_db():
         default_games = [
             "forste-advent",
             "anden-advent",
-            "reindeer-rush",
             "tredje-advent",
             "fjerde-advent",
             "glaedelig-jul",
@@ -124,7 +123,30 @@ def init_games_db():
 
 init_games_db()
 
+
+def canonical_game_key(game: str) -> str:
+    if game == "reindeer-rush":
+        return "tredje-advent"
+    return game
+
+
+def migrate_reindeer_rush_alias():
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE scores SET game = 'tredje-advent' WHERE game = 'reindeer-rush'"
+        )
+        cur.execute("DELETE FROM games WHERE game = 'reindeer-rush'")
+        con.commit()
+    finally:
+        con.close()
+
+
+migrate_reindeer_rush_alias()
+
 def is_game_enabled(game: str) -> bool:
+    game = canonical_game_key(game)
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
@@ -152,6 +174,7 @@ def is_game_enabled(game: str) -> bool:
         con.close()
 
 def set_game_enabled(game: str, enabled: bool):
+    game = canonical_game_key(game)
     # Ensure games table exists (handle cases where app was imported earlier
     # with a different DB path or when the DB file is new)
     init_games_db()
@@ -173,7 +196,11 @@ def get_games():
         cur = con.cursor()
         cur.execute("SELECT game, enabled FROM games ORDER BY game")
         rows = cur.fetchall()
-        return [{"game": g, "enabled": bool(e)} for (g, e) in rows]
+        merged: dict[str, bool] = {}
+        for (g, e) in rows:
+            key = canonical_game_key(g)
+            merged[key] = merged.get(key, False) or bool(e)
+        return [{"game": g, "enabled": enabled} for g, enabled in merged.items()]
     finally:
         con.close()
 
@@ -194,6 +221,7 @@ def inject_game_helpers():
 
 
 def reset_scores_for_game(game: str):
+    game = canonical_game_key(game)
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
@@ -258,12 +286,6 @@ def anden_advent():
     default_name = session.get('user', 'Nisse')
     return render_game_view('anden-advent', 'anden_advent.html', title='Anden Advent', default_name=default_name)
 
-@app.route('/reindeer-rush')
-@login_required
-def reindeer_rush():
-    default_name = session.get('user', 'Nisse')
-    return render_game_view('reindeer-rush', 'reindeer_rush.html', title='Reindeer Rush', default_name=default_name)
-
 @app.route('/tredje-advent')
 @login_required
 def tredje_advent():
@@ -297,6 +319,7 @@ def lodtraekning():
 @app.route('/api/scores/<game>', methods=['GET'])
 def get_scores(game: str):
     init_scores_db()
+    game = canonical_game_key(game)
     con = sqlite3.connect(scores_db_path())
     try:
         cur = con.cursor()
@@ -316,6 +339,7 @@ def get_scores(game: str):
 @app.route('/api/scores/<game>', methods=['POST'])
 def post_score(game: str):
     init_scores_db()
+    game = canonical_game_key(game)
     data = request.get_json() or {}
     name = (data.get('name') or '').strip() or session.get('user') or 'Guest'
     try:
@@ -443,7 +467,7 @@ def admin_set_game():
     if not game or enabled is None:
         return jsonify({"success": False, "error": "Missing game or enabled flag"}), 400
     set_game_enabled(game, bool(enabled))
-    return jsonify({"success": True, "game": game, "enabled": bool(enabled)})
+    return jsonify({"success": True, "game": canonical_game_key(game), "enabled": bool(enabled)})
 
 
 @app.route('/api/admin/reset_scores', methods=['POST'])
@@ -454,7 +478,7 @@ def admin_reset_scores():
     if not game:
         return jsonify({"success": False, "error": "Missing game"}), 400
     reset_scores_for_game(game)
-    return jsonify({"success": True, "game": game})
+    return jsonify({"success": True, "game": canonical_game_key(game)})
 
 
 @app.route('/api/admin/snapshots', methods=['GET'])

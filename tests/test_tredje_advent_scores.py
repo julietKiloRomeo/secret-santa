@@ -11,17 +11,17 @@ def setup_module(module):
     os.environ.setdefault('SECRET_KEY', 'test-secret-key')
 
 
-def test_reindeer_rush_scores_top10_and_upsert():
+def test_tredje_advent_scores_top10_and_upsert():
     from app import app
 
     client = app.test_client()
 
     # Initially empty
-    r = client.get('/api/scores/reindeer-rush')
+    r = client.get('/api/scores/tredje-advent')
     assert r.status_code == 200
     data = r.get_json()
     assert isinstance(data, dict)
-    assert data['game'] == 'reindeer-rush'
+    assert data['game'] == 'tredje-advent'
     assert data['scores'] == []
 
     # Insert multiple scores
@@ -33,7 +33,7 @@ def test_reindeer_rush_scores_top10_and_upsert():
 
     for name, score in entries:
         r = client.post(
-            '/api/scores/reindeer-rush',
+            '/api/scores/tredje-advent',
             data=json.dumps({'name': name, 'score': score}),
             content_type='application/json'
         )
@@ -42,7 +42,7 @@ def test_reindeer_rush_scores_top10_and_upsert():
         assert resp['success'] is True
 
     # Fetch top 10
-    r = client.get('/api/scores/reindeer-rush')
+    r = client.get('/api/scores/tredje-advent')
     assert r.status_code == 200
     data = r.get_json()
     scores = data['scores']
@@ -52,4 +52,3 @@ def test_reindeer_rush_scores_top10_and_upsert():
     for (exp_name, exp_score), item in zip(sorted_scores, scores):
         assert item['name'] == exp_name
         assert item['score'] == exp_score
-

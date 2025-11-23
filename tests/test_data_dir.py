@@ -72,3 +72,28 @@ def test_scores_db_falls_back_when_missing(tmp_path, monkeypatch):
     custom.parent.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv('SCORES_DB', str(custom))
     assert scores_db_path() == str(custom)
+
+
+def test_data_dir_fallbacks_to_env_file_dir(tmp_path, monkeypatch):
+    env_file = tmp_path / '.env'
+    env_file.write_text('SECRET_KEY=data\n')
+    monkeypatch.delenv('DATA_DIR', raising=False)
+    monkeypatch.delenv('SCORES_DB', raising=False)
+    monkeypatch.setenv('ENV_FILE', str(env_file))
+    from storage import get_data_dir
+    resolved = str(tmp_path.resolve())
+    assert get_data_dir() == resolved
+    santa = SecretSanta(year=2051, data_dir=get_data_dir())
+    santa.draw()
+    santa.save()
+    assert (tmp_path / f'secret-santa-{santa.year}.json').exists()
+
+
+def test_data_dir_fallbacks_to_scores_db_dir(tmp_path, monkeypatch):
+    db_path = tmp_path / 'scores.sqlite3'
+    monkeypatch.delenv('DATA_DIR', raising=False)
+    monkeypatch.delenv('ENV_FILE', raising=False)
+    monkeypatch.setenv('SCORES_DB', str(db_path))
+    from storage import get_data_dir
+    resolved = str(tmp_path.resolve())
+    assert get_data_dir() == resolved

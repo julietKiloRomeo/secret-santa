@@ -30,7 +30,7 @@ See `SPECS.md` for a full, test-driven specification of the app surface (APIs, p
 - `secret-santa-2024.json` — current year’s assignments.
 - `templates/index.html` — UI template.
 - `static/styles.css` — app styling.
-- `reindeer-rush` — backend route and leaderboard integration implemented at `/reindeer-rush` and `/api/scores/reindeer-rush`. A minimal playable client (canvas-based jump, obstacles and collisions) and leaderboard UI live in `static/reindeer_rush.js` and `templates/reindeer_rush.html`; full artwork, sound, and power-ups remain TODO.
+- `tredje-advent` — Reindeer Rush endless runner served at `/tredje-advent` with leaderboard integration at `/api/scores/tredje-advent`. The canvas client (`static/reindeer_rush.js`) powers the advent view; art, richer audio, and power-ups remain TODO.
 - `Dockerfile` — container build for production.
 - `pyproject.toml` — Python project config and dependencies.
 

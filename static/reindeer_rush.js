@@ -498,7 +498,7 @@
   }
 
   async function fetchLeaderboard() {
-    return fetch('/api/scores/reindeer-rush').then((r) => r.json()).catch(() => ({ scores: [] }));
+    return fetch('/api/scores/tredje-advent').then((r) => r.json()).catch(() => ({ scores: [] }));
   }
 
   function renderLeaderboard(scores) {
@@ -528,7 +528,7 @@
 
   async function submitScore(name, score) {
     try {
-      const resp = await fetch('/api/scores/reindeer-rush', {
+      const resp = await fetch('/api/scores/tredje-advent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, score })

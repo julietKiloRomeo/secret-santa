@@ -8,7 +8,7 @@ Overview
 - Two small in-browser mini-games are available for advent pages:
   - `Første Advent` — Jule Snake (classic snake game)
 - `Anden Advent` — Flappy Santa (santa flapping through chimneys)
-  - `Reindeer Rush` — Endless runner/dodger: Guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. Backend placeholder implemented: route `/reindeer-rush`, leaderboard support via `/api/scores/reindeer-rush`, and automated tests (`tests/test_reindeer_rush.py`) were added. A minimal playable client has been implemented (canvas-based jump, obstacle spawning, collisions and scoring) in `static/reindeer_rush.js` and integrated with `templates/reindeer_rush.html`; art, richer audio, and power-ups remain TODO.
+- `Tredje Advent` — Reindeer Rush endless runner: guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. The game lives at `/tredje-advent`, submits scores to `/api/scores/tredje-advent`, and is powered by `static/reindeer_rush.js`; art, richer audio, and power-ups remain TODO. Automated tests cover the API (`tests/test_tredje_advent_scores.py`, `tests/test_tredje_advent_integration.py`) and HTML shell (`tests/test_tredje_advent_client.py`).
 - Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
 
 API Endpoints
@@ -57,7 +57,8 @@ Pages / Routes
 - `/` — Index / roulette login page. After successful login it reveals the recipient.
 - `/forste-advent` — Snake mini-game. If the game is disabled for non-admins, shows an Under Construction page with title "Første Advent". Admins always see the game.
 - `/anden-advent` — Flappy Santa mini-game. Same availability rules as above.
-- `/tredje-advent`, `/fjerde-advent`, `/glaedelig-jul` — pages exist and may show "Under Construction" until implemented or enabled.
+- `/tredje-advent` — Hosts the Reindeer Rush endless runner. If the game is disabled for non-admins it falls back to the standard Under Construction view.
+- `/fjerde-advent`, `/glaedelig-jul` — pages exist and may show "Under Construction" until implemented or enabled.
 - `/admin` — Admin panel, only accessible to admin users after login.
 
 Database schema
@@ -75,7 +76,7 @@ Database schema
 - `games` table (`init_games_db()`):
   - `game TEXT PRIMARY KEY`
   - `enabled INTEGER NOT NULL DEFAULT 1`
-  - default rows created for `forste-advent` and `anden-advent`
+  - default rows created for `forste-advent`, `anden-advent`, `tredje-advent`, `fjerde-advent`, and `glaedelig-jul`
 
 Client behavior / Mini-games
 ----------------------------
