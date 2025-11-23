@@ -89,3 +89,11 @@ Endless runner - reindeer auto-runs, tap to jump over obstacles, swipe down to d
 4. Tap to restart
 
 Simple, fun, 5-minute mini-game vibes!
+
+---
+
+## Implementation Notes
+- Mobile layout is landscape-only and stretches the canvas to fill the entire screen, keeping the reindeer and background art as the only real estate; UI chrome is limited to a small floating distance/score readout if needed.
+- Input uses a swipe gesture onto the canvas (tap/swipe up to jump, swipe down to duck) with no buttons, so the view remains unobstructed.
+- Obstacles, collectible placements, and spacing are procedurally generated while the game auto-increments speed, spawn density, and power-up frequency to keep the challenge growing.
+- Art focus is on a detailed animated reindeer character; background detail should support a scenic, high-polish look without extra HUD or overlays.

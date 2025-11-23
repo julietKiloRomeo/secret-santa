@@ -11,10 +11,8 @@ Navigate Santa through a snowy maze, collecting cookies and candy canes while av
 
 ### Player Character
 - **Santa** moves continuously in the current direction
-- **Controls (Mobile):** Swipe gestures or virtual D-pad overlay
-  - Swipe up/down/left/right to change direction
-  - Alternative: 4-button directional pad in corners or bottom of screen
-  - Santa only changes direction when the path is available (queued inputs for smoother feel)
+- **Controls (Mobile):** Swipe gestures to change direction
+  - Swipe up/down/left/right to queue Santa's next turn, with movement changes only when the path allows (queued inputs for smoother feel)
 
 ### Maze Layout
 - Classic Pac-Man style grid with snowy paths
@@ -63,27 +61,14 @@ Navigate Santa through a snowy maze, collecting cookies and candy canes while av
 │                     │
 │                     │
 ├─────────────────────┤
-│  [↑]                │ ← Controls (15% height)
-│[←][→]  OR  Swipe   │
-│  [↓]     Area       │
+│                     │ ← Swipe input hint (15% height)
+│   Swipe anywhere    │
+│     to turn Santa   │
 └─────────────────────┘
 ```
 
-### Control Schemes (Give players option)
-**Option A: Swipe Controls**
-- Swipe anywhere on screen to queue direction
-- Most intuitive for mobile
-- May have accidental inputs
-
-**Option B: Virtual D-Pad**
-- 4 directional buttons in bottom-left or center-bottom
-- More precise
-- Buttons semi-transparent (40% opacity)
-
-**Option C: Tap Navigation**
-- Tap on maze where you want Santa to turn
-- Auto-pathfinding to that direction
-- Simplest for casual players
+### Control Scheme
+- Swipe anywhere on the screen to queue direction changes; we keep the UI uncluttered by avoiding additional buttons or overlays.
 
 ### Performance Considerations
 - Target 60 FPS
@@ -205,6 +190,7 @@ Navigate Santa through a snowy maze, collecting cookies and candy canes while av
 - **Level 5+:** Faster enemies, faster scatter/chase mode switching
 - **Level 9+:** Enemies spend more time chasing, less time scared
 - Max difficulty caps around level 21 (classic Pac-Man style)
+- Single maze layout repeats; difficulty increases through faster enemy speeds and shorter frightened durations rather than new maps.
 
 ### Scoring
 - Cookie: 10 points

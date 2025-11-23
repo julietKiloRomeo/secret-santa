@@ -1,8 +1,19 @@
 import os
+import sys
 import json
 import datetime
+import shutil
 from pathlib import Path
 from werkzeug.security import generate_password_hash
+import importlib
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+storage = importlib.import_module('storage')
+get_data_dir = storage.get_data_dir
+match_file_path = storage.match_file_path
 
 
 NAMES = [
@@ -22,7 +33,10 @@ NAMES = [
 def setup_module(module):
     # Use a temporary env file for tests
     year = datetime.datetime.now().year
-    env_path = Path(f".env.test.{year}")
+    data_dir = Path(f".data.test.{year}")
+    data_dir.mkdir(exist_ok=True)
+    os.environ["DATA_DIR"] = str(data_dir)
+    env_path = data_dir / f".env.test.{year}"
     os.environ["ENV_FILE"] = str(env_path)
     os.environ["SECRET_KEY"] = "test-secret-key"
 
@@ -35,7 +49,7 @@ def setup_module(module):
     env_path.write_text("".join(env_lines))
 
     # Ensure a current-year assignment file exists before importing app
-    assignments_path = Path(f"secret-santa-{year}.json")
+    assignments_path = data_dir / f"secret-santa-{year}.json"
     if not assignments_path.exists():
         # Create a simple rotation mapping (not enforcing constraints for the test initial state)
         mapping = {name: NAMES[(i + 1) % len(NAMES)] for i, name in enumerate(NAMES)}
@@ -102,7 +116,7 @@ def test_admin_access_and_set_password_and_run_matches():
     year = data["year"]
 
     # The app should present current year's matches; verify file exists and app's state matches file contents
-    saved = json.loads(Path(f"secret-santa-{year}.json").read_text())
+    saved = json.loads(Path(match_file_path(year)).read_text())
     assert isinstance(saved, dict) and len(saved) == len(NAMES)
 
 
@@ -124,3 +138,40 @@ def test_admin_set_password_rejects_unknown():
     assert resp.status_code == 400
     data = resp.get_json()
     assert data["success"] is False
+
+
+def test_admin_snapshots_create_and_restore():
+    from app import SS, app
+
+    client = app.test_client()
+
+    # Login as admin (jimmy)
+    resp = login_as(client, "jimmy", "cozy-winter-lantern")
+    assert resp.status_code == 200
+
+    resp = client.post("/api/admin/snapshots")
+    assert resp.status_code == 200
+    snapshot_data = resp.get_json()
+    assert snapshot_data["success"] is True
+    snapshot_name = snapshot_data["snapshot"]
+
+    snapshots_dir = Path(get_data_dir()) / "snapshots"
+    snapshot_path = snapshots_dir / snapshot_name
+    assert snapshot_path.is_dir()
+
+    assignment_path = Path(match_file_path(SS.year))
+    original = assignment_path.read_text()
+    assignment_path.write_text(json.dumps({"temporary": "state"}))
+    assert assignment_path.read_text() != original
+
+    resp = client.post(
+        "/api/admin/snapshots/restore",
+        data=json.dumps({"name": snapshot_name}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    restore_data = resp.get_json()
+    assert restore_data["success"] is True
+    assert assignment_path.read_text() == original
+
+    shutil.rmtree(snapshot_path)

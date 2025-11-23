@@ -69,3 +69,10 @@ Endless runner - reindeer auto-runs, tap to jump over obstacles, swipe down to d
 4. Tap to restart
 
 Simple, fun, 5-minute mini-game vibes!
+
+---
+
+## Visual & Input Notes
+- The mobile canvas runs in landscape so the entire screen becomes the stage for a scenic snow valley; there are no button overlays, only the reindeer, terrain, and minimalistic score text when needed.
+- Input relies on swipe gestures on the canvas: swipe up or tap to jump, swipe down to duck, with responsive physics and no distracting UI controls.
+- The reindeer art takes precedence—prioritize a polished animated hero and supportive parallax background layers to create a lush shot of the holiday landscape.

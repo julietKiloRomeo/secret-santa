@@ -2,4 +2,5 @@
 .ipynb_checkpoints/*
 #.env contains secrets; keep out of VCS
 .env
+snapshots/
 out/snake_sticky_*.png

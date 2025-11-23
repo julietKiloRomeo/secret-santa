@@ -1,8 +1,6 @@
-import os
 import json
 import datetime
 import importlib
-from pathlib import Path
 from werkzeug.security import generate_password_hash
 
 
@@ -11,7 +9,7 @@ def test_run_matches_blocked_and_button_disabled(tmp_path, monkeypatch):
     year = datetime.datetime.now().year
     env_path = tmp_path / f".env.test.locked.{year}"
     env_lines = [
-        f"SECRET_KEY=test-secret-key\n",
+        "SECRET_KEY=test-secret-key\n",
         f"LOGIN_jimmy={generate_password_hash('cozy-winter-lantern')}\n",
         f"LOGIN_ditte={generate_password_hash('horse-staple-orange')}\n",
     ]

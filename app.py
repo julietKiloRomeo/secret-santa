@@ -3,17 +3,26 @@ from flask import Flask, jsonify, request, session, render_template, redirect, u
 import os
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
-import random
 from functools import wraps
 from secret_santa import SecretSanta
 from dotenv import load_dotenv, set_key
 import sqlite3
 from datetime import datetime
+from storage import (
+    env_file_path,
+    ensure_data_dir,
+    get_data_dir,
+    scores_db_path,
+    create_snapshot,
+    list_snapshots,
+    restore_snapshot,
+)
 
 
-ENV_FILE = os.environ.get("ENV_FILE", ".env")
+ENV_FILE = env_file_path()
 load_dotenv(ENV_FILE)
-SS = SecretSanta()
+ensure_data_dir()
+SS = SecretSanta(data_dir=get_data_dir())
 try:
     SS.load()
 except Exception:
@@ -40,9 +49,6 @@ ADMIN_USERS = {"jimmy", "ditte"}
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
-
-def scores_db_path():
-    return os.environ.get('SCORES_DB', os.path.join(os.getcwd(), 'scores.sqlite3'))
 
 def init_scores_db():
     con = sqlite3.connect(scores_db_path())
@@ -413,7 +419,7 @@ def admin_run_matches():
         return jsonify({"success": False, "error": "Draw locked by server configuration"}), 403
 
     global SS, ASSIGNMENTS
-    SS = SecretSanta()
+    SS = SecretSanta(data_dir=get_data_dir())
     SS.draw()
     SS.save()
     SS.load()
@@ -450,7 +456,46 @@ def admin_reset_scores():
     reset_scores_for_game(game)
     return jsonify({"success": True, "game": game})
 
-    
+
+@app.route('/api/admin/snapshots', methods=['GET'])
+@admin_required
+def admin_list_snapshots():
+    return jsonify({"snapshots": list_snapshots()})
+
+
+@app.route('/api/admin/snapshots', methods=['POST'])
+@admin_required
+def admin_create_snapshot():
+    try:
+        snapshot_path = create_snapshot()
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+    return jsonify({"success": True, "snapshot": os.path.basename(snapshot_path), "path": snapshot_path})
+
+
+@app.route('/api/admin/snapshots/restore', methods=['POST'])
+@admin_required
+def admin_restore_snapshot():
+    data = request.get_json() or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({"success": False, "error": "Missing snapshot name"}), 400
+    try:
+        restore_snapshot(name)
+    except FileNotFoundError:
+        return jsonify({"success": False, "error": "Snapshot not found"}), 404
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+    global logins, SS, ASSIGNMENTS
+    load_dotenv(ENV_FILE, override=True)
+    logins = load_logins_from_env()
+    SS = SecretSanta(data_dir=get_data_dir())
+    SS.load()
+    ASSIGNMENTS = SS.config
+    init_scores_db()
+    init_games_db()
+    return jsonify({"success": True, "snapshot": name})
+
 
 if __name__ == '__main__':
     app.run(debug=True)

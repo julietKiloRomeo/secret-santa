@@ -57,6 +57,7 @@
     baseSpeed: 0,
     spawnInterval,
     fps: 0,
+    totalScore: 0,
     nextItem: '—',
     lastCollisionAt: null,
     lastCollisionReason: null
@@ -113,6 +114,7 @@
     gameState.running = false;
     gameState.distance = 0;
     gameState.bonus = 0;
+    gameState.totalScore = 0;
     gameState.obstacleCount = 0;
     gameState.collectibleCount = 0;
     gameState.baseSpeed = 0;
@@ -226,6 +228,7 @@
     gameState.running = running;
     gameState.distance = Math.floor(distance);
     gameState.bonus = bonusScore;
+    gameState.totalScore = gameState.distance + gameState.bonus;
     gameState.obstacleCount = obstacles.length;
     gameState.collectibleCount = collectibles.length;
     gameState.baseSpeed = Math.round(baseSpeed);
@@ -476,6 +479,10 @@
     if (bonusEl) {
       bonusEl.textContent = `${gameState.bonus} pts`;
     }
+    const totalScoreEl = el('reindeer-total-score');
+    if (totalScoreEl) {
+      totalScoreEl.textContent = `${gameState.totalScore} pts`;
+    }
     const speedEl = el('reindeer-speed');
     if (speedEl) {
       speedEl.textContent = `${gameState.baseSpeed}`;
@@ -557,8 +564,9 @@
     title.textContent = 'Game Over — Submit Score';
     panel.appendChild(title);
 
+    const totalScore = gameState.distance + gameState.bonus;
     const scoreText = document.createElement('p');
-    scoreText.textContent = `Distance: ${gameState.distance} m (+${gameState.bonus} bonus)`;
+    scoreText.textContent = `Distance: ${gameState.distance} m (+${gameState.bonus} bonus) — Total score: ${totalScore} pts`;
     panel.appendChild(scoreText);
 
     const reasonLabel = document.createElement('p');

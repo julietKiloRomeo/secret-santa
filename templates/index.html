@@ -47,49 +47,73 @@
             const result = await response.json();
 
             if (result.success) {
-                // Show success message
-                document.querySelector('[data-js="form-message"]').style.display = 'none';
-                document.querySelector('[data-js="success"]').style.display = 'block';
-                document.querySelector('[data-js="result"]').textContent = result.recipient;
-                document.querySelector('[data-js="error"]').style.display = 'none';
-                playHoHo();
-                showAdminIfAllowed(result.name);
+                persistLoginSuccess(result);
+                window.location.reload();
             } else {
-                // Show error message
                 document.querySelector('[data-js="error"]').style.display = 'block';
                 document.querySelector('[data-js="success"]').style.display = 'none';
             }
         }
 
-
         const audio = document.getElementById('hohoSound');
-   
-   function playHoHo() {
-      const startDelay = 1000; // Delay i millisekunder 1000ms = 1 second
-      setTimeout(() => {
-         audio.play().catch(error => {
-            console.error("Error playing audio:", error);
-            alert("Hoho kan ikke afspilles, øv");
-         });
-      }, startDelay);
-   }
-   
-   // Event listener for at time hoho med munden
-   audio.addEventListener('ended', () => {
-      const delayBetweenLoops = 550; // Delay er i millisekunder 1500ms = 1.5 seconds
-      setTimeout(() => {
-         audio.play();
-      }, delayBetweenLoops);
-   });
-   
-   // Show Admin link dynamically after successful login if user is admin
-   function showAdminIfAllowed(name) {
-       const admins = ['jimmy','ditte'];
-       const link = document.getElementById('admin-link');
-       if (link && admins.includes(name)) {
-           link.style.display = 'inline-block';
-       }
-   }
 
+        function playHoHo() {
+            if (!audio) {
+                return;
+            }
+            const startDelay = 1000; // Delay i millisekunder 1000ms = 1 second
+            setTimeout(() => {
+                audio.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                    alert('Hoho kan ikke afspilles, øv');
+                });
+            }, startDelay);
+        }
+
+        if (audio) {
+            audio.addEventListener('ended', () => {
+                const delayBetweenLoops = 550; // Delay er i millisekunder 550ms = 0.55 seconds
+                setTimeout(() => {
+                    audio.play();
+                }, delayBetweenLoops);
+            });
+        }
+
+        function persistLoginSuccess(payload) {
+            try {
+                sessionStorage.setItem('loginSuccess', JSON.stringify(payload));
+            } catch (error) {
+                console.error('Unable to persist login success state', error);
+            }
+        }
+
+        function consumeLoginSuccess() {
+            const stored = sessionStorage.getItem('loginSuccess');
+            if (!stored) {
+                return null;
+            }
+            sessionStorage.removeItem('loginSuccess');
+            try {
+                return JSON.parse(stored);
+            } catch (error) {
+                console.error('Corrupted login success payload', error);
+                return null;
+            }
+        }
+
+        function displaySuccess(result) {
+            document.querySelector('[data-js="form-message"]').style.display = 'none';
+            document.querySelector('[data-js="success"]').style.display = 'block';
+            document.querySelector('[data-js="result"]').textContent = result.recipient || '';
+            document.querySelector('[data-js="error"]').style.display = 'none';
+            playHoHo();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = consumeLoginSuccess();
+            if (saved && saved.success) {
+                displaySuccess(saved);
+            }
+        });
     </script>
 {% endblock %}

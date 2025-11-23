@@ -58,6 +58,8 @@ LOGIN_jonna=pbkdf2:sha256:260000$<salt>$<hash>
 
 The app loads `.env` on startup and builds logins from environment variables with the `LOGIN_` prefix. Passphrases can be any string; hyphenated multi‑word sequences are recommended for memorability. Values must be hashed (plaintext is not supported).
 
+You can use the `DATA_DIR` environment variable to point the app at a persistent directory (for example `/var/data`). When set, `.env`, `scores.sqlite3`, and `secret-santa-<year>.json` live under that directory instead of the repo root, so deployments that replace the source tree keep your passwords, scores, and match files intact.
+
 ### Set a user passphrase
 
 Generate a salted hash for a user’s passphrase and paste it into `.env`:
@@ -175,6 +177,7 @@ Render automatically detects the `Dockerfile`, so no extra build scripts are req
 4. Set environment variables under **Environment**:
    - `SECRET_KEY` (required, strong random string).
    - `ENV_FILE` if you keep credentials in a non-default path.
+   - `DATA_DIR` to point writable files (env, scores, matches) at a persistent directory like `/var/data`.
    - Any `LOGIN_*`, `DRAW_LOCKED`, `SCORES_DB`, etc., values you need.
 5. Expose port `5000` (Render auto-detects from the `EXPOSE 5000` directive). The app command is already defined in the Dockerfile: `uv run gunicorn -w 4 -b 0.0.0.0:5000 app:app`.
 6. (Optional) Add a persistent disk and mount it at `/app` if you want SQLite files (`scores.sqlite3`, `secret-santa-<year>.json`) to survive deploys. Otherwise, keep those files in git or move to a managed database.
