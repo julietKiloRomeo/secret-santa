@@ -11,7 +11,7 @@
           </div>
           <span class="text-xs uppercase tracking-widest text-white/60">Secure area</span>
         </div>
-        <form id="set-password-form" class="space-y-3" onsubmit="return setPassword(event);">
+        <form id="set-password-form" data-js="set-password-form" class="space-y-3" onsubmit="return setPassword(event);">
           <div>
             <label for="userName" class="text-xs font-semibold uppercase text-white/60">Vælg bruger</label>
             <select id="userName" required class="mt-1 block w-full rounded-xl border border-white/20 bg-slate-900/40 px-3 py-2 text-white">
@@ -26,7 +26,7 @@
             <input type="text" id="userPass" placeholder="e.g. sparkling-winter-berry" required class="mt-1 block w-full rounded-xl border border-white/20 bg-slate-900/40 px-3 py-2 text-white" />
           </div>
           <button type="submit" class="w-full rounded-2xl bg-emerald-500/90 px-4 py-2 text-white font-semibold shadow-lg hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">Gem adgangskode</button>
-          <p id="setPassMsg" class="text-sm text-white/70"></p>
+          <p id="setPassMsg" data-js="set-pass-msg" class="text-sm text-white/70"></p>
         </form>
       </section>
 
@@ -36,7 +36,7 @@
           <p class="text-sm text-white/70 mb-4">Træk matches igen når deltagerlisten er opdateret.</p>
         </div>
         <div class="flex items-center gap-3">
-          <button id="runMatchesBtn" class="flex-1 rounded-2xl bg-blue-500/90 px-4 py-2 text-white font-semibold hover:bg-blue-400 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300" {% if draw_locked %}disabled{% endif %} onclick="runMatches()">Kør matcher</button>
+          <button id="runMatchesBtn" data-js="run-matches-btn" class="flex-1 rounded-2xl bg-blue-500/90 px-4 py-2 text-white font-semibold hover:bg-blue-400 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300" {% if draw_locked %}disabled{% endif %} onclick="runMatches()">Kør matcher</button>
           {% if draw_locked %}
             <span class="text-sm text-red-300">Trækning låst</span>
           {% endif %}
@@ -53,8 +53,8 @@
         </div>
         <span class="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/70">Live status</span>
       </div>
-      <div id="gamesList" class="mt-5 grid gap-4"></div>
-      <p id="gamesMessage" class="mt-4 text-sm text-white/70">Hver handling opdaterer oversigten.</p>
+      <div id="gamesList" data-js="games-list" class="mt-5 grid gap-4"></div>
+      <p id="gamesMessage" data-js="reset-msg" class="mt-4 text-sm text-white/70">Hver handling opdaterer oversigten.</p>
     </section>
   </div>
 

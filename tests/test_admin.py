@@ -16,6 +16,10 @@ get_data_dir = storage.get_data_dir
 match_file_path = storage.match_file_path
 
 
+_ORIG_DATA_DIR = None
+_ORIG_ENV_FILE = None
+
+
 NAMES = [
     "jimmy",
     "camilla",
@@ -31,6 +35,9 @@ NAMES = [
 
 
 def setup_module(module):
+    global _ORIG_DATA_DIR, _ORIG_ENV_FILE
+    _ORIG_DATA_DIR = os.environ.get("DATA_DIR")
+    _ORIG_ENV_FILE = os.environ.get("ENV_FILE")
     # Use a temporary env file for tests
     year = datetime.datetime.now().year
     data_dir = Path(f".data.test.{year}")
@@ -54,6 +61,17 @@ def setup_module(module):
         # Create a simple rotation mapping (not enforcing constraints for the test initial state)
         mapping = {name: NAMES[(i + 1) % len(NAMES)] for i, name in enumerate(NAMES)}
         assignments_path.write_text(json.dumps(mapping))
+
+
+def teardown_module(module):
+    if _ORIG_DATA_DIR is None:
+        os.environ.pop("DATA_DIR", None)
+    else:
+        os.environ["DATA_DIR"] = _ORIG_DATA_DIR
+    if _ORIG_ENV_FILE is None:
+        os.environ.pop("ENV_FILE", None)
+    else:
+        os.environ["ENV_FILE"] = _ORIG_ENV_FILE
 
 
 def login_as(client, name, code):

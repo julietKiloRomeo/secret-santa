@@ -19,7 +19,21 @@ def ensure_data_dir() -> str:
     return ensure_dir(get_data_dir())
 
 
+def _existing_in_data_dir(filename: str) -> str | None:
+    data_dir = os.environ.get('DATA_DIR')
+    if not data_dir:
+        return None
+    ensure_dir(data_dir)
+    candidate = os.path.join(data_dir, filename)
+    if os.path.exists(candidate):
+        return candidate
+    return None
+
+
 def env_file_path() -> str:
+    data_env = _existing_in_data_dir('.env')
+    if data_env:
+        return data_env
     env_file = os.environ.get('ENV_FILE')
     if env_file:
         parent = os.path.dirname(env_file)
@@ -30,6 +44,9 @@ def env_file_path() -> str:
 
 
 def scores_db_path() -> str:
+    data_db = _existing_in_data_dir('scores.sqlite3')
+    if data_db:
+        return data_db
     path = os.environ.get('SCORES_DB')
     if path:
         parent = os.path.dirname(path)

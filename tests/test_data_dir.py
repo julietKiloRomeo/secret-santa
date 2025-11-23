@@ -7,8 +7,12 @@ from storage import env_file_path, scores_db_path
 
 def test_data_dir_paths_redirect(tmp_path, monkeypatch):
     monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    monkeypatch.delenv('SCORES_DB', raising=False)
+    (tmp_path / '.env').write_text('SECRET_KEY=test\n')
     # Env and DB paths should live underneath DATA_DIR
     assert str(tmp_path) in env_file_path()
+    db_file = tmp_path / 'scores.sqlite3'
+    db_file.write_text('')
     db_path = scores_db_path()
     assert str(tmp_path) in db_path
     # Creating the SQLite file should land inside DATA_DIR
@@ -29,3 +33,42 @@ def test_secret_santa_uses_data_dir(tmp_path):
     other = SecretSanta(year=santa.year, data_dir=str(tmp_path))
     other.load()
     assert other.config == santa.config
+
+
+def test_env_file_prefers_data_dir_file(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    data_env = tmp_path / '.env'
+    data_env.write_text('SECRET_KEY=data-dir\n')
+    custom = tmp_path / 'custom' / '.env'
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    custom.write_text('SECRET_KEY=custom\n')
+    monkeypatch.setenv('ENV_FILE', str(custom))
+    assert env_file_path() == str(data_env)
+
+
+def test_env_file_falls_back_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    custom = tmp_path / 'custom' / '.env'
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    custom.write_text('SECRET_KEY=custom\n')
+    monkeypatch.setenv('ENV_FILE', str(custom))
+    # No .env in DATA_DIR yet, so we should use ENV_FILE
+    assert env_file_path() == str(custom)
+
+
+def test_scores_db_prefers_data_dir_file(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    data_db = tmp_path / 'scores.sqlite3'
+    data_db.write_text('')
+    custom = tmp_path / 'dbs' / 'scores.sqlite3'
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('SCORES_DB', str(custom))
+    assert scores_db_path() == str(data_db)
+
+
+def test_scores_db_falls_back_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    custom = tmp_path / 'dbs' / 'scores.sqlite3'
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('SCORES_DB', str(custom))
+    assert scores_db_path() == str(custom)

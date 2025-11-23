@@ -43,3 +43,7 @@ Quick commands
 - Open Playwright in interactive mode (headed): `npx playwright test --headed --debug` or `npx playwright show-report`
 
 Always run tests after making frontend or game logic changes. The e2e tests are lightweight and capture mobile layout regressions (screenshots are in `out/`).
+
+Secret scanning
+---------------
+- Run `uvx detect-secrets scan --all-files --baseline .secrets.baseline` before committing. The baseline excludes `node_modules`, local caches, committed `.env.test.*` fixtures, and the admin helper tests so we only see genuinely new findings.

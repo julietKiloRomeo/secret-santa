@@ -20,7 +20,7 @@ from storage import (
 
 
 ENV_FILE = env_file_path()
-load_dotenv(ENV_FILE)
+load_dotenv(ENV_FILE, override=True)
 ensure_data_dir()
 SS = SecretSanta(data_dir=get_data_dir())
 try:
