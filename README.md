@@ -204,3 +204,4 @@ Trigger a deploy by pushing a new commit; Render will rebuild the container and 
 - The top navigation shows an Admin link only for admins once logged in.
 - Set user passphrase: enter a first name and a new passphrase; the app stores a salted hash in the `.env` file and reloads logins immediately.
 - Run current year’s matches: generates and saves `secret-santa-<year>.json` and hot-reloads assignments so subsequent logins see the new matches.
+- Snapshot backups: use `/api/admin/snapshots` (GET/POST) to list or capture a date-stamped copy of `.env`, `scores.sqlite3`, and every `secret-santa-<year>.json` file; restore via `/api/admin/snapshots/restore` with the snapshot name to bring the app back to that state, including reloading logins, scores, and match data, and keeping the files under `$DATA_DIR/snapshots` when `DATA_DIR` is set.
