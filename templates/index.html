@@ -47,6 +47,7 @@
             const result = await response.json();
 
             if (result.success) {
+                playHoHo();
                 persistLoginSuccess(result);
                 window.location.reload();
             } else {
@@ -81,7 +82,8 @@
 
         function persistLoginSuccess(payload) {
             try {
-                sessionStorage.setItem('loginSuccess', JSON.stringify(payload));
+                const safeCopy = { ...payload, skipHoHo: true };
+                sessionStorage.setItem('loginSuccess', JSON.stringify(safeCopy));
             } catch (error) {
                 console.error('Unable to persist login success state', error);
             }
@@ -106,7 +108,9 @@
             document.querySelector('[data-js="success"]').style.display = 'block';
             document.querySelector('[data-js="result"]').textContent = result.recipient || '';
             document.querySelector('[data-js="error"]').style.display = 'none';
-            playHoHo();
+            if (!result.skipHoHo) {
+                playHoHo();
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
