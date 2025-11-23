@@ -96,6 +96,23 @@ def match_file_path(year: int, data_dir: str | None = None) -> str:
     return os.path.join(base, f'secret-santa-{year}.json')
 
 
+def ensure_match_file(year: int, data_dir: str | None = None) -> str:
+    """Return a match file path, copying from the repo if DATA_DIR lacks it."""
+    target = match_file_path(year, data_dir=data_dir)
+    if os.path.exists(target):
+        return target
+    repo_candidate = os.path.join(os.getcwd(), f'secret-santa-{year}.json')
+    if os.path.exists(repo_candidate):
+        if os.path.abspath(repo_candidate) == os.path.abspath(target):
+            return target
+        parent = os.path.dirname(target)
+        if parent:
+            ensure_dir(parent)
+        shutil.copy2(repo_candidate, target)
+        return target
+    return target
+
+
 def snapshots_root() -> str:
     path = os.path.join(get_data_dir(), 'snapshots')
     ensure_dir(path)

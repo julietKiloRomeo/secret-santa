@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -72,6 +73,40 @@ def test_scores_db_falls_back_when_missing(tmp_path, monkeypatch):
     custom.parent.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv('SCORES_DB', str(custom))
     assert scores_db_path() == str(custom)
+
+
+def test_secret_santa_prefers_data_dir_file(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    year = 2095
+    repo_path = Path(f'secret-santa-{year}.json')
+    data_assignments = {"jimmy": "data-dir"}
+    repo_assignments = {"jimmy": "repo"}
+    data_path = tmp_path / repo_path.name
+    data_path.write_text(json.dumps(data_assignments))
+    repo_path.write_text(json.dumps(repo_assignments))
+    try:
+        santa = SecretSanta(year=year, data_dir=str(tmp_path))
+        santa.load()
+        assert santa.config == data_assignments
+    finally:
+        repo_path.unlink(missing_ok=True)
+
+
+def test_secret_santa_copies_repo_file_into_data_dir(tmp_path, monkeypatch):
+    monkeypatch.setenv('DATA_DIR', str(tmp_path))
+    year = 2096
+    repo_path = Path(f'secret-santa-{year}.json')
+    repo_assignments = {"jimmy": "repo"}
+    repo_path.write_text(json.dumps(repo_assignments))
+    try:
+        santa = SecretSanta(year=year, data_dir=str(tmp_path))
+        santa.load()
+        saved_path = tmp_path / repo_path.name
+        assert saved_path.exists()
+        assert json.loads(saved_path.read_text()) == repo_assignments
+        assert santa.config == repo_assignments
+    finally:
+        repo_path.unlink(missing_ok=True)
 
 
 def test_data_dir_fallbacks_to_env_file_dir(tmp_path, monkeypatch):

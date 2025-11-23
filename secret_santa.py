@@ -4,7 +4,7 @@ import json
 import datetime
 import yaml
 
-from storage import match_file_path
+from storage import match_file_path, ensure_match_file
 
 
 class SecretSanta:
@@ -74,5 +74,6 @@ class SecretSanta:
             json.dump(self.config, f)
             
     def load(self):
-        with open(self.file_path, "r") as f:
+        resolved = ensure_match_file(self.year, data_dir=self.data_dir)
+        with open(resolved, "r") as f:
             self.config = json.load(f)
