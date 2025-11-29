@@ -1,10 +1,12 @@
 // Christmas-themed Snake Game for Første Advent
 (function () {
   const canvas = document.getElementById('snake-canvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
   const scoreEl = document.getElementById('score');
   const statusEl = document.getElementById('status');
-  const defaultPlayerName = window.__defaultPlayerName__ || 'Guest';
+  const stageEl = document.getElementById('snake-stage');
 
   // Responsive grid: keep number of columns consistent and compute cell size
   const NUM_COLS = 20;
@@ -20,6 +22,7 @@
   };
 
   const PRESENT_EMOJI = ['🎁', '🍬', '🧦', '🍪', '🍫', '🧸'];
+  const RESTART_KEYS = new Set(['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
   let giftCycle = shuffle([...PRESENT_EMOJI]);
 
   function randInt(n) { return Math.floor(Math.random() * n); }
@@ -35,6 +38,9 @@
   let snake = [];
   let forcedNextSkin = null;
   let gift = null;
+  const swipeState = { pointerId: null, startX: 0, startY: 0 };
+
+  activateArcadeMode();
 
   // Responsive resize: set canvas pixel size and compute CELL/GRID
   function resizeCanvasAndGrid() {
@@ -51,9 +57,9 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
     CELL = Math.max(6, Math.floor(displayWidth / NUM_COLS));
-    // Use ceil for rows so the grid covers the entire canvas even when
-    // `displayWidth` isn't an exact multiple of `CELL`.
-    GRID = { cols: NUM_COLS, rows: Math.ceil(displayWidth / CELL) };
+    // Use floor so we never advertise rows that extend beyond the rendered
+    // playfield; this keeps the bottom edge aligned with the visible grid.
+    GRID = { cols: NUM_COLS, rows: Math.max(10, Math.floor(displayWidth / CELL)) };
   }
 
   function initSnakeAndGift() {
@@ -99,7 +105,9 @@
   }
 
   function setStatus(text) {
-    statusEl.textContent = text || '';
+    if (statusEl) {
+      statusEl.textContent = text || '';
+    }
   }
 
   function drawGrid() {
@@ -201,7 +209,9 @@
       // Grow: keep tail and record gift in queue preserving order
       skinQueue.push(gift.skin);
       score += 1;
-      scoreEl.textContent = `Score: ${score}`;
+      if (scoreEl) {
+        scoreEl.textContent = `Score: ${score}`;
+      }
       playEat();
       gift = placeGift();
     } else {
@@ -223,39 +233,76 @@
     timer = setInterval(tick, SPEED_MS);
   }
 
+  function resetSwipeState() {
+    swipeState.pointerId = null;
+    swipeState.startX = 0;
+    swipeState.startY = 0;
+  }
+
+  function prepareBoard(statusMessage) {
+    direction = 'right';
+    pendingDirection = direction;
+    score = 0;
+    skinQueue = [];
+    forcedNextSkin = null;
+    gift = null;
+    if (scoreEl) {
+      scoreEl.textContent = 'Score: 0';
+    }
+    if (typeof statusMessage === 'string') {
+      setStatus(statusMessage);
+    }
+    initSnakeAndGift();
+    drawGrid();
+    drawGift();
+    drawSnake();
+    resetSwipeState();
+  }
+
+  function restartGame() {
+    prepareBoard('Klar! Tap eller brug piletasterne.');
+    running = true;
+    if (timer) clearInterval(timer);
+    startTimer();
+  }
+
+  function debugStop(message = 'Pause') {
+    running = false;
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    setStatus(message);
+  }
+
   async function gameOver() {
     running = false;
     clearInterval(timer);
-    setStatus('Game Over! Try igen 🎅');
+    setStatus('Game Over! Tryk Space, pil eller tap for at prøve igen 🎅');
     playDeath();
-    // Determine if high score and prompt for name if so, then show list
-    try {
-      const data = await fetchScores();
-      const scores = data.scores || [];
-      const qualifies = scores.length < 10 || score > (scores[scores.length - 1]?.score || -1);
-      if (qualifies && score > 0) {
-        const panel = arcadePanel();
-        panel.appendChild(arcadeTitle('Ny high score. Hvilket navn skal vi skrive på julemandens liste?'));
-        const input = arcadeInput(defaultPlayerName);
-        panel.appendChild(input);
-        const save = arcadeButton('Gem');
-        save.addEventListener('click', async () => {
-          const name = (input.value || defaultPlayerName).trim();
-          await submitScore('forste-advent', name, score);
-          hideOverlay();
-          await showHighScoresOverlay();
+    if (window.arcadeOverlay) {
+      try {
+        await window.arcadeOverlay.handleHighScoreFlow({
+          gameId: 'forste-advent',
+          score,
+          allowSkip: true,
+          title: 'Ny high score!',
+          message: 'Skriv dit navn for at gemme din slangescore.',
         });
-        panel.appendChild(save);
-        showOverlay(panel);
-      } else {
-        await showHighScoresOverlay();
+      } catch (e) {
+        console.error('Arcade high score flow failed', e);
       }
-    } catch (e) {
-      console.error('High score flow failed', e);
     }
   }
 
   window.addEventListener('keydown', (e) => {
+    if (!running && RESTART_KEYS.has(e.code)) {
+      restartGame();
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'ArrowLeft') pendingDirection = 'left';
     else if (e.key === 'ArrowRight') pendingDirection = 'right';
     else if (e.key === 'ArrowUp') pendingDirection = 'up';
@@ -263,102 +310,58 @@
     playMove();
   });
 
-  // Mobile controls: touch arrows and swipe
-  function createMobileControls() {
-    const container = canvas.parentElement || document.body;
-    try { container.style.position = container.style.position || 'relative'; } catch (e) {}
-    // Avoid duplicate
-    if (document.getElementById('snake-controls')) return;
-    const controls = document.createElement('div');
-    controls.id = 'snake-controls';
-    controls.style.position = 'absolute';
-    controls.style.left = '50%';
-    // Keep controls visually near the bottom of the container but ensure
-    // they do not sit above the game canvas (they are decorative). We
-    // insert the controls before the canvas and give the canvas a
-    // higher z-index so the controls do not obscure gameplay or intercept
-    // swipe gestures.
-    controls.style.bottom = '8px';
-    controls.style.transform = 'translateX(-50%)';
-    controls.style.zIndex = '0';
-    // Cross layout: 3x3 grid with empty center
-    controls.style.display = 'grid';
-    controls.style.gridTemplateColumns = '48px 48px 48px';
-    controls.style.gridTemplateRows = '48px 48px 48px';
-    controls.style.gap = '8px';
-    controls.style.justifyItems = 'center';
-    controls.style.alignItems = 'center';
-
-    const mkCell = (content) => {
-      const cell = document.createElement('div');
-      cell.style.width = '48px';
-      cell.style.height = '48px';
-      cell.style.display = 'flex';
-      cell.style.justifyContent = 'center';
-      cell.style.alignItems = 'center';
-      if (!content) return cell;
-      const b = document.createElement('button');
-      b.textContent = content.glyph;
-      b.setAttribute('data-dir', content.dir);
-      b.style.fontSize = '20px';
-      b.style.width = '44px';
-      b.style.height = '44px';
-      b.style.borderRadius = '8px';
-      b.style.border = 'none';
-      b.style.background = 'rgba(255,255,255,0.06)';
-      b.style.color = '#fff';
-      b.addEventListener('touchstart', (ev) => { ev.preventDefault(); pendingDirection = b.getAttribute('data-dir'); playMove(); });
-      b.addEventListener('mousedown', (ev) => { ev.preventDefault(); pendingDirection = b.getAttribute('data-dir'); playMove(); });
-      cell.appendChild(b);
-      return cell;
-    };
-
-    // Row 1: placeholder, up, placeholder
-    controls.appendChild(mkCell(null));
-    controls.appendChild(mkCell({ dir: 'up', glyph: '⬆' }));
-    controls.appendChild(mkCell(null));
-    // Row 2: left, center(empty), right
-    controls.appendChild(mkCell({ dir: 'left', glyph: '⬅' }));
-    controls.appendChild(mkCell(null));
-    controls.appendChild(mkCell({ dir: 'right', glyph: '➡' }));
-    // Row 3: placeholder, down, placeholder
-    controls.appendChild(mkCell(null));
-    controls.appendChild(mkCell({ dir: 'down', glyph: '⬇' }));
-    controls.appendChild(mkCell(null));
-
-    // Insert the controls before the canvas so they are behind it. The
-    // canvas is given a higher z-index to ensure it paints above the
-    // controls and still receives touch events for swiping.
-    if (canvas && canvas.parentElement === container) {
-      // ensure canvas is in a positioned stacking context
-      try { canvas.style.position = canvas.style.position || 'relative'; } catch (e) {}
-      try { canvas.style.zIndex = '10'; } catch (e) {}
-      container.insertBefore(controls, canvas);
-    } else {
-      container.appendChild(controls);
+  // Pointer-based swipe support
+  canvas.style.touchAction = 'none';
+  function handlePointerDown(ev) {
+    if (swipeState.pointerId !== null && swipeState.pointerId !== ev.pointerId) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    if (!running) {
+      restartGame();
     }
+    swipeState.pointerId = ev.pointerId;
+    swipeState.startX = ev.clientX;
+    swipeState.startY = ev.clientY;
+    if (ev.cancelable) ev.preventDefault();
   }
 
-  // Swipe support
-  let touchStart = null;
-  canvas.addEventListener('touchstart', (ev) => {
-    if (!ev.touches || ev.touches.length !== 1) return;
-    const t = ev.touches[0];
-    touchStart = { x: t.clientX, y: t.clientY, t: Date.now() };
-  }, { passive: true });
-  canvas.addEventListener('touchend', (ev) => {
-    if (!touchStart) return;
-    const t = ev.changedTouches[0];
-    const dx = t.clientX - touchStart.x;
-    const dy = t.clientY - touchStart.y;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
-      pendingDirection = dx > 0 ? 'right' : 'left';
-    } else if (Math.abs(dy) > 20) {
-      pendingDirection = dy > 0 ? 'down' : 'up';
-    }
+  function handlePointerMove(ev) {
+    if (swipeState.pointerId !== ev.pointerId) return;
+    if (ev.cancelable) ev.preventDefault();
+  }
+
+  function handlePointerUp(ev) {
+    if (swipeState.pointerId !== ev.pointerId) return;
+    if (ev.cancelable) ev.preventDefault();
+    const dx = ev.clientX - swipeState.startX;
+    const dy = ev.clientY - swipeState.startY;
+    applySwipe(dx, dy);
+    resetSwipe();
+  }
+
+  function handlePointerCancel(ev) {
+    if (swipeState.pointerId !== ev.pointerId) return;
+    resetSwipe();
+  }
+
+  function resetSwipe() {
+    resetSwipeState();
+  }
+
+  function applySwipe(dx, dy) {
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    const threshold = 24;
+    if (absX < threshold && absY < threshold) return;
+    const next = absX > absY ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    pendingDirection = next;
     playMove();
-    touchStart = null;
-  }, { passive: true });
+  }
+
+  canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
+  canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
+  canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
+  canvas.addEventListener('pointerleave', handlePointerCancel);
+  canvas.addEventListener('pointercancel', handlePointerCancel);
 
   // Recompute sizes on resize
   window.addEventListener('resize', () => {
@@ -366,11 +369,7 @@
     running = false;
     if (timer) clearInterval(timer);
     resizeCanvasAndGrid();
-    initSnakeAndGift();
-    drawGrid();
-    drawGift();
-    drawSnake();
-    createMobileControls();
+    prepareBoard(wasRunning ? 'Klar! Tap eller brug piletasterne.' : undefined);
     if (wasRunning) {
       running = true;
       startTimer();
@@ -380,12 +379,7 @@
   // Initial draw so the page isn't blank
   // Initial setup: resize, init snake/gift, controls and start timer
   resizeCanvasAndGrid();
-  initSnakeAndGift();
-  drawGrid();
-  drawGift();
-  drawSnake();
-  createMobileControls();
-  startTimer();
+  restartGame();
 
   function applySkinsFromQueue() {
     // Clear all skins first
@@ -419,107 +413,14 @@
     tickOnce() { tick(); },
     getSkinsFiltered() { return snake.slice(1).map(s => s.skin).filter(Boolean); },
     setNextGiftSkin(skin) { forcedNextSkin = skin; },
+    getDirection() { return direction; },
+    getPendingDirection() { return pendingDirection; },
+    getGrid() { return { cols: GRID.cols, rows: GRID.rows, cell: CELL }; },
+    rerollGift() { gift = placeGift(); return gift ? { x: gift.x, y: gift.y } : null; },
+    debugStop(message) { debugStop(message); },
+    isRunning() { return running; },
+    restartGame() { restartGame(); },
   };
-  // Overlay + High score helpers
-  let overlayEl = null;
-  function ensureOverlay() {
-    if (overlayEl) return overlayEl;
-    overlayEl = document.createElement('div');
-    overlayEl.id = 'overlay';
-    overlayEl.style.position = 'fixed';
-    overlayEl.style.inset = '0';
-    overlayEl.style.background = 'rgba(0,0,0,0.9)';
-    overlayEl.style.display = 'none';
-    overlayEl.style.alignItems = 'center';
-    overlayEl.style.justifyContent = 'center';
-    overlayEl.style.zIndex = '1000';
-    document.body.appendChild(overlayEl);
-    return overlayEl;
-  }
-  function showOverlay(inner) {
-    const el = ensureOverlay();
-    el.innerHTML = '';
-    el.appendChild(inner);
-    el.style.display = 'flex';
-  }
-  function hideOverlay() {
-    if (overlayEl) overlayEl.style.display = 'none';
-  }
-  function arcadePanel() {
-    const panel = document.createElement('div');
-    panel.style.background = '#000';
-    panel.style.color = '#0f0';
-    panel.style.border = '4px solid #0f0';
-    panel.style.boxShadow = '0 0 20px #0f0';
-    panel.style.padding = '1rem 2rem';
-    panel.style.fontFamily = 'monospace';
-    panel.style.textShadow = '0 0 6px #0f0';
-    panel.style.maxWidth = '480px';
-    panel.style.width = '90%';
-    panel.style.borderRadius = '8px';
-    return panel;
-  }
-  function arcadeTitle(text) {
-    const h = document.createElement('h2');
-    h.textContent = text;
-    h.style.margin = '0 0 1rem 0';
-    h.style.textAlign = 'center';
-    return h;
-  }
-  function arcadeButton(text) {
-    const b = document.createElement('button');
-    b.textContent = text;
-    b.className = 'inline-flex justify-center rounded-md border border-transparent py-2 px-4 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500';
-    b.style.marginTop = '1rem';
-    return b;
-  }
-  function arcadeInput(value) {
-    const i = document.createElement('input');
-    i.value = value || '';
-    i.className = 'block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
-    return i;
-  }
-  function renderScoresList(scores) {
-    const ul = document.createElement('ol');
-    ul.style.listStyle = 'none';
-    ul.style.padding = '0';
-    ul.style.margin = '0';
-    scores.forEach((s, idx) => {
-      const li = document.createElement('li');
-      li.textContent = `${String(idx + 1).padStart(2, '0')} — ${s.name} — ${s.score}`;
-      li.style.padding = '0.25rem 0';
-      ul.appendChild(li);
-    });
-    return ul;
-  }
-  async function fetchScores() {
-    const resp = await fetch('/api/scores/forste-advent');
-    return resp.json();
-  }
-  async function showHighScoresOverlay() {
-    const data = await fetchScores();
-    const panel = arcadePanel();
-    panel.appendChild(arcadeTitle('Søde Børn'));
-    panel.appendChild(renderScoresList(data.scores || []));
-    const close = arcadeButton('Luk');
-    close.addEventListener('click', hideOverlay);
-    panel.appendChild(close);
-    showOverlay(panel);
-  }
-
-  async function submitScore(game, name, score) {
-    try {
-      const resp = await fetch(`/api/scores/${game}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, score })
-      });
-      return resp.ok;
-    } catch (e) {
-      console.error('Failed to submit score', e);
-      return false;
-    }
-  }
 
   // No initial high score list; shown after game over.
 
@@ -545,4 +446,23 @@
   function playMove() { beep(440, 40, 'square', 0.01); }
   function playEat() { beep(880, 120, 'sine', 0.03); setTimeout(() => beep(1320, 120, 'sine', 0.02), 120); }
   function playDeath() { beep(220, 400, 'sawtooth', 0.03); }
+
+  function activateArcadeMode() {
+    const body = document.body;
+    if (!body) return;
+    body.classList.add('arcade-fullscreen');
+    body.dataset.arcadeGame = 'forste-advent';
+    if (stageEl) {
+      stageEl.dataset.arcadeGame = 'forste-advent';
+      stageEl.style.touchAction = 'none';
+    }
+    const cleanup = () => {
+      body.classList.remove('arcade-fullscreen');
+      if (body.dataset.arcadeGame === 'forste-advent') {
+        delete body.dataset.arcadeGame;
+      }
+    };
+    window.addEventListener('pagehide', cleanup, { once: true });
+    window.addEventListener('beforeunload', cleanup);
+  }
 })();

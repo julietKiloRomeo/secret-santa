@@ -522,4 +522,5 @@ def admin_restore_snapshot():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    debug_flag = os.environ.get('FLASK_DEBUG', '1')
+    app.run(debug=debug_flag not in ('0', 'false', 'False'))

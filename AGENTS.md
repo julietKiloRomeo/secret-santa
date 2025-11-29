@@ -3,8 +3,8 @@
 We use uv to manage python environments and npm to manage javascript.
 
 We use pytest for python testing and local playwright for frontend testing.
-When adding new functionality ALWAYS start by adding tests and asking the
-user if the test is ok.
+When adding new functionality ALWAYS start by adding or updating automated
+tests before the implementation—no separate approval step is needed.
 
 We keep as much application logic as possible on the python side - use
 fastapi for that. UX takes precedence over that principle, if fast interactions

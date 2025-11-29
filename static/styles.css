@@ -26,3 +26,28 @@ input::placeholder,
 textarea::placeholder {
   color: var(--fallback-muted);
 }
+
+body.arcade-fullscreen {
+  overflow: hidden;
+  height: 100vh;
+}
+
+body.arcade-fullscreen main {
+  padding: 0;
+  padding-top: 4rem;
+}
+
+body.arcade-fullscreen main > div {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+.arcade-stage {
+  touch-action: none;
+  position: relative;
+}
+
+.arcade-stage canvas {
+  touch-action: none;
+}
