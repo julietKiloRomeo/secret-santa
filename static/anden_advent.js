@@ -51,7 +51,9 @@
   }
 
   function mkSilhouette(x, w, h, type) {
-    return { x, w, h, type };
+    const ground = HEIGHT - Math.max(28, HEIGHT * 0.18);
+    const jitter = Math.random() * Math.max(6, HEIGHT * 0.02);
+    return { x, w, h, type, base: ground + jitter };
   }
 
   function initBackground() {
@@ -157,6 +159,8 @@
     trail.length = 0;
     for (let i = 0; i < TRAIL_LENGTH; i++)
       trail.push({ x: PLAYER_X, y: bird.y });
+
+    initBackground();
   }
 
   // Audio: try to find a user-supplied audio file in /static
@@ -266,6 +270,13 @@
     statusEl.textContent = text || "";
   }
 
+  function isOverlayActive() {
+    const neon = document.getElementById("arcade-overlay");
+    if (neon && neon.classList.contains("visible")) return true;
+    const legacy = document.getElementById("overlay");
+    return legacy && legacy.style.display !== "none";
+  }
+
   function spawnChimney() {
     const topHeight = 30 + Math.random() * (HEIGHT - GAP - 60);
     chimneys.push({ x: WIDTH + 10, top: topHeight, passed: false });
@@ -291,42 +302,26 @@
     graceRemainingMs = GRACE_MS;
     lastSpawnMs = performance.now() + graceRemainingMs;
     try {
-      hideOverlay();
+      if (window.arcadeOverlay && window.arcadeOverlay.hideOverlay) {
+        window.arcadeOverlay.hideOverlay();
+      }
     } catch (e) {}
   }
 
   async function gameOver() {
     running = false;
     setStatus("Game Over! Try igen 🎅");
-    // High-score flow similar to the snake game
-    try {
-      const data = await fetchScores();
-      const scores = data.scores || [];
-      const qualifies =
-        scores.length < 10 || score > (scores[scores.length - 1]?.score || -1);
-      if (qualifies && score > 0) {
-        const panel = arcadePanel();
-        panel.appendChild(
-          arcadeTitle(
-            "Ny high score. Hvilket navn skal vi skrive på julemandens liste?",
-          ),
-        );
-        const input = arcadeInput(defaultPlayerName);
-        panel.appendChild(input);
-        const save = arcadeButton("Gem");
-        save.addEventListener("click", async () => {
-          const name = (input.value || defaultPlayerName).trim();
-          await submitScore("anden-advent", name, score);
-          hideOverlay();
-          await showHighScoresOverlay();
+    if (window.arcadeOverlay) {
+      try {
+        await window.arcadeOverlay.handleHighScoreFlow({
+          gameId: "anden-advent",
+          score,
+          allowSkip: true,
+          title: "Ny high score!",
         });
-        panel.appendChild(save);
-        showOverlay(panel);
-      } else {
-        await showHighScoresOverlay();
+      } catch (e) {
+        console.error("Arcade high score flow failed", e);
       }
-    } catch (e) {
-      console.error("High score flow failed", e);
     }
   }
 
@@ -378,7 +373,10 @@
     }
     for (const s of silhouettes) {
       s.x -= silSpeed * (dt * 60);
-      if (s.x + s.w < -100) s.x = WIDTH + Math.random() * 200;
+      if (s.x + s.w < -100) {
+        s.x = WIDTH + Math.random() * 200;
+        s.base = HEIGHT - Math.max(28, HEIGHT * 0.18) + Math.random() * Math.max(6, HEIGHT * 0.02);
+      }
     }
   }
 
@@ -528,6 +526,8 @@
     }
     // draw the reindeers based on the trail (draw after Santa so they appear on top)
     drawReindeersFromTrail();
+
+    drawScoreBadge();
   }
 
   function drawSleighAndReindeer(sx, sy) {
@@ -616,10 +616,40 @@
       drawReindeerAt(r3x, thirdY, 1);
   }
 
+  function drawScoreBadge() {
+    ctx.save();
+    const padding = Math.round(WIDTH * 0.04);
+    const boxWidth = Math.round(WIDTH * 0.36);
+    const boxHeight = Math.round(WIDTH * 0.12);
+    const x = WIDTH - boxWidth - padding;
+    const y = padding;
+    const gradient = ctx.createLinearGradient(x, y, x + boxWidth, y + boxHeight);
+    gradient.addColorStop(0, "rgba(10, 34, 64, 0.8)");
+    gradient.addColorStop(1, "rgba(12, 64, 92, 0.9)");
+    ctx.fillStyle = gradient;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.lineWidth = 2;
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(x, y, boxWidth, boxHeight, 10);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(x, y, boxWidth, boxHeight);
+      ctx.strokeRect(x, y, boxWidth, boxHeight);
+    }
+    ctx.font = `${Math.max(16, Math.round(WIDTH * 0.05))}px 'Press Start 2P', 'Space Mono', monospace`;
+    ctx.fillStyle = "#f0f8ff";
+    ctx.textAlign = "right";
+    ctx.fillText(`Score ${score}`, x + boxWidth - 12, y + boxHeight - 12);
+    ctx.restore();
+  }
+
   function drawCloud(cloud, layer) {
     ctx.save();
-    ctx.globalAlpha = cloud.opacity || 0.6;
-    ctx.fillStyle = "#fff";
+    const opacity = cloud.opacity || 0.6;
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = layer === "far" ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.9)";
     const cx = cloud.x;
     const cy = cloud.y;
     const w = cloud.w;
@@ -658,30 +688,53 @@
   }
 
   function drawSilhouettes() {
-    const base = HEIGHT - 20;
+    const horizon = HEIGHT - Math.max(48, HEIGHT * 0.28);
+    const ground = HEIGHT - Math.max(18, HEIGHT * 0.08);
     ctx.save();
+    const groundGradient = ctx.createLinearGradient(0, horizon, 0, HEIGHT);
+    groundGradient.addColorStop(0, "#042816");
+    groundGradient.addColorStop(1, "#010904");
+    ctx.fillStyle = groundGradient;
+    ctx.fillRect(0, horizon, WIDTH, HEIGHT - horizon);
+
     ctx.fillStyle = "#0b2b12";
+    ctx.strokeStyle = "rgba(5, 20, 12, 0.6)";
+    ctx.lineWidth = 2;
     for (const s of silhouettes) {
+      const baseY = Math.min(ground, s.base || ground);
       const x = s.x;
       const w = s.w;
       const h = s.h;
       if (s.type === "house") {
-        // box + roof
-        ctx.fillRect(x, base - h, w, h);
+        ctx.fillRect(x, baseY - h, w, h);
         ctx.beginPath();
-        ctx.moveTo(x - 2, base - h);
-        ctx.lineTo(x + w / 2, base - h - 10);
-        ctx.lineTo(x + w + 2, base - h);
+        ctx.moveTo(x - 4, baseY - h);
+        ctx.lineTo(x + w / 2, baseY - h - Math.max(12, h * 0.3));
+        ctx.lineTo(x + w + 4, baseY - h);
         ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = "rgba(18, 52, 28, 0.45)";
+        ctx.stroke();
+        // windows glow
+        const windowCount = Math.max(1, Math.floor(w / 28));
+        for (let i = 0; i < windowCount; i++) {
+          const wx = x + 6 + i * (w / windowCount);
+          const wy = baseY - h + 8;
+          ctx.fillStyle = "rgba(255, 236, 150, 0.4)";
+          ctx.fillRect(wx, wy, 8, 12);
+        }
+        ctx.fillStyle = "#0b2b12";
       } else {
-        // tree: triangle
         ctx.beginPath();
-        ctx.moveTo(x + w / 2, base - h - 6);
-        ctx.lineTo(x, base - 6);
-        ctx.lineTo(x + w, base - 6);
+        ctx.moveTo(x + w / 2, baseY - h - 6);
+        ctx.lineTo(x - 6, baseY - 6);
+        ctx.lineTo(x + w + 6, baseY - 6);
         ctx.closePath();
         ctx.fill();
+        ctx.fillRect(x + w / 2 - 2, baseY - 6, 4, ground + 6 - (baseY - 6));
+      }
+      if (s.type === "house") {
+        ctx.fillRect(x - 6, baseY - 4, w + 12, 6);
       }
     }
     ctx.restore();
@@ -705,114 +758,13 @@
     }
   }
 
-  // High score / overlay UI (mirrors forste_advent behavior)
-  const defaultPlayerName = window.__defaultPlayerName__ || "Guest";
-
-  let overlayEl = null;
-  function ensureOverlay() {
-    if (overlayEl) return overlayEl;
-    overlayEl = document.createElement("div");
-    overlayEl.id = "overlay";
-    overlayEl.style.position = "fixed";
-    overlayEl.style.inset = "0";
-    overlayEl.style.background = "rgba(0,0,0,0.9)";
-    overlayEl.style.display = "none";
-    overlayEl.style.alignItems = "center";
-    overlayEl.style.justifyContent = "center";
-    overlayEl.style.zIndex = "1000";
-    document.body.appendChild(overlayEl);
-    return overlayEl;
-  }
-  function showOverlay(inner) {
-    const el = ensureOverlay();
-    el.innerHTML = "";
-    el.appendChild(inner);
-    el.style.display = "flex";
-  }
-  function hideOverlay() {
-    if (overlayEl) overlayEl.style.display = "none";
-  }
-  function arcadePanel() {
-    const panel = document.createElement("div");
-    panel.className = 'p-4 rounded-md shadow-lg bg-black/80 text-white';
-    panel.style.maxWidth = "480px";
-    panel.style.width = "90%";
-    return panel;
-  }
-  function arcadeTitle(text) {
-    const h = document.createElement("h2");
-    h.textContent = text;
-    h.style.margin = "0 0 1rem 0";
-    h.style.textAlign = "center";
-    return h;
-  }
-  function arcadeButton(text) {
-    const b = document.createElement("button");
-    b.textContent = text;
-    b.className = 'inline-flex justify-center rounded-md border border-transparent py-2 px-4 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500';
-    b.style.marginTop = '1rem';
-    return b;
-  }
-  function arcadeInput(value) {
-    const i = document.createElement("input");
-    i.value = value || "";
-    i.className = 'block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
-    return i;
-  }
-  function renderScoresList(scores) {
-    const ul = document.createElement("ol");
-    ul.style.listStyle = "none";
-    ul.style.padding = "0";
-    ul.style.margin = "0";
-    scores.forEach((s, idx) => {
-      const li = document.createElement("li");
-      li.textContent = `${String(idx + 1).padStart(2, "0")} — ${s.name} — ${s.score}`;
-      li.style.padding = "0.25rem 0";
-      ul.appendChild(li);
-    });
-    return ul;
-  }
-  async function fetchScores() {
-    const resp = await fetch("/api/scores/anden-advent");
-    return resp.json();
-  }
-  async function showHighScoresOverlay() {
-    const data = await fetchScores();
-    const panel = arcadePanel();
-    panel.appendChild(arcadeTitle("Søde Børn"));
-    panel.appendChild(renderScoresList(data.scores || []));
-    const close = arcadeButton("Luk");
-    close.addEventListener("click", hideOverlay);
-    panel.appendChild(close);
-    showOverlay(panel);
-  }
-  async function submitScore(game, name, score) {
-    try {
-      const resp = await fetch(`/api/scores/${game}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, score }),
-      });
-      return resp.ok;
-    } catch (e) {
-      console.error("Failed to submit score", e);
-      return false;
-    }
-  }
 
   document.addEventListener("keydown", (e) => {
-    // Support Space key for flap, but avoid triggering actions when the
-    // high-score overlay is visible (prevent accidental submit/reset).
     if (e.code === "Space" || e.key === " ") {
-      const overlay = document.getElementById("overlay");
-      const overlayVisible = overlay && overlay.style.display !== "none";
       const active = document.activeElement;
-      const activeTag =
-        active && active.tagName && active.tagName.toLowerCase();
-      if (overlayVisible) {
-        // If the user is typing in an input/textarea, allow spaces to be entered.
+      const activeTag = active?.tagName?.toLowerCase();
+      if (isOverlayActive()) {
         if (activeTag === "input" || activeTag === "textarea") return;
-        // Otherwise prevent default to avoid activating focused buttons.
         e.preventDefault();
         return;
       }
@@ -824,25 +776,21 @@
     }
   });
 
-  // Canvas interactions: handle mouse and touch. Ignore taps when overlay is visible.
-  canvas.addEventListener("mousedown", (e) => {
-    const overlay = document.getElementById("overlay");
-    if (overlay && overlay.style.display !== "none") return;
+  function handleCanvasTap(e) {
+    if (isOverlayActive()) return;
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
     if (!running) reset();
     flap();
-  });
-  // Touch support for phones
-  canvas.addEventListener(
-    "touchstart",
-    (e) => {
-      const overlay = document.getElementById("overlay");
-      if (overlay && overlay.style.display !== "none") return;
-      e.preventDefault();
-      if (!running) reset();
-      flap();
-    },
-    { passive: false },
-  );
+  }
+
+  if (window.PointerEvent) {
+    canvas.addEventListener("pointerdown", handleCanvasTap, { passive: false });
+  } else {
+    canvas.addEventListener("mousedown", handleCanvasTap);
+    canvas.addEventListener("touchstart", handleCanvasTap, {
+      passive: false,
+    });
+  }
 
   // Responsive handling and start loop
   window.addEventListener("resize", () => {

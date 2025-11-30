@@ -287,7 +287,6 @@
           score,
           allowSkip: true,
           title: 'Ny high score!',
-          message: 'Skriv dit navn for at gemme din slangescore.',
         });
       } catch (e) {
         console.error('Arcade high score flow failed', e);
