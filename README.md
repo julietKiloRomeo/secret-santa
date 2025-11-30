@@ -11,6 +11,15 @@ A lightweight Secret Santa web app that lets participants securely log in with t
 See `SPECS.md` for a full, test-driven specification of the app surface (APIs, pages, mini-games, and admin behavior).
 - Data: Current year’s assignments in `secret-santa-2024.json`. Couples and previous pairings are YAML files.
 
+### Arcade overlay & high scores
+
+Mini-games share a neon arcade overlay for high scores. When a run ends:
+
+- The overlay fetches the latest top 10 via `/api/scores/<game>`.
+- If the player qualifies, their earned rank appears inline in the leaderboard with a blinking cursor so they can type their name directly where it will land. Lower ranks shift down while the new slot is empty.
+- After saving, the overlay stays open and refreshes so the player immediately sees the updated list with their score in place.
+- If the score is below the cutoff, the overlay simply shows the existing top 10 without prompting for input.
+
 ## How It Works
 
 1. `secret_santa.py` builds assignments ensuring:

@@ -18,16 +18,25 @@ test.describe('Arcade overlay high score flow', () => {
     await login(page);
   });
 
-  test('qualifying score shows leaderboard and entry on the same panel', async ({ page }) => {
+  test('qualifying score inserts inline entry at the earned rank and stays visible after saving', async ({ page }) => {
     const firstScores = {
       scores: [
-        { name: 'AAA', score: 120 },
-        { name: 'BBB', score: 110 },
-        { name: 'CCC', score: 90 },
+        { name: 'AAA', score: 400 },
+        { name: 'BBB', score: 300 },
+        { name: 'CCC', score: 150 },
+        { name: 'DDD', score: 120 },
+        { name: 'EEE', score: 80 },
       ],
     };
     const savedScores = {
-      scores: [...firstScores.scores, { name: 'Neo', score: 888 }],
+      scores: [
+        { name: 'AAA', score: 400 },
+        { name: 'BBB', score: 300 },
+        { name: 'Neo', score: 180 },
+        { name: 'CCC', score: 150 },
+        { name: 'DDD', score: 120 },
+        { name: 'EEE', score: 80 },
+      ],
     };
     let getCount = 0;
 
@@ -40,7 +49,7 @@ test.describe('Arcade overlay high score flow', () => {
       }
       if (route.request().method() === 'POST') {
         const body = JSON.parse(route.request().postData() || '{}');
-        expect(body).toEqual({ name: 'Neo', score: 888 });
+        expect(body).toEqual({ name: 'Neo', score: 180 });
         await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         return;
       }
@@ -52,7 +61,7 @@ test.describe('Arcade overlay high score flow', () => {
       // @ts-ignore test harness
       window.arcadeOverlay.handleHighScoreFlow({
         gameId: 'forste-advent',
-        score: 888,
+        score: 180,
         allowSkip: true,
         title: 'Hall of Fame',
         message: 'Test run',
@@ -62,7 +71,12 @@ test.describe('Arcade overlay high score flow', () => {
     const overlay = page.locator('#arcade-overlay.visible');
     await overlay.waitFor();
     await expect(overlay.locator('.arcade-scores')).toBeVisible();
-    const input = overlay.locator('input.arcade-input');
+    await expect(overlay.locator('.arcade-scores li')).toHaveCount(6);
+    const pendingRow = overlay.locator('.arcade-pending-entry');
+    await expect(pendingRow).toBeVisible();
+    await expect(pendingRow).toContainText('03');
+    await expect(pendingRow.locator('.arcade-score-points')).toHaveText('180');
+    const input = pendingRow.locator('input.arcade-input');
     await expect(input).toBeVisible();
     await expect(overlay.locator('.arcade-caret')).toBeVisible();
 
@@ -72,9 +86,17 @@ test.describe('Arcade overlay high score flow', () => {
     });
     expect(activeIsInput).toBeTruthy();
 
-    await expect(overlay.locator('.arcade-scores')).toContainText('AAA');
+    await expect(overlay.locator('.arcade-scores li').nth(3)).toContainText('CCC');
+    await expect(overlay.locator('.arcade-scores li').nth(4)).toContainText('DDD');
+
     await input.fill('Neo');
     await input.press('Enter');
+    await expect(overlay).toBeVisible();
+    await expect(overlay.locator('.arcade-pending-entry')).toHaveCount(0);
+    await expect(overlay.locator('input.arcade-input')).toHaveCount(0);
+    await expect(overlay.locator('.arcade-scores li').nth(2)).toContainText('Neo');
+    await expect(overlay.locator('.arcade-scores li').nth(2)).toContainText('180');
+    await overlay.getByRole('button', { name: /Luk/i }).click();
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
   });
 

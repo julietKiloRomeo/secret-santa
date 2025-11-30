@@ -4,6 +4,7 @@
 
   const STYLE_ID = 'arcade-overlay-styles';
   const OVERLAY_ID = 'arcade-overlay';
+  const LEADERBOARD_LIMIT = 10;
   let overlayEl = null;
   let escHandler = null;
   let activeResolver = null;
@@ -70,6 +71,11 @@
         position: relative;
         margin-top: 0.75rem;
       }
+      .arcade-inline-input-wrapper {
+        position: relative;
+        flex: 1;
+        margin-top: 0;
+      }
       .arcade-input {
         width: 100%;
         padding: 0.75rem 1rem;
@@ -99,6 +105,10 @@
         animation: arcadeCaretBlink 1s step-start infinite;
         pointer-events: none;
       }
+      .arcade-inline-input-wrapper .arcade-caret {
+        right: 0.65rem;
+        height: 1rem;
+      }
       @keyframes arcadeCaretBlink {
         0%, 50% { opacity: 1; }
         50.1%, 100% { opacity: 0; }
@@ -119,12 +129,39 @@
       .arcade-scores li {
         display: flex;
         justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
         padding: 0.35rem 0;
         border-bottom: 1px solid rgba(37, 255, 224, 0.15);
         font-size: 0.85rem;
       }
-      .arcade-scores li span:last-child {
+      .arcade-score-left {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex: 1;
+        min-width: 0;
+      }
+      .arcade-score-rank {
         font-weight: 700;
+        white-space: nowrap;
+      }
+      .arcade-score-name {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .arcade-score-points {
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .arcade-pending-entry {
+        background: rgba(37, 255, 224, 0.08);
       }
     `;
     document.head.appendChild(style);
@@ -192,18 +229,59 @@
     return resp.ok;
   }
 
-  function renderScoresList(scores) {
+  function renderScoresList(scores, options = {}) {
+    const limit =
+      typeof options.limit === 'number' && options.limit > 0 ? options.limit : LEADERBOARD_LIMIT;
+    const pendingIndex =
+      typeof options.pendingIndex === 'number' && options.pendingIndex >= 0
+        ? options.pendingIndex
+        : null;
+    const pendingScore =
+      typeof options.pendingScore === 'number' ? options.pendingScore : null;
+    const rows = Array.isArray(scores) ? scores.slice() : [];
+    if (pendingIndex !== null) {
+      const pendingEntry = {
+        name: '',
+        score: pendingScore,
+        pending: true,
+      };
+      if (pendingIndex >= rows.length) {
+        rows.push(pendingEntry);
+      } else {
+        rows.splice(pendingIndex, 0, pendingEntry);
+      }
+    }
     const ol = document.createElement('ol');
     ol.className = 'arcade-scores';
-    (scores || []).forEach((entry, idx) => {
+    rows.slice(0, limit).forEach((entry, idx) => {
       const li = document.createElement('li');
-      const rank = String(idx + 1).padStart(2, '0');
-      const name = entry && entry.name ? entry.name : '???';
-      const points = entry && typeof entry.score === 'number' ? entry.score : '-';
-      const left = document.createElement('span');
-      left.textContent = `${rank} — ${name}`;
+      li.className = 'arcade-score-row';
+      const rankLabel = String(idx + 1).padStart(2, '0');
+      const left = document.createElement('div');
+      left.className = 'arcade-score-left';
+      const rank = document.createElement('span');
+      rank.className = 'arcade-score-rank';
+      rank.textContent = `${rankLabel} — `;
+      left.appendChild(rank);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'arcade-score-name';
+      if (entry && entry.pending) {
+        li.classList.add('arcade-pending-entry');
+        if (options.pendingWrapper) {
+          nameSpan.appendChild(options.pendingWrapper);
+        } else {
+          nameSpan.textContent = '';
+        }
+      } else {
+        nameSpan.textContent = entry && entry.name ? entry.name : '???';
+      }
+      left.appendChild(nameSpan);
       const right = document.createElement('span');
-      right.textContent = points;
+      right.className = 'arcade-score-points';
+      right.textContent =
+        entry && typeof entry.score === 'number' && Number.isFinite(entry.score)
+          ? entry.score
+          : '-';
       li.appendChild(left);
       li.appendChild(right);
       ol.appendChild(li);
@@ -211,11 +289,28 @@
     return ol;
   }
 
-  function qualifiesWithinScores(scores, score, limit = 10) {
+  function scoreInsertIndex(scores, score, limit = LEADERBOARD_LIMIT) {
+    const list = Array.isArray(scores) ? scores : [];
+    const cappedLimit = typeof limit === 'number' && limit > 0 ? limit : LEADERBOARD_LIMIT;
+    if (!list.length) return 0;
+    const value = typeof score === 'number' && Number.isFinite(score) ? score : 0;
+    const upperBound = Math.min(list.length, cappedLimit);
+    for (let i = 0; i < upperBound; i += 1) {
+      const entryScore =
+        list[i] && typeof list[i].score === 'number' ? list[i].score : -Infinity;
+      if (value > entryScore) {
+        return i;
+      }
+    }
+    return Math.min(list.length, Math.max(cappedLimit - 1, 0));
+  }
+
+  function qualifiesWithinScores(scores, score, limit = LEADERBOARD_LIMIT) {
     if (!score || score <= 0) return false;
     const list = Array.isArray(scores) ? scores : [];
-    if (list.length < limit) return true;
-    const lowest = list[Math.min(list.length, limit) - 1];
+    const limitValue = typeof limit === 'number' && limit > 0 ? limit : LEADERBOARD_LIMIT;
+    if (list.length < limitValue) return true;
+    const lowest = list[Math.min(list.length, limitValue) - 1];
     const lowestScore = lowest && typeof lowest.score === 'number' ? lowest.score : -Infinity;
     return score > lowestScore;
   }
@@ -233,7 +328,7 @@
     }
   }
 
-  async function playerQualifies(gameId, score, limit = 10) {
+  async function playerQualifies(gameId, score, limit = LEADERBOARD_LIMIT) {
     if (!score || score <= 0) return false;
     const scores = await loadScores(gameId);
     return qualifiesWithinScores(scores, score, limit);
@@ -273,55 +368,85 @@
     const listHost = document.createElement('div');
     panel.appendChild(listHost);
 
-    function setScores(scores) {
-      listHost.innerHTML = '';
-      listHost.appendChild(renderScoresList(scores || []));
-    }
-
-    async function refreshScores() {
-      try {
-        const data = await fetchScores(gameId);
-        setScores(data.scores || []);
-      } catch (err) {
-        console.error('Failed to refresh leaderboard', err);
-      }
-    }
-
-    if (initialScores) {
-      setScores(initialScores);
-    } else {
-      refreshScores();
-    }
-
     let input = null;
+    let inputWrapper = null;
     let saveBtn = null;
     let helperLine = null;
     let statusLine = null;
     let saving = false;
+    let entryActive = allowEntry && typeof score === 'number' && score > 0;
+    let latestScores = Array.isArray(initialScores)
+      ? initialScores.slice(0, LEADERBOARD_LIMIT)
+      : [];
 
-    if (allowEntry) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'arcade-input-wrapper';
+    if (entryActive) {
+      inputWrapper = document.createElement('div');
+      inputWrapper.className = 'arcade-inline-input-wrapper';
       input = document.createElement('input');
       input.className = 'arcade-input';
       input.placeholder = 'DIT NAVN';
       input.maxLength = 18;
       input.autocomplete = 'off';
       input.spellcheck = false;
-      wrapper.appendChild(input);
+      input.setAttribute('aria-label', 'Navn til high score');
+      inputWrapper.appendChild(input);
       const caret = document.createElement('span');
       caret.className = 'arcade-caret';
-      wrapper.appendChild(caret);
-      panel.appendChild(wrapper);
+      inputWrapper.appendChild(caret);
+    } else {
+      entryActive = false;
+    }
 
+    function buildRenderOptions(list) {
+      if (entryActive && inputWrapper && typeof score === 'number' && score > 0) {
+        return {
+          pendingIndex: scoreInsertIndex(list, score),
+          pendingScore: score,
+          pendingWrapper: inputWrapper,
+          limit: LEADERBOARD_LIMIT,
+        };
+      }
+      return { limit: LEADERBOARD_LIMIT };
+    }
+
+    function setScores(scores) {
+      const normalized = Array.isArray(scores)
+        ? scores.slice(0, LEADERBOARD_LIMIT)
+        : [];
+      latestScores = normalized.slice();
+      listHost.innerHTML = '';
+      listHost.appendChild(renderScoresList(normalized, buildRenderOptions(normalized)));
+    }
+
+    async function refreshScores(options = {}) {
+      const finalizeEntry = Boolean(options.finalizeEntry);
+      try {
+        const data = await fetchScores(gameId);
+        if (finalizeEntry) {
+          entryActive = false;
+        }
+        setScores(data.scores || []);
+        return true;
+      } catch (err) {
+        console.error('Failed to refresh leaderboard', err);
+        return false;
+      }
+    }
+
+    setScores(initialScores || []);
+    if (!initialScores) {
+      refreshScores();
+    }
+
+    if (entryActive) {
       helperLine = document.createElement('p');
       helperLine.textContent = allowSkip
-        ? 'Tryk Enter for at gemme • ESC for at springe over'
-        : 'Tryk Enter for at gemme';
+        ? 'Skriv dit navn på listen og tryk Enter • ESC for at springe over'
+        : 'Skriv dit navn på listen og tryk Enter';
       helperLine.style.textAlign = 'center';
       helperLine.style.fontSize = '0.75rem';
       helperLine.style.opacity = '0.75';
-      helperLine.style.marginTop = '0.5rem';
+      helperLine.style.marginTop = '0.75rem';
       panel.appendChild(helperLine);
 
       statusLine = document.createElement('p');
@@ -339,7 +464,7 @@
     }
 
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = allowEntry ? 'Spring over' : 'Luk';
+    closeBtn.textContent = entryActive ? 'Spring over' : 'Luk';
     panel.appendChild(closeBtn);
 
     function closeOverlay() {
@@ -364,7 +489,7 @@
     }
 
     async function submitEntry() {
-      if (!input || !saveBtn || saving) return;
+      if (!input || !saveBtn || saving || !entryActive) return;
       const name = (input.value || '').trim();
       if (!name) {
         input.focus();
@@ -376,14 +501,23 @@
       saveBtn.textContent = 'Gemmer...';
       try {
         await submitScore(gameId, name, score);
-        await refreshScores();
+        const refreshed = await refreshScores({ finalizeEntry: true });
+        if (!refreshed) {
+          entryActive = false;
+          const merged = latestScores.slice();
+          const insertAt = scoreInsertIndex(merged, score);
+          merged.splice(insertAt, 0, { name, score });
+          setScores(merged.slice(0, LEADERBOARD_LIMIT));
+        }
         if (statusLine) statusLine.textContent = 'Score gemt!';
         if (helperLine) helperLine.textContent = 'Tak! Score gemt.';
         input.disabled = true;
+        input.value = name;
+        input.removeEventListener('keydown', onInputKey);
         input.blur();
-        saveBtn.textContent = previousLabel;
+        saveBtn.textContent = 'Score gemt';
+        saveBtn.disabled = true;
         closeBtn.textContent = 'Luk';
-        closeOverlay();
       } catch (err) {
         console.error('Failed to submit score', err);
         if (statusLine) statusLine.textContent = 'Kunne ikke gemme score. Prøv igen.';
@@ -394,7 +528,7 @@
       }
     }
 
-    if (allowEntry && input && saveBtn) {
+    if (entryActive && input && saveBtn) {
       input.addEventListener('keydown', onInputKey);
       saveBtn.addEventListener('click', submitEntry);
       setTimeout(() => input && input.focus(), 30);
