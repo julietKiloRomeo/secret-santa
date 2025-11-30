@@ -6,8 +6,11 @@
   const OVERLAY_ID = 'arcade-overlay';
   const LEADERBOARD_LIMIT = 10;
   let overlayEl = null;
-  let escHandler = null;
+  let keyHandler = null;
   let activeResolver = null;
+  let overlayLocked = false;
+  let overlayPointerHandler = null;
+  let overlayPointerHost = null;
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -178,20 +181,30 @@
     }
   }
 
-  function hideOverlay() {
+  function hideOverlay(force = false) {
+    if (overlayLocked && !force) {
+      return false;
+    }
     if (overlayEl) overlayEl.classList.remove('visible');
     if (overlayEl) overlayEl.innerHTML = '';
     if (document.body) {
       document.body.classList.remove('arcade-overlay-open');
     }
-    if (escHandler) {
-      window.removeEventListener('keydown', escHandler, true);
-      escHandler = null;
+    if (overlayPointerHandler && overlayPointerHost) {
+      overlayPointerHost.removeEventListener('pointerdown', overlayPointerHandler);
+      overlayPointerHandler = null;
+      overlayPointerHost = null;
+    }
+    if (keyHandler) {
+      window.removeEventListener('keydown', keyHandler, true);
+      keyHandler = null;
     }
     if (activeResolver) {
       activeResolver(null);
       activeResolver = null;
     }
+    overlayLocked = false;
+    return true;
   }
 
   function arcadePanel() {
@@ -360,6 +373,8 @@
     const listHost = document.createElement('div');
     panel.appendChild(listHost);
 
+    const overlayHost = ensureOverlay();
+
     let input = null;
     let inputWrapper = null;
     let saveBtn = null;
@@ -367,9 +382,11 @@
     let statusLine = null;
     let saving = false;
     let entryActive = allowEntry && typeof score === 'number' && score > 0;
+    overlayLocked = entryActive;
     let latestScores = Array.isArray(initialScores)
       ? initialScores.slice(0, LEADERBOARD_LIMIT)
       : [];
+    let pointerHandler = null;
 
     if (entryActive) {
       inputWrapper = document.createElement('div');
@@ -387,6 +404,7 @@
       inputWrapper.appendChild(caret);
     } else {
       entryActive = false;
+      overlayLocked = false;
     }
 
     function buildRenderOptions(list) {
@@ -416,6 +434,7 @@
         const data = await fetchScores(gameId);
         if (finalizeEntry) {
           entryActive = false;
+          overlayLocked = false;
         }
         setScores(data.scores || []);
         return true;
@@ -433,7 +452,7 @@
     if (entryActive) {
       helperLine = document.createElement('p');
       helperLine.textContent = allowSkip
-        ? 'Skriv dit navn på listen og tryk Enter • ESC for at springe over'
+        ? 'Skriv dit navn på listen og tryk Enter'
         : 'Skriv dit navn på listen og tryk Enter';
       helperLine.style.textAlign = 'center';
       helperLine.style.fontSize = '0.75rem';
@@ -459,24 +478,51 @@
     closeBtn.textContent = entryActive ? 'Spring over' : 'Luk';
     panel.appendChild(closeBtn);
 
-    function closeOverlay() {
+    function detachListeners() {
       if (input) {
         input.removeEventListener('keydown', onInputKey);
       }
       if (saveBtn) {
         saveBtn.removeEventListener('click', submitEntry);
       }
-      closeBtn.removeEventListener('click', closeOverlay);
-      hideOverlay();
+      closeBtn.removeEventListener('click', onCloseBtn);
+      const handlerRef = pointerHandler;
+      if (handlerRef && overlayHost) {
+        overlayHost.removeEventListener('pointerdown', handlerRef);
+      }
+      if (overlayPointerHandler === handlerRef) {
+        overlayPointerHandler = null;
+        overlayPointerHost = null;
+      }
+      pointerHandler = null;
+    }
+
+    function requestClose(force = false) {
+      if (entryActive && input && !input.disabled && !force) {
+        if (statusLine) {
+          statusLine.textContent = 'Gem din score først – tryk Enter for at gemme.';
+        }
+        if (input) input.focus();
+        return;
+      }
+      entryActive = false;
+      overlayLocked = false;
+      detachListeners();
+      hideOverlay(true);
+    }
+
+    function onCloseBtn() {
+      if (entryActive && allowSkip) {
+        requestClose(true);
+      } else {
+        requestClose(false);
+      }
     }
 
     function onInputKey(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         submitEntry();
-      } else if (allowSkip && e.key === 'Escape') {
-        e.preventDefault();
-        closeOverlay();
       }
     }
 
@@ -496,6 +542,7 @@
         const refreshed = await refreshScores({ finalizeEntry: true });
         if (!refreshed) {
           entryActive = false;
+          overlayLocked = false;
           const merged = latestScores.slice();
           const insertAt = scoreInsertIndex(merged, score);
           merged.splice(insertAt, 0, { name, score });
@@ -507,6 +554,8 @@
         input.value = name;
         input.removeEventListener('keydown', onInputKey);
         input.blur();
+        entryActive = false;
+        overlayLocked = false;
         saveBtn.textContent = 'Score gemt';
         saveBtn.disabled = true;
         closeBtn.textContent = 'Luk';
@@ -517,6 +566,9 @@
         saveBtn.textContent = previousLabel;
       } finally {
         saving = false;
+        if (!entryActive) {
+          overlayLocked = false;
+        }
       }
     }
 
@@ -526,18 +578,41 @@
       setTimeout(() => input && input.focus(), 30);
     }
 
-    closeBtn.addEventListener('click', closeOverlay);
+    closeBtn.addEventListener('click', onCloseBtn);
 
-    escHandler = function (e) {
-      if (!allowSkip) return;
-      if (e.key === 'Escape') {
+    keyHandler = function (e) {
+      const key = e.key;
+      if (entryActive && input && !input.disabled) {
+        if (key === 'Escape' || key === ' ' || key === 'Spacebar' || key === 'Space') {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }
+        return;
+      }
+      if (key === 'Escape' || key === ' ' || key === 'Spacebar' || key === 'Space' || key === 'Enter') {
         e.preventDefault();
-        closeOverlay();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        requestClose(false);
       }
     };
-    window.addEventListener('keydown', escHandler, true);
+    window.addEventListener('keydown', keyHandler, true);
+
+    pointerHandler = function (evt) {
+      if (!panel.contains(evt.target)) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        requestClose(false);
+      }
+    };
 
     showOverlay(panel);
+    if (overlayHost && pointerHandler) {
+      overlayHost.addEventListener('pointerdown', pointerHandler);
+      overlayPointerHandler = pointerHandler;
+      overlayPointerHost = overlayHost;
+    }
   }
 
   async function showHighScores(gameId, options = {}) {
@@ -617,14 +692,14 @@
       }
 
       function cleanup() {
-        if (escHandler) {
-          window.removeEventListener('keydown', escHandler, true);
-          escHandler = null;
+        if (keyHandler) {
+          window.removeEventListener('keydown', keyHandler, true);
+          keyHandler = null;
         }
         save.removeEventListener('click', submit);
         input.removeEventListener('keydown', onKey);
         activeResolver = null;
-        hideOverlay();
+        hideOverlay(true);
       }
 
       function onKey(e) {
@@ -637,7 +712,7 @@
         }
       }
 
-      escHandler = function (e) {
+      keyHandler = function (e) {
         if (!allowSkip) return;
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -648,7 +723,7 @@
       activeResolver = resolve;
       input.addEventListener('keydown', onKey);
       save.addEventListener('click', submit);
-      window.addEventListener('keydown', escHandler, true);
+      window.addEventListener('keydown', keyHandler, true);
 
       showOverlay(panel);
       setTimeout(() => input.focus(), 10);

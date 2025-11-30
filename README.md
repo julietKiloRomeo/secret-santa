@@ -18,6 +18,7 @@ Mini-games share a neon arcade overlay for high scores. When a run ends:
 - The overlay fetches the latest top 10 via `/api/scores/<game>`.
 - If the player qualifies, their earned rank appears inline in the leaderboard with a blinking cursor so they can type their name directly where it will land. Lower ranks shift down while the new slot is empty.
 - After saving, the overlay stays open and refreshes so the player immediately sees the updated list with their score in place.
+- While the overlay is waiting for a name it cannot be dismissed accidentally (ESC, taps, or hideOverlay calls are ignored); once the list is just informational it can be closed with Enter, Space, or by tapping anywhere outside the panel.
 - If the score is below the cutoff, the overlay simply shows the existing top 10 without prompting for input.
 
 ## How It Works

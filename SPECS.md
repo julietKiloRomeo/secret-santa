@@ -86,6 +86,7 @@ Client behavior / Mini-games
   - On touch devices swiping in a direction also controls the snake; a decorative on-screen D-pad is present but does not obscure gameplay.
   - Presents a high-score overlay titled "Søde Børn" when the game ends and the score qualifies.
   - The overlay inserts an empty row at the player’s earned rank (lower entries shift down) and embeds the blinking cursor/input in that slot so the new name is typed directly into place; after saving, the panel remains open and shows the refreshed top 10 with the submitted score.
+  - While a qualifying entry is pending the overlay cannot be dismissed accidentally (ESC, taps, or external hide calls are ignored); once the name is saved or the panel is read-only it can be closed via Enter, Space, or by tapping outside the panel.
   - High score submission uses `/api/scores/forste-advent` and respects the upsert semantics.
 
 - Flappy Santa (`/anden-advent`, `static/anden_advent.js`):
@@ -95,7 +96,7 @@ Client behavior / Mini-games
     - far clouds (slow), near clouds (faster), and silhouettes (trees/houses) at horizon.
   - Speed slowly increases as score grows.
   - Audio: The game attempts to detect a user-provided audio file in `static/` (e.g. `sleigh_bell.mp3`, `jingle.mp3`, etc.) and will use it for the flap jingle; otherwise a synthesized jingle is played.
-  - On game over the same inline high-score overlay flow appears and submits to `/api/scores/anden-advent`, keeping the leaderboard visible after the score is saved.
+  - On game over the same inline high-score overlay flow appears and submits to `/api/scores/anden-advent`, keeping the leaderboard visible after the score is saved and enforcing the same dismissal rules (no exiting before saving, Enter/Space/tap to close afterwards).
   - Tuning: `static/anden_config.js` exposes additional tuning keys for sprite and hitbox sizing: `reindeerSpriteScale`, `santaSpriteScale`, and `reindeerHitBoxScale`.
 
 Authentication & Admins

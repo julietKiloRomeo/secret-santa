@@ -96,7 +96,70 @@ test.describe('Arcade overlay high score flow', () => {
     await expect(overlay.locator('input.arcade-input')).toHaveCount(0);
     await expect(overlay.locator('.arcade-scores li').nth(2)).toContainText('Neo');
     await expect(overlay.locator('.arcade-scores li').nth(2)).toContainText('180');
-    await overlay.getByRole('button', { name: /Luk/i }).click();
+    await overlay.getByRole('button', { name: /Luk/i }).waitFor();
+    await page.keyboard.press('Space');
+    await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
+  });
+
+  test('pending entry cannot be dismissed accidentally and closes via keyboard once saved', async ({ page }) => {
+    const firstScores = {
+      scores: [
+        { name: 'AAA', score: 400 },
+        { name: 'BBB', score: 300 },
+        { name: 'CCC', score: 150 },
+      ],
+    };
+
+    await page.route('**/api/scores/forste-advent', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(firstScores) });
+        return;
+      }
+      if (route.request().method() === 'POST') {
+        const body = JSON.parse(route.request().postData() || '{}');
+        expect(body).toEqual({ name: 'Neo', score: 180 });
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/forste-advent');
+    await page.evaluate(() => {
+      // @ts-ignore test harness
+      window.arcadeOverlay.handleHighScoreFlow({
+        gameId: 'forste-advent',
+        score: 180,
+        allowSkip: true,
+        title: 'Hall of Fame',
+        message: 'Test run',
+      });
+    });
+
+    const overlay = page.locator('#arcade-overlay.visible');
+    await overlay.waitFor();
+
+    await page.evaluate(() => {
+      // Attempt to hide overlay externally
+      // @ts-ignore
+      window.arcadeOverlay.hideOverlay();
+    });
+    await expect(overlay).toBeVisible();
+
+    const host = page.locator('#arcade-overlay');
+    await host.click({ position: { x: 5, y: 5 } });
+    await expect(overlay).toBeVisible();
+
+    await page.keyboard.press('Space');
+    await expect(overlay).toBeVisible();
+
+    const input = overlay.locator('input.arcade-input');
+    await input.fill('Neo');
+    await input.press('Enter');
+    await expect(overlay).toBeVisible();
+    await overlay.getByRole('button', { name: /Luk/i }).waitFor();
+
+    await page.keyboard.press('Enter');
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
   });
 
@@ -136,6 +199,56 @@ test.describe('Arcade overlay high score flow', () => {
     await expect(overlay.locator('input.arcade-input')).toHaveCount(0);
 
     await overlay.getByRole('button', { name: /Luk/i }).click();
+    await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
+  });
+
+  test('non-qualifying leaderboard can be dismissed with enter or tap', async ({ page }) => {
+    const topScores = {
+      scores: Array.from({ length: 10 }, (_, idx) => ({
+        name: `Player ${idx + 1}`,
+        score: 200 - idx * 10,
+      })),
+    };
+
+    await page.route('**/api/scores/forste-advent', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(topScores) });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/forste-advent');
+    await page.evaluate(() => {
+      // @ts-ignore test harness
+      window.arcadeOverlay.handleHighScoreFlow({
+        gameId: 'forste-advent',
+        score: 5,
+        allowSkip: true,
+        title: 'Hall of Fame',
+        message: 'Too low',
+      });
+    });
+
+    const overlay = page.locator('#arcade-overlay.visible');
+    await overlay.waitFor();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
+
+    await page.evaluate(() => {
+      // @ts-ignore
+      window.arcadeOverlay.handleHighScoreFlow({
+        gameId: 'forste-advent',
+        score: 5,
+        allowSkip: true,
+        title: 'Hall of Fame',
+        message: 'Too low',
+      });
+    });
+    const overlayTwo = page.locator('#arcade-overlay.visible');
+    await overlayTwo.waitFor();
+    const host = page.locator('#arcade-overlay');
+    await host.click({ position: { x: 5, y: 5 } });
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
   });
 });
