@@ -108,8 +108,13 @@
         padding: 0;
         list-style: none;
         max-height: 260px;
-        overflow-y: hidden;
+        overflow-y: auto;
         overflow-x: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .arcade-scores::-webkit-scrollbar {
+        display: none;
       }
       .arcade-scores li {
         display: flex;
@@ -193,8 +198,8 @@
     (scores || []).forEach((entry, idx) => {
       const li = document.createElement('li');
       const rank = String(idx + 1).padStart(2, '0');
-      const name = entry?.name || '???';
-      const points = typeof entry?.score === 'number' ? entry.score : '-';
+      const name = entry && entry.name ? entry.name : '???';
+      const points = entry && typeof entry.score === 'number' ? entry.score : '-';
       const left = document.createElement('span');
       left.textContent = `${rank} — ${name}`;
       const right = document.createElement('span');
@@ -211,14 +216,27 @@
     const list = Array.isArray(scores) ? scores : [];
     if (list.length < limit) return true;
     const lowest = list[Math.min(list.length, limit) - 1];
-    const lowestScore = typeof lowest?.score === 'number' ? lowest.score : -Infinity;
+    const lowestScore = lowest && typeof lowest.score === 'number' ? lowest.score : -Infinity;
     return score > lowestScore;
+  }
+
+  async function loadScores(gameId, fallback = []) {
+    try {
+      const data = await fetchScores(gameId);
+      if (data && Array.isArray(data.scores)) {
+        return data.scores;
+      }
+      return Array.isArray(fallback) ? fallback : [];
+    } catch (err) {
+      console.error('Failed to load scores for', gameId, err);
+      return Array.isArray(fallback) ? fallback : [];
+    }
   }
 
   async function playerQualifies(gameId, score, limit = 10) {
     if (!score || score <= 0) return false;
-    const data = await fetchScores(gameId);
-    return qualifiesWithinScores(data.scores || [], score, limit);
+    const scores = await loadScores(gameId);
+    return qualifiesWithinScores(scores, score, limit);
   }
 
   function showLeaderboardPanel({
@@ -397,7 +415,7 @@
   }
 
   async function showHighScores(gameId, options = {}) {
-    const data = await fetchScores(gameId);
+    const scores = await loadScores(gameId);
     showLeaderboardPanel({
       gameId,
       score: options.score,
@@ -405,7 +423,7 @@
       allowSkip: true,
       title: options.title || 'Søde Børn',
       message: options.subtitle || options.message || 'Top 10 resultater',
-      initialScores: data.scores || [],
+      initialScores: scores,
     });
   }
 
@@ -512,8 +530,7 @@
   }
 
   async function handleHighScoreFlow({ gameId, score, allowSkip = true, title, message }) {
-    const data = await fetchScores(gameId);
-    const scores = data.scores || [];
+    const scores = await loadScores(gameId);
     const qualifies = qualifiesWithinScores(scores, score);
     const userTitle = typeof title === 'string' ? title.trim() : '';
     const userMessage = typeof message === 'string' ? message.trim() : '';
