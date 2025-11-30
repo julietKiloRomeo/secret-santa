@@ -671,9 +671,9 @@
     const effectiveTitle = qualifies
       ? (userTitle || 'Ny high score!')
       : 'Top 10';
-    const effectiveMessage = qualifies
-      ? (userMessage || 'Skriv dit navn til julemandens liste.')
-      : 'Du nåede ikke helt på listen, men her er de bedste scorere.';
+    const effectiveMessage =
+      userMessage ||
+      (qualifies ? 'Skriv dit navn til julemandens liste.' : 'Top 10 resultater');
     showLeaderboardPanel({
       gameId,
       score,
