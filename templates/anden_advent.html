@@ -11,6 +11,6 @@
     <canvas id="santa-canvas" width="400" height="400" class="mx-auto" style="background:#68b; border:2px solid #fff; image-rendering: pixelated;"></canvas>
     <div class="mt-2 text-sm opacity-90">Tip: Brug mellemrum eller klik for at hoppe mellem skorstene.</div>
   </div>
-  <script>window.__defaultPlayerName__ = {{ default_name|tojson }};</script>
+  <script src="{{ url_for('static', filename='arcade_overlay.js') }}"></script>
   <script src="{{ url_for('static', filename='anden_advent.js') }}"></script>
 {% endblock %}
