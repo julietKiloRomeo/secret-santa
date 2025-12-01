@@ -5,12 +5,31 @@
   const STYLE_ID = 'arcade-overlay-styles';
   const OVERLAY_ID = 'arcade-overlay';
   const LEADERBOARD_LIMIT = 10;
+  const DEFAULT_GAMES = ['forste-advent', 'anden-advent', 'tredje-advent'];
+  const GAME_LABELS = {
+    'forste-advent': 'Første Advent — Snake',
+    'anden-advent': 'Anden Advent — Flappy Santa',
+    'tredje-advent': 'Tredje Advent — Reindeer Rush',
+    'reindeer-rush': 'Reindeer Rush',
+  };
   let overlayEl = null;
   let keyHandler = null;
   let activeResolver = null;
   let overlayLocked = false;
   let overlayPointerHandler = null;
   let overlayPointerHost = null;
+
+  function normalizeGameId(value) {
+    if (!value) return '';
+    const raw = String(value).trim().toLowerCase();
+    if (raw === 'reindeer-rush') return 'tredje-advent';
+    return raw;
+  }
+
+  function friendlyGameName(gameId) {
+    const key = normalizeGameId(gameId);
+    return GAME_LABELS[key] || key.replace(/-/g, ' ');
+  }
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -158,6 +177,38 @@
       .arcade-pending-entry {
         background: rgba(37, 255, 224, 0.08);
       }
+      .arcade-highlight-entry {
+        background: rgba(37, 255, 224, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(37, 255, 224, 0.4);
+      }
+      .arcade-carousel-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+      }
+      .arcade-carousel-btn {
+        flex: none;
+        min-width: 2.5rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 8px;
+        background: rgba(37, 255, 224, 0.15);
+        border: 1px solid rgba(37, 255, 224, 0.4);
+        color: #defef7;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .arcade-carousel-btn:hover {
+        background: rgba(37, 255, 224, 0.25);
+      }
+      .arcade-carousel-label {
+        flex: 1;
+        text-align: center;
+        font-size: 0.85rem;
+        letter-spacing: 0.02em;
+        color: #defef7;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -247,6 +298,8 @@
       typeof options.pendingLabel === 'string' && options.pendingLabel.trim()
         ? options.pendingLabel.trim()
         : 'Din score';
+    const highlightMatcher =
+      typeof options.highlightMatcher === 'function' ? options.highlightMatcher : null;
     const rows = Array.isArray(scores) ? scores.slice() : [];
     let pendingRendered = false;
     if (pendingIndex !== null) {
@@ -287,6 +340,9 @@
         nameSpan.textContent = entry && entry.name ? entry.name : '???';
       }
       left.appendChild(nameSpan);
+      if (highlightMatcher && !entry?.pending && highlightMatcher(entry, idx)) {
+        li.classList.add('arcade-highlight-entry');
+      }
       const right = document.createElement('span');
       right.className = 'arcade-score-points';
       right.textContent =
@@ -415,6 +471,7 @@
       : [];
     let pointerHandler = null;
     let pendingOutsideLeaderboard = false;
+    let lastSavedEntry = null;
 
     function updateHelperLegend() {
       if (!helperLine || !entryActive) return;
@@ -443,6 +500,14 @@
     }
 
     function buildRenderOptions(list) {
+      const baseOptions = { limit: LEADERBOARD_LIMIT };
+      if (lastSavedEntry && !entryActive) {
+        baseOptions.highlightMatcher = (entry) =>
+          entry &&
+          entry.name === lastSavedEntry.name &&
+          typeof entry.score === 'number' &&
+          entry.score === lastSavedEntry.score;
+      }
       if (entryActive && inputWrapper && typeof score === 'number' && score > 0) {
         const normalizedList = Array.isArray(list)
           ? list.slice(0, LEADERBOARD_LIMIT)
@@ -459,15 +524,15 @@
           ? normalizedList.length
           : scoreInsertIndex(normalizedList, score);
         return {
+          ...baseOptions,
           pendingIndex,
           pendingScore: score,
           pendingWrapper: inputWrapper,
           pendingLabel: pendingOutsideLeaderboard ? 'Din score (uden for top 10)' : 'Din score',
-          limit: LEADERBOARD_LIMIT,
         };
       }
       pendingOutsideLeaderboard = false;
-      return { limit: LEADERBOARD_LIMIT };
+      return baseOptions;
     }
 
     function setScores(scores) {
@@ -558,6 +623,7 @@
       entryActive = false;
       overlayLocked = false;
       detachListeners();
+      lastSavedEntry = null;
       hideOverlay(true);
     }
 
@@ -589,6 +655,7 @@
       saveBtn.textContent = 'Gemmer...';
       try {
         const wasOutside = pendingOutsideLeaderboard;
+        lastSavedEntry = { name, score };
         await submitScore(gameId, name, score);
         const refreshed = await refreshScores({ finalizeEntry: true });
         if (!refreshed) {
@@ -696,6 +763,191 @@
     });
   }
 
+  function showScoresCarousel(config = {}) {
+    if (activeResolver) {
+      activeResolver(null);
+      activeResolver = null;
+    }
+    const rawGames = Array.isArray(config.games) && config.games.length
+      ? config.games
+      : DEFAULT_GAMES;
+    const games = Array.from(
+      new Set(
+        rawGames
+          .map(normalizeGameId)
+          .filter(Boolean)
+      )
+    );
+    if (!games.length) {
+      return;
+    }
+    let index = Math.max(
+      0,
+      games.indexOf(normalizeGameId(config.startGameId || games[0]))
+    );
+    const panel = arcadePanel();
+    panel.appendChild(arcadeTitle(config.title || 'Top 10'));
+
+    const nav = document.createElement('div');
+    nav.className = 'arcade-carousel-nav';
+    const prevBtn = document.createElement('button');
+    prevBtn.type = 'button';
+    prevBtn.className = 'arcade-carousel-btn';
+    prevBtn.textContent = '◀';
+
+    const label = document.createElement('div');
+    label.className = 'arcade-carousel-label';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = 'arcade-carousel-btn';
+    nextBtn.textContent = '▶';
+
+    nav.appendChild(prevBtn);
+    nav.appendChild(label);
+    nav.appendChild(nextBtn);
+    panel.appendChild(nav);
+
+    const listHost = document.createElement('div');
+    panel.appendChild(listHost);
+
+    const hint = document.createElement('p');
+    hint.style.textAlign = 'center';
+    hint.style.fontSize = '0.75rem';
+    hint.style.opacity = '0.75';
+    hint.style.marginTop = '0.75rem';
+    hint.textContent = 'Swipe eller brug piletasterne for at skifte spil.';
+    panel.appendChild(hint);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Luk';
+    panel.appendChild(closeBtn);
+
+    const cache = new Map();
+    let swipeState = null;
+
+    function setLoading(text) {
+      const msg = document.createElement('p');
+      msg.style.textAlign = 'center';
+      msg.style.margin = '0.5rem 0';
+      msg.textContent = text;
+      listHost.innerHTML = '';
+      listHost.appendChild(msg);
+    }
+
+    async function renderCurrent(force = false) {
+      const gameId = games[index];
+      label.textContent = friendlyGameName(gameId);
+      if (!cache.has(gameId) || force) {
+        setLoading('Henter high score...');
+        try {
+          const rows = await loadScores(gameId, []);
+          cache.set(gameId, rows);
+        } catch (err) {
+          console.error('Failed to load carousel leaderboard', err);
+          setLoading('Kunne ikke hente high score 😢');
+          return;
+        }
+      }
+      const scores = cache.get(gameId) || [];
+      listHost.innerHTML = '';
+      listHost.appendChild(renderScoresList(scores, { limit: LEADERBOARD_LIMIT }));
+    }
+
+    function go(delta) {
+      index = (index + delta + games.length) % games.length;
+      renderCurrent();
+    }
+
+    prevBtn.addEventListener('click', () => go(-1));
+    nextBtn.addEventListener('click', () => go(1));
+
+    function onPointerDown(ev) {
+      if (!ev.isPrimary) return;
+      swipeState = { id: ev.pointerId, x: ev.clientX, y: ev.clientY };
+    }
+
+    function onPointerUp(ev) {
+      if (!swipeState || swipeState.id !== ev.pointerId) return;
+      const dx = ev.clientX - swipeState.x;
+      const dy = ev.clientY - swipeState.y;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        go(dx > 0 ? -1 : 1);
+      }
+      swipeState = null;
+    }
+
+    const onPointerCancel = () => { swipeState = null; };
+    listHost.addEventListener('pointerdown', onPointerDown);
+    listHost.addEventListener('pointerup', onPointerUp);
+    listHost.addEventListener('pointercancel', onPointerCancel);
+    listHost.addEventListener('pointerleave', onPointerCancel);
+
+    const overlayHost = ensureOverlay();
+    let pointerHandler = null;
+
+    function cleanup() {
+      listHost.removeEventListener('pointerdown', onPointerDown);
+      listHost.removeEventListener('pointerup', onPointerUp);
+      listHost.removeEventListener('pointercancel', onPointerCancel);
+      listHost.removeEventListener('pointerleave', onPointerCancel);
+      if (pointerHandler && overlayHost) {
+        overlayHost.removeEventListener('pointerdown', pointerHandler);
+      }
+      if (overlayPointerHandler === pointerHandler) {
+        overlayPointerHandler = null;
+        overlayPointerHost = null;
+      }
+      if (keyHandler) {
+        window.removeEventListener('keydown', keyHandler, true);
+        keyHandler = null;
+      }
+    }
+
+    function closeOverlay() {
+      cleanup();
+      hideOverlay(true);
+    }
+
+    closeBtn.addEventListener('click', closeOverlay);
+
+    const localKeyHandler = function (e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeOverlay();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        go(-1);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        go(1);
+      }
+    };
+    keyHandler = localKeyHandler;
+    window.addEventListener('keydown', localKeyHandler, true);
+
+    pointerHandler = function (evt) {
+      if (!panel.contains(evt.target)) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        closeOverlay();
+      }
+    };
+
+    showOverlay(panel);
+    if (overlayHost && pointerHandler) {
+      overlayHost.addEventListener('pointerdown', pointerHandler);
+      overlayPointerHandler = pointerHandler;
+      overlayPointerHost = overlayHost;
+    }
+
+    renderCurrent(true);
+  }
+
   function promptHighScoreEntry({
     gameId,
     score,
@@ -760,10 +1012,11 @@
       }
 
       function cleanup() {
-        if (keyHandler) {
-          window.removeEventListener('keydown', keyHandler, true);
-          keyHandler = null;
-        }
+      swipeState = null;
+      if (keyHandler === localKeyHandler) {
+        window.removeEventListener('keydown', localKeyHandler, true);
+        keyHandler = null;
+      }
         save.removeEventListener('click', submit);
         input.removeEventListener('keydown', onKey);
         activeResolver = null;
@@ -822,6 +1075,7 @@
   window.arcadeOverlay = {
     ensureOverlay,
     showHighScores,
+    showScoresCarousel,
     promptHighScoreEntry,
     playerQualifies,
     submitScore,

@@ -29,11 +29,21 @@
       </div>
       <div>
         <h2 class="text-xl font-semibold mb-2">Leaderboard</h2>
+        <button
+          type="button"
+          class="mb-3 inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+          data-arcade-leaderboard
+          data-games="forste-advent,anden-advent,tredje-advent"
+          data-start-game="tredje-advent"
+        >
+          Se alle top 10 lister
+        </button>
         <div id="reindeer-leaderboard" class="border rounded-md p-2 bg-white" style="min-height:200px"></div>
       </div>
     </div>
   </div>
   <script>window.__defaultPlayerName__ = "{{ default_name|default('Nisse') }}";</script>
   <script src="{{ url_for('static', filename='arcade_overlay.js') }}"></script>
+  <script src="{{ url_for('static', filename='leaderboard_buttons.js') }}"></script>
   <script src="/static/reindeer_rush.js"></script>
 {% endblock %}
