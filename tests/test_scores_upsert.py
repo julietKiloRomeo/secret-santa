@@ -27,12 +27,14 @@ def teardown_module(module):
         os.environ['DATA_DIR'] = _ORIG_DATA_DIR
 
 
-def test_score_upsert_keeps_single_entry_and_upgrades():
+def test_scores_allow_multiple_entries_and_sort_desc():
     from app import app
 
     client = app.test_client()
+    from app import reset_scores_for_game
+    reset_scores_for_game('forste-advent')
 
-    # Submit an initial score
+    # Submit three scores for the same name
     r = client.post(
         '/api/scores/forste-advent',
         data=json.dumps({'name': 'testuser', 'score': 5}),
@@ -41,28 +43,61 @@ def test_score_upsert_keeps_single_entry_and_upgrades():
     assert r.status_code == 200
     assert r.get_json()['success'] is True
 
-    # Submit a lower score for same name -> should NOT downgrade
     r = client.post(
         '/api/scores/forste-advent',
         data=json.dumps({'name': 'testuser', 'score': 3}),
         content_type='application/json'
     )
     assert r.status_code == 200
+    assert r.get_json()['success'] is True
 
-    # Submit a higher score for same name -> should upgrade
     r = client.post(
         '/api/scores/forste-advent',
         data=json.dumps({'name': 'testuser', 'score': 9}),
         content_type='application/json'
     )
     assert r.status_code == 200
+    assert r.get_json()['success'] is True
 
-    # There should only be one entry and the score should be the highest (9)
+    # Leaderboard should contain all three entries sorted by score desc
     r = client.get('/api/scores/forste-advent')
     assert r.status_code == 200
     data = r.get_json()
     assert isinstance(data['scores'], list)
-    # single entry
-    assert len(data['scores']) == 1
-    assert data['scores'][0]['name'] == 'testuser'
-    assert data['scores'][0]['score'] == 9
+    assert [row['score'] for row in data['scores']] == [9, 5, 3]
+    assert all(row['name'] == 'testuser' for row in data['scores'])
+
+
+def test_low_scores_still_saved_even_when_leaderboard_full():
+    from app import app, reset_scores_for_game
+
+    client = app.test_client()
+    reset_scores_for_game('forste-advent')
+
+    # Seed 10 high scoring entries
+    for i in range(10):
+        payload = {'name': f'high{i}', 'score': 100 - i}
+        r = client.post(
+            '/api/scores/forste-advent',
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert r.status_code == 200
+        assert r.get_json()['success'] is True
+
+    # Submit a very low score – should still be accepted even if not in top 10
+    r = client.post(
+        '/api/scores/forste-advent',
+        data=json.dumps({'name': 'latecomer', 'score': 1}),
+        content_type='application/json'
+    )
+    assert r.status_code == 200
+    assert r.get_json()['success'] is True
+
+    # Leaderboard remains the original top 10 high scores
+    r = client.get('/api/scores/forste-advent')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert len(data['scores']) == 10
+    assert data['scores'][0]['score'] == 100
+    assert data['scores'][-1]['score'] == 91

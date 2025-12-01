@@ -10,42 +10,35 @@ def setup_module(module):
     os.environ.setdefault('SECRET_KEY', 'test-secret-key')
 
 
-def test_score_upsert_anden_advent():
-    from app import app
+def test_scores_allow_duplicates_for_anden_advent():
+    from app import app, reset_scores_for_game
 
     client = app.test_client()
+    reset_scores_for_game('anden-advent')
 
-    # Submit an initial score
+    scores = [4, 2, 11]
+    for value in scores:
+        r = client.post(
+            '/api/scores/anden-advent',
+            data=json.dumps({'name': 'santa-fan', 'score': value}),
+            content_type='application/json'
+        )
+        assert r.status_code == 200
+        assert r.get_json()['success'] is True
+
+    # Leaderboard should list three entries sorted desc, even with same name repeated
     r = client.post(
         '/api/scores/anden-advent',
-        data=json.dumps({'name': 'santa-fan', 'score': 4}),
+        data=json.dumps({'name': 'santa-fan', 'score': 6}),
         content_type='application/json'
     )
     assert r.status_code == 200
     assert r.get_json()['success'] is True
 
-    # Submit a lower score for same name -> should NOT downgrade
-    r = client.post(
-        '/api/scores/anden-advent',
-        data=json.dumps({'name': 'santa-fan', 'score': 2}),
-        content_type='application/json'
-    )
-    assert r.status_code == 200
-
-    # Submit a higher score for same name -> should upgrade
-    r = client.post(
-        '/api/scores/anden-advent',
-        data=json.dumps({'name': 'santa-fan', 'score': 11}),
-        content_type='application/json'
-    )
-    assert r.status_code == 200
-
-    # There should only be one entry and the score should be the highest (11)
     r = client.get('/api/scores/anden-advent')
     assert r.status_code == 200
     data = r.get_json()
     assert isinstance(data['scores'], list)
-    assert len(data['scores']) == 1
-    assert data['scores'][0]['name'] == 'santa-fan'
-    assert data['scores'][0]['score'] == 11
-
+    assert len(data['scores']) == 4
+    assert [row['score'] for row in data['scores']] == [11, 6, 4, 2]
+    assert all(row['name'] == 'santa-fan' for row in data['scores'])

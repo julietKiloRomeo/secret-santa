@@ -243,7 +243,12 @@
         : null;
     const pendingScore =
       typeof options.pendingScore === 'number' ? options.pendingScore : null;
+    const pendingLabel =
+      typeof options.pendingLabel === 'string' && options.pendingLabel.trim()
+        ? options.pendingLabel.trim()
+        : 'Din score';
     const rows = Array.isArray(scores) ? scores.slice() : [];
+    let pendingRendered = false;
     if (pendingIndex !== null) {
       const pendingEntry = {
         name: '',
@@ -271,6 +276,7 @@
       const nameSpan = document.createElement('span');
       nameSpan.className = 'arcade-score-name';
       if (entry && entry.pending) {
+        pendingRendered = true;
         li.classList.add('arcade-pending-entry');
         if (options.pendingWrapper) {
           nameSpan.appendChild(options.pendingWrapper);
@@ -291,6 +297,27 @@
       li.appendChild(right);
       ol.appendChild(li);
     });
+    if (options.pendingWrapper && !pendingRendered) {
+      const li = document.createElement('li');
+      li.className = 'arcade-score-row arcade-pending-entry';
+      const left = document.createElement('div');
+      left.className = 'arcade-score-left';
+      const rank = document.createElement('span');
+      rank.className = 'arcade-score-rank';
+      rank.textContent = `${pendingLabel}: `;
+      left.appendChild(rank);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'arcade-score-name';
+      nameSpan.appendChild(options.pendingWrapper);
+      left.appendChild(nameSpan);
+      const right = document.createElement('span');
+      right.className = 'arcade-score-points';
+      right.textContent =
+        typeof pendingScore === 'number' && Number.isFinite(pendingScore) ? pendingScore : '-';
+      li.appendChild(left);
+      li.appendChild(right);
+      ol.appendChild(li);
+    }
     return ol;
   }
 
@@ -387,6 +414,14 @@
       ? initialScores.slice(0, LEADERBOARD_LIMIT)
       : [];
     let pointerHandler = null;
+    let pendingOutsideLeaderboard = false;
+
+    function updateHelperLegend() {
+      if (!helperLine || !entryActive) return;
+      helperLine.textContent = pendingOutsideLeaderboard
+        ? 'Top 10 er fyldt, men din score bliver gemt – tryk Enter for at gemme.'
+        : 'Skriv dit navn på listen og tryk Enter';
+    }
 
     if (entryActive) {
       inputWrapper = document.createElement('div');
@@ -409,13 +444,29 @@
 
     function buildRenderOptions(list) {
       if (entryActive && inputWrapper && typeof score === 'number' && score > 0) {
+        const normalizedList = Array.isArray(list)
+          ? list.slice(0, LEADERBOARD_LIMIT)
+          : [];
+        const lowestEntry =
+          normalizedList.length >= LEADERBOARD_LIMIT
+            ? normalizedList[normalizedList.length - 1]
+            : null;
+        const lowestScore =
+          lowestEntry && typeof lowestEntry.score === 'number' ? lowestEntry.score : -Infinity;
+        pendingOutsideLeaderboard =
+          normalizedList.length >= LEADERBOARD_LIMIT && score <= lowestScore;
+        const pendingIndex = pendingOutsideLeaderboard
+          ? normalizedList.length
+          : scoreInsertIndex(normalizedList, score);
         return {
-          pendingIndex: scoreInsertIndex(list, score),
+          pendingIndex,
           pendingScore: score,
           pendingWrapper: inputWrapper,
+          pendingLabel: pendingOutsideLeaderboard ? 'Din score (uden for top 10)' : 'Din score',
           limit: LEADERBOARD_LIMIT,
         };
       }
+      pendingOutsideLeaderboard = false;
       return { limit: LEADERBOARD_LIMIT };
     }
 
@@ -426,6 +477,7 @@
       latestScores = normalized.slice();
       listHost.innerHTML = '';
       listHost.appendChild(renderScoresList(normalized, buildRenderOptions(normalized)));
+      updateHelperLegend();
     }
 
     async function refreshScores(options = {}) {
@@ -451,14 +503,12 @@
 
     if (entryActive) {
       helperLine = document.createElement('p');
-      helperLine.textContent = allowSkip
-        ? 'Skriv dit navn på listen og tryk Enter'
-        : 'Skriv dit navn på listen og tryk Enter';
       helperLine.style.textAlign = 'center';
       helperLine.style.fontSize = '0.75rem';
       helperLine.style.opacity = '0.75';
       helperLine.style.marginTop = '0.75rem';
       panel.appendChild(helperLine);
+      updateHelperLegend();
 
       statusLine = document.createElement('p');
       statusLine.style.textAlign = 'center';
@@ -538,6 +588,7 @@
       const previousLabel = saveBtn.textContent;
       saveBtn.textContent = 'Gemmer...';
       try {
+        const wasOutside = pendingOutsideLeaderboard;
         await submitScore(gameId, name, score);
         const refreshed = await refreshScores({ finalizeEntry: true });
         if (!refreshed) {
@@ -548,8 +599,25 @@
           merged.splice(insertAt, 0, { name, score });
           setScores(merged.slice(0, LEADERBOARD_LIMIT));
         }
-        if (statusLine) statusLine.textContent = 'Score gemt!';
-        if (helperLine) helperLine.textContent = 'Tak! Score gemt.';
+        const appearsInTopTen = !wasOutside
+          ? latestScores.some(
+              (row) =>
+                row &&
+                row.name === name &&
+                typeof row.score === 'number' &&
+                row.score === score
+            )
+          : false;
+        if (statusLine) {
+          statusLine.textContent = appearsInTopTen
+            ? 'Score gemt!'
+            : 'Score gemt! (ikke i top 10 endnu)';
+        }
+        if (helperLine) {
+          helperLine.textContent = appearsInTopTen
+            ? 'Tak! Score gemt.'
+            : 'Tak! Score gemt – slå top 10 for at se den på listen.';
+        }
         input.disabled = true;
         input.value = name;
         input.removeEventListener('keydown', onInputKey);
@@ -735,16 +803,15 @@
     const qualifies = qualifiesWithinScores(scores, score);
     const userTitle = typeof title === 'string' ? title.trim() : '';
     const userMessage = typeof message === 'string' ? message.trim() : '';
-    const effectiveTitle = qualifies
-      ? (userTitle || 'Ny high score!')
-      : 'Top 10';
-    const effectiveMessage =
-      userMessage ||
-      (qualifies ? 'Skriv dit navn til julemandens liste.' : 'Top 10 resultater');
+    const effectiveTitle = userTitle || 'Ny high score!';
+    const defaultMessage = qualifies
+      ? 'Skriv dit navn til julemandens liste.'
+      : 'Listen er fuld, men din score bliver gemt – slå top 10 for at se den.';
+    const effectiveMessage = userMessage || defaultMessage;
     showLeaderboardPanel({
       gameId,
       score,
-      allowEntry: qualifies,
+      allowEntry: typeof score === 'number' && score > 0,
       allowSkip,
       title: effectiveTitle,
       message: effectiveMessage,

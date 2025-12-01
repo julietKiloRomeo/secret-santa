@@ -1,7 +1,5 @@
 // Reindeer Rush - canvas-based runner with duck, charge, and collectibles
 (function () {
-  const defaultPlayerName = window.__defaultPlayerName__ || 'Guest';
-
   function el(id) {
     return document.getElementById(id);
   }
@@ -134,7 +132,7 @@
     requestAnimationFrame(loop);
   }
 
-  function stopGame(reason = 'collision-with-obstacle') {
+  async function stopGame(reason = 'collision-with-obstacle') {
     if (!running) return;
     running = false;
     lastCollisionTs = Date.now();
@@ -144,7 +142,24 @@
     gameState.lastCollisionReason = lastCollisionReason;
     spaceHeld = false;
     pointerState.active = false;
-    showSubmitOverlay();
+
+    const totalScore = Math.floor(gameState.distance + gameState.bonus);
+    if (window.arcadeOverlay && window.arcadeOverlay.handleHighScoreFlow) {
+      try {
+        await window.arcadeOverlay.handleHighScoreFlow({
+          gameId: 'tredje-advent',
+          score: totalScore,
+          allowSkip: true,
+          title: 'Reindeer Rush',
+          message: `Du fløj ${Math.floor(gameState.distance)}m og fik ${gameState.bonus} bonus.`,
+        });
+      } catch (e) {
+        console.error('Arcade high score flow failed', e);
+      }
+    } else {
+      console.warn('Arcade overlay not available; high score entry skipped.');
+    }
+    refreshLeaderboard();
   }
 
   function ensureGameRunning() {
@@ -524,87 +539,6 @@
     } catch (e) {
       console.error('Failed to load leaderboard', e);
     }
-  }
-
-  async function submitScore(name, score) {
-    try {
-      const resp = await fetch('/api/scores/tredje-advent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, score })
-      });
-      return resp.ok;
-    } catch (e) {
-      console.error('Failed to submit score', e);
-      return false;
-    }
-  }
-
-  function showSubmitOverlay() {
-    const overlay = document.createElement('div');
-    overlay.id = 'reindeer-game-over-overlay';
-    overlay.dataset.reason = lastCollisionReason || 'manual-stop';
-    overlay.dataset.distance = `${gameState.distance}`;
-    overlay.dataset.bonus = `${gameState.bonus}`;
-    overlay.dataset.fps = `${gameState.fps}`;
-    overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.background = 'rgba(0,0,0,0.75)';
-    overlay.style.zIndex = '1000';
-
-    const panel = document.createElement('div');
-    panel.className = 'bg-white p-4 rounded-md shadow-lg text-gray-900';
-    panel.style.minWidth = '280px';
-    panel.style.textAlign = 'center';
-
-    const title = document.createElement('h3');
-    title.textContent = 'Game Over — Submit Score';
-    panel.appendChild(title);
-
-    const totalScore = gameState.distance + gameState.bonus;
-    const scoreText = document.createElement('p');
-    scoreText.textContent = `Distance: ${gameState.distance} m (+${gameState.bonus} bonus) — Total score: ${totalScore} pts`;
-    panel.appendChild(scoreText);
-
-    const reasonLabel = document.createElement('p');
-    reasonLabel.className = 'text-sm text-gray-500';
-    reasonLabel.textContent = `Reason: ${lastCollisionReason || 'manual-stop'}`;
-    panel.appendChild(reasonLabel);
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = defaultPlayerName || '';
-    input.className = 'block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 shadow-sm';
-    input.style.margin = '8px 0';
-    panel.appendChild(input);
-
-    const btn = document.createElement('button');
-    btn.textContent = 'Save Score';
-    btn.className = 'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600';
-    btn.style.marginTop = '0.5rem';
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const name = (input.value || defaultPlayerName || 'Guest').trim();
-      await submitScore(name, gameState.distance + gameState.bonus);
-      document.body.removeChild(overlay);
-      refreshLeaderboard();
-    });
-    panel.appendChild(btn);
-
-    const cancel = document.createElement('button');
-    cancel.textContent = 'Cancel';
-    cancel.className = 'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-gray-900 bg-gray-200';
-    cancel.style.marginLeft = '8px';
-    cancel.addEventListener('click', () => {
-      document.body.removeChild(overlay);
-    });
-    panel.appendChild(cancel);
-
-    overlay.appendChild(panel);
-    document.body.appendChild(overlay);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
