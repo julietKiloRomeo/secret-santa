@@ -900,10 +900,11 @@
         overlayPointerHandler = null;
         overlayPointerHost = null;
       }
-      if (keyHandler) {
-        window.removeEventListener('keydown', keyHandler, true);
+      if (keyHandler === localKeyHandler) {
+        window.removeEventListener('keydown', localKeyHandler, true);
         keyHandler = null;
       }
+      swipeState = null;
     }
 
     function closeOverlay() {
