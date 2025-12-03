@@ -251,4 +251,70 @@ test.describe('Arcade overlay high score flow', () => {
     await host.click({ position: { x: 5, y: 5 } });
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
   });
+
+  test('pending high score entry ignores arrow keys so snake cannot restart', async ({ page }) => {
+    const leaderboard = { scores: [{ name: 'AAA', score: 25 }, { name: 'BBB', score: 10 }] };
+
+    await page.route('**/api/scores/forste-advent', async (route) => {
+      const method = route.request().method();
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(leaderboard),
+        });
+        return;
+      }
+      if (method === 'POST') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/forste-advent');
+    await page.waitForFunction(() => {
+      // @ts-ignore snake debug hook is injected by the game bundle
+      return Boolean(window.__snakeDebug__);
+    });
+
+    await page.evaluate(() => {
+      // @ts-ignore test hook
+      const debug = window.__snakeDebug__;
+      debug.restartGame();
+      debug.placeGiftNextToHead(1, 0);
+    });
+
+    const scoreLabel = page.locator('#score');
+    await expect(scoreLabel).toHaveText(/Score:\s*1/, { timeout: 5000 });
+
+    await page.evaluate(() => {
+      // @ts-ignore test hook
+      const debug = window.__snakeDebug__;
+      debug.setDirection('up');
+      for (let i = 0; i < 80; i += 1) {
+        debug.tickOnce();
+      }
+    });
+
+    const overlay = page.locator('#arcade-overlay.visible');
+    await overlay.waitFor();
+    await expect(overlay.locator('.arcade-pending-entry')).toBeVisible();
+    await expect(overlay.locator('input.arcade-input')).toBeVisible();
+
+    // Pressing arrow keys is how players restart snake; ensure they are ignored while the overlay is active.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowUp');
+
+    await expect.poll(async () =>
+      page.evaluate(() => {
+        // @ts-ignore test hook
+        const debug = window.__snakeDebug__;
+        return debug ? debug.isRunning() : true;
+      })
+    ).toBeFalsy();
+
+    await expect(overlay.locator('.arcade-pending-entry')).toBeVisible();
+    await expect(overlay.locator('input.arcade-input')).toBeVisible();
+  });
 });

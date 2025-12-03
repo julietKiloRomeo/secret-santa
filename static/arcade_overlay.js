@@ -18,6 +18,19 @@
   let overlayLocked = false;
   let overlayPointerHandler = null;
   let overlayPointerHost = null;
+  const OVERLAY_GUARD_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+
+  function swallowGameNavigationKeys(event) {
+    if (!event) return false;
+    if (!OVERLAY_GUARD_KEYS.has(event.key)) return false;
+    if (typeof event.stopPropagation === 'function') {
+      event.stopPropagation();
+    }
+    if (typeof event.stopImmediatePropagation === 'function') {
+      event.stopImmediatePropagation();
+    }
+    return true;
+  }
 
   function normalizeGameId(value) {
     if (!value) return '';
@@ -636,6 +649,9 @@
     }
 
     function onInputKey(e) {
+      if (swallowGameNavigationKeys(e)) {
+        return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
         submitEntry();
@@ -1013,11 +1029,11 @@
       }
 
       function cleanup() {
-      swipeState = null;
-      if (keyHandler === localKeyHandler) {
-        window.removeEventListener('keydown', localKeyHandler, true);
-        keyHandler = null;
-      }
+        swipeState = null;
+        if (keyHandler === localKeyHandler) {
+          window.removeEventListener('keydown', localKeyHandler, true);
+          keyHandler = null;
+        }
         save.removeEventListener('click', submit);
         input.removeEventListener('keydown', onKey);
         activeResolver = null;
@@ -1025,6 +1041,9 @@
       }
 
       function onKey(e) {
+        if (swallowGameNavigationKeys(e)) {
+          return;
+        }
         if (e.key === 'Enter') {
           e.preventDefault();
           submit();
