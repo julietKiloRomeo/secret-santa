@@ -1,13 +1,26 @@
 // Simple Flappy-Santa implementation: press space or click to flap
 (function () {
   const canvas = document.getElementById("santa-canvas");
+  if (!canvas) {
+    return;
+  }
   const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
   const scoreEl = document.getElementById("santa-score");
   const statusEl = document.getElementById("santa-status");
 
-  // Logical drawing width/height in CSS pixels (canvas is square)
+  try {
+    canvas.style.touchAction = "none";
+    canvas.setAttribute("touch-action", "none");
+  } catch (e) {}
+
+  const canvasWrap = canvas.parentElement;
+
+  // Logical drawing width/height in CSS pixels (canvas is tall: height ~= 2 * width)
   let WIDTH = canvas.clientWidth || 400;
-  let HEIGHT = WIDTH;
+  let HEIGHT = WIDTH * 2;
 
   // Santa sprite (use existing santa.gif as a simple image)
   const santaImg = new Image();
@@ -22,6 +35,7 @@
     santaSleigh: `${SPRITE_DIR}/santa_sleigh.png`,
   };
   const sprites = {};
+  const DEFAULT_REINDEER_ASPECT = 148 / 109; // natural sprite ratio (height / width)
   function loadSprite(name, path) {
     const img = new Image();
     img.src = path;
@@ -39,6 +53,45 @@
   loadSprite("reindeer2", SPRITE_PATHS.reindeer2);
   loadSprite("reindeer3", SPRITE_PATHS.reindeer3);
   loadSprite("santaSleigh", SPRITE_PATHS.santaSleigh);
+
+  function getReindeerAspectRatio() {
+    const cfg = window && window.__ANDEN_CONFIG__ ? window.__ANDEN_CONFIG__ : {};
+    if (
+      typeof cfg.reindeerSpriteAspect === "number" &&
+      cfg.reindeerSpriteAspect > 0
+    ) {
+      return cfg.reindeerSpriteAspect;
+    }
+    const candidate =
+      (sprites.reindeer1 && sprites.reindeer1.naturalWidth
+        ? sprites.reindeer1
+        : null) ||
+      (sprites.reindeer2 && sprites.reindeer2.naturalWidth
+        ? sprites.reindeer2
+        : null) ||
+      (sprites.reindeer3 && sprites.reindeer3.naturalWidth
+        ? sprites.reindeer3
+        : null);
+    if (
+      candidate &&
+      candidate.naturalWidth > 0 &&
+      candidate.naturalHeight > 0
+    ) {
+      return candidate.naturalHeight / candidate.naturalWidth;
+    }
+    return DEFAULT_REINDEER_ASPECT;
+  }
+
+  function pushDebugEvent(key, payload) {
+    try {
+      if (typeof window === "undefined") return;
+      const w = window;
+      const bag = (w.__ANDEN_DEBUG__ = w.__ANDEN_DEBUG__ || {});
+      if (!bag) return;
+      if (!Array.isArray(bag[key])) bag[key] = [];
+      bag[key].push(payload);
+    } catch (e) {}
+  }
 
   // Background parallax: clouds and silhouettes
   const cloudsFar = [];
@@ -96,25 +149,136 @@
 
   initBackground();
 
+  let arcadeLayoutActive = false;
+
+  function ensureArcadeBackButton() {
+    const body = document.body;
+    if (!body) return null;
+    let btn = document.querySelector("[data-arcade-back-button]");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "arcade-back-button";
+      btn.setAttribute("data-arcade-back-button", "1");
+      btn.setAttribute("aria-label", "Tilbage til start");
+      btn.textContent = "Tilbage";
+      btn.addEventListener("click", () => {
+        const target =
+          (document.body && document.body.dataset.arcadeBackTarget) || "/";
+        if (target === "history-back") {
+          if (window.history.length > 1) {
+            window.history.back();
+          } else {
+            window.location.assign("/");
+          }
+          return;
+        }
+        window.location.assign(target);
+      });
+      body.appendChild(btn);
+    }
+    return btn;
+  }
+
+  function shouldActivateArcadeLayout() {
+    const body = document.body;
+    if (body && body.dataset.arcadeFullscreenOptOut === "1") {
+      return false;
+    }
+    return true;
+  }
+
+  function activateArcadeLayout() {
+    const body = document.body;
+    if (!body) return;
+    if (arcadeLayoutActive && body.dataset.arcadeGame === "anden-advent")
+      return;
+    body.classList.add("arcade-fullscreen");
+    body.dataset.arcadeGame = "anden-advent";
+    body.dataset.arcadeBack = "1";
+    if (!body.dataset.arcadeBackTarget) {
+      body.dataset.arcadeBackTarget = "/";
+    }
+    ensureArcadeBackButton();
+    arcadeLayoutActive = true;
+  }
+
+  function deactivateArcadeLayout() {
+    const body = document.body;
+    if (!body || body.dataset.arcadeGame !== "anden-advent") {
+      arcadeLayoutActive = false;
+      return;
+    }
+    body.classList.remove("arcade-fullscreen");
+    delete body.dataset.arcadeGame;
+    body.dataset.arcadeBack = "0";
+    arcadeLayoutActive = false;
+  }
+
+  function syncArcadeLayout() {
+    if (shouldActivateArcadeLayout()) {
+      activateArcadeLayout();
+    } else if (arcadeLayoutActive) {
+      deactivateArcadeLayout();
+    }
+  }
+
+  syncArcadeLayout();
+
   // Responsive canvas sizing and layout
   function resizeCanvasAndLayout() {
+    const wrap = canvasWrap;
+    const wrapParentWidth = wrap && wrap.clientWidth
+      ? wrap.clientWidth
+      : wrap && wrap.parentElement
+        ? wrap.parentElement.clientWidth
+        : window.innerWidth * 0.9;
+    const viewportHeight =
+      window.innerHeight ||
+      (document.documentElement ? document.documentElement.clientHeight : wrapParentWidth) ||
+      wrapParentWidth;
+    const body = document.body;
+    const paddingY = body && body.classList.contains("arcade-fullscreen")
+      ? 40
+      : Math.max(100, Math.min(160, viewportHeight * 0.18));
+    const HEIGHT_RATIO = 2;
+    const rawHeightAllowance = Math.max(0, viewportHeight - paddingY);
+    let displayWidth = Math.min(
+      wrapParentWidth,
+      Math.floor(rawHeightAllowance / HEIGHT_RATIO),
+    );
+    if (!isFinite(displayWidth) || displayWidth <= 0) {
+      displayWidth = wrapParentWidth > 0 ? wrapParentWidth : 320;
+    }
+    const MIN_WIDTH = 200;
+    if (
+      rawHeightAllowance >= MIN_WIDTH * HEIGHT_RATIO &&
+      wrapParentWidth >= MIN_WIDTH
+    ) {
+      displayWidth = Math.min(wrapParentWidth, Math.max(displayWidth, MIN_WIDTH));
+    }
+    let displayHeight = Math.max(1, Math.round(displayWidth * HEIGHT_RATIO));
+    const maxHeight = Math.max(120, rawHeightAllowance - 20);
+    if (displayHeight > maxHeight) {
+      displayHeight = maxHeight;
+      displayWidth = Math.max(120, Math.round(displayHeight / HEIGHT_RATIO));
+    }
+    const DPR = window.devicePixelRatio || 1;
+    if (wrap) {
+      wrap.style.maxWidth = `${displayWidth}px`;
+      wrap.style.width = "100%";
+      wrap.style.marginLeft = "auto";
+      wrap.style.marginRight = "auto";
+    }
     try {
       canvas.style.width = "100%";
+      canvas.style.height = `${displayHeight}px`;
     } catch (e) {}
-    const displayWidth = Math.max(
-      120,
-      Math.floor(
-        canvas.parentElement
-          ? canvas.parentElement.clientWidth
-          : window.innerWidth * 0.9,
-      ),
-    );
-    const DPR = window.devicePixelRatio || 1;
     canvas.width = Math.round(displayWidth * DPR);
-    canvas.height = Math.round(displayWidth * DPR);
+    canvas.height = Math.round(displayHeight * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     WIDTH = displayWidth;
-    HEIGHT = displayWidth; // square canvas
+    HEIGHT = displayHeight; // height intentionally 2x width for tall layout
 
     // scale factor relative to legacy 400px canvas so game feel stays familiar
     const scale = WIDTH / 400;
@@ -134,8 +298,9 @@
     );
 
     // sizes
+    const spriteAspect = Math.max(1, getReindeerAspectRatio());
     bird.w = Math.max(28, Math.round(WIDTH * 0.12));
-    bird.h = Math.max(20, Math.round(bird.w * 0.66));
+    bird.h = Math.max(28, Math.round(bird.w * spriteAspect));
     TRAIL_LENGTH = Math.max(
       cfg.trailLengthMin || 80,
       Math.round(2.5 * 60 * scale),
@@ -143,13 +308,18 @@
 
     // physics scaled (tuned values) - config holds base numbers which we scale
     GRAVITY_PER_S = (cfg.gravityPerSecond || 800) * scale;
-    FLAP_VY = (cfg.flapVY || -240) * scale;
+    const baseFlapVY =
+      typeof cfg.flapVY !== "undefined" ? cfg.flapVY : -260;
+    FLAP_VY = baseFlapVY * scale;
     BASE_SPEED_PX_S = (cfg.baseSpeedPxPerS || 120) * scale;
     SPEED_PER_SCORE_PX_S = (cfg.speedPerScorePxPerS || 6) * scale;
-    GAP = Math.max(
-      cfg.gapMin || 48,
-      Math.round(WIDTH * (cfg.gapRatio || 0.275)),
-    );
+    const defaultGapRatio = 0.275 * 1.5;
+    const gapRatio =
+      typeof cfg.gapRatio !== "undefined" ? cfg.gapRatio : defaultGapRatio;
+    GAP = Math.max(cfg.gapMin || 48, Math.round(WIDTH * gapRatio));
+    const verticalSpan = Math.max(60, HEIGHT - GAP - 60);
+    const adjustedSpan = verticalSpan * 0.9;
+    MAX_TOP = Math.max(30, adjustedSpan);
     SPAWN_INTERVAL_MS =
       typeof cfg.spawnIntervalMsBase !== "undefined"
         ? cfg.spawnIntervalMsBase
@@ -237,7 +407,7 @@
     y: HEIGHT / 2,
     vy: 0,
     w: 48,
-    h: 32,
+    h: Math.round(48 * DEFAULT_REINDEER_ASPECT),
   };
   // Trail for chain-following: record the vertical path (y) of the lead reindeer
   // at the anchor X (PLAYER_X). Trailing parts sample earlier entries so they
@@ -248,15 +418,17 @@
   // Physics constants will be converted to px/sec and scaled to display size on resize
   // tuned defaults are now pulled from config during resize; initialize reasonable placeholders
   let GRAVITY_PER_S = 1000; // px/s^2 placeholder (will be overwritten on resize)
-  let FLAP_VY = -240; // px/s placeholder
+  let FLAP_VY = -260; // px/s placeholder (negative = upward)
 
   // Speed scaling per second (placeholders)
   let BASE_SPEED_PX_S = 120;
   let SPEED_PER_SCORE_PX_S = 6;
 
   const chimneys = [];
+  const chimneySpawnLog = [];
   let GAP = 110;
-  const SPAWN_INTERVAL_MS_BASE = Math.round(90 * (1000 / 60)); // ~1500ms
+  let MAX_TOP = 0;
+  const SPAWN_INTERVAL_MS_BASE = Math.round(180 * (1000 / 60)); // ~3000ms
   let SPAWN_INTERVAL_MS = SPAWN_INTERVAL_MS_BASE;
   let lastSpawnMs = 0;
   let frame = 0;
@@ -278,8 +450,16 @@
   }
 
   function spawnChimney() {
-    const topHeight = 30 + Math.random() * (HEIGHT - GAP - 60);
+    const span = Math.max(30, MAX_TOP);
+    const topHeight = 30 + Math.random() * span;
     chimneys.push({ x: WIDTH + 10, top: topHeight, passed: false });
+    const timestamp =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+    pushDebugEvent("chimneySpawns", { timestamp });
+    chimneySpawnLog.push(timestamp);
+    if (chimneySpawnLog.length > 32) chimneySpawnLog.shift();
   }
 
   function reset() {
@@ -311,6 +491,10 @@
   async function gameOver() {
     running = false;
     setStatus("Game Over! Try igen 🎅");
+    deathPauseUntil = Date.now() + 1000;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (e) {}
     if (window.arcadeOverlay) {
       try {
         await window.arcadeOverlay.handleHighScoreFlow({
@@ -322,6 +506,20 @@
       } catch (e) {
         console.error("Arcade high score flow failed", e);
       }
+    }
+  }
+
+  function consumeGracePeriod() {
+    if (graceRemainingMs <= 0) return;
+    graceRemainingMs = 0;
+    try {
+      const now =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+      lastSpawnMs = now;
+    } catch (e) {
+      lastSpawnMs = Date.now();
     }
   }
 
@@ -389,7 +587,7 @@
     const hitScale =
       typeof cfgLocal.reindeerHitBoxScale !== "undefined"
         ? cfgLocal.reindeerHitBoxScale
-        : 0.9;
+        : 0.72;
     const halfW = Math.round((bird.w * hitScale) / 2);
     const halfH = Math.round((bird.h * hitScale) / 2);
     if (leadY + halfH >= HEIGHT || leadY - halfH <= 0) {
@@ -604,9 +802,10 @@
       typeof cfgLocal.reindeerSpriteScale !== "undefined"
         ? cfgLocal.reindeerSpriteScale
         : 1.0;
-    // Make reindeers ~55% of bird size and then apply optional scale multiplier
+    // Make reindeers ~55% of bird width and preserve sprite aspect ratio
+    const spriteAspect = Math.max(1, getReindeerAspectRatio());
     const reW = Math.round(bird.w * 0.55 * reScale);
-    const reH = Math.round(bird.h * 0.55 * reScale);
+    const reH = Math.round(reW * spriteAspect);
     // draw leading reindeers (on top) at their fixed X, sampling Y from trail
     if (!drawSpriteCentered(sprites.reindeer1, r1x, leadY, reW, reH))
       drawReindeerAt(r1x, leadY, 1);
@@ -741,6 +940,7 @@
   }
 
   function flap() {
+    consumeGracePeriod();
     bird.vy = FLAP_VY;
     try {
       if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
@@ -759,15 +959,27 @@
   }
 
 
+  function isDeathPaused() {
+    return deathPauseUntil && Date.now() < deathPauseUntil;
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space" || e.key === " ") {
       const active = document.activeElement;
       const activeTag = active?.tagName?.toLowerCase();
+      const typingTarget =
+        activeTag === "input" ||
+        activeTag === "textarea" ||
+        activeTag === "select" ||
+        (active && active.isContentEditable);
       if (isOverlayActive()) {
-        if (activeTag === "input" || activeTag === "textarea") return;
+        if (typingTarget) return;
         e.preventDefault();
         return;
       }
+      if (typingTarget) return;
+      e.preventDefault();
+      if (isDeathPaused()) return;
       if (!running) {
         reset();
         return;
@@ -779,6 +991,7 @@
   function handleCanvasTap(e) {
     if (isOverlayActive()) return;
     if (e && typeof e.preventDefault === "function") e.preventDefault();
+    if (isDeathPaused()) return;
     if (!running) reset();
     flap();
   }
@@ -794,6 +1007,7 @@
 
   // Responsive handling and start loop
   window.addEventListener("resize", () => {
+    syncArcadeLayout();
     const wasRunning = running;
     running = false;
     resizeCanvasAndLayout();
@@ -827,6 +1041,48 @@
       };
       window.__ANDEN_TEST__.getTrail = function (n) {
         return trail.slice(0, n || 32);
+      };
+      window.__ANDEN_TEST__.getGraceMs = function () {
+        return graceRemainingMs;
+      };
+      window.__ANDEN_TEST__.forceStop = function () {
+        running = false;
+        return running;
+      };
+      window.__ANDEN_TEST__.getLeadAnchorX = function () {
+        return PLAYER_X + LEAD_OFFSET_X;
+      };
+      window.__ANDEN_TEST__.getChimneySpawns = function () {
+        return chimneySpawnLog.slice();
+      };
+      window.__ANDEN_TEST__.getSpawnIntervalMs = function () {
+        return SPAWN_INTERVAL_MS;
+      };
+      window.__ANDEN_TEST__.getGapInfo = function () {
+        return { gap: GAP, width: WIDTH, height: HEIGHT };
+      };
+      window.__ANDEN_TEST__.getLeadState = function () {
+        return { y: bird.y, vy: bird.vy };
+      };
+      window.__ANDEN_TEST__.setLeadState = function (y, vy) {
+        if (typeof y !== "number") return;
+        const clampedY = Math.max(12, Math.min(HEIGHT - 12, y));
+        bird.y = clampedY;
+        bird.vy = typeof vy === "number" ? vy : 0;
+        trail.length = 0;
+        for (let i = 0; i < TRAIL_LENGTH; i++) {
+          trail.push({ x: PLAYER_X, y: bird.y });
+        }
+      };
+      window.__ANDEN_TEST__.flapNow = function () {
+        flap();
+      };
+      window.__ANDEN_TEST__.setRunning = function (flag) {
+        running = !!flag;
+        if (running) {
+          lastFrameTs = null;
+          requestAnimationFrame(frameLoop);
+        }
       };
     }
   } catch (e) {

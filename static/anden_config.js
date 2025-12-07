@@ -26,7 +26,7 @@
 window.__ANDEN_CONFIG__ = window.__ANDEN_CONFIG__ || {
   // Physics (base values before canvas scaling)
   gravityPerSecond: 800,     // px/s^2 (positive accelerates downward)
-  flapVY: -240,              // px/s (negative = upward impulse)
+  flapVY: -260,              // px/s (negative = upward impulse)
 
   // Speed scaling
   baseSpeedPxPerS: 120,      // px/s base horizontal movement
@@ -41,12 +41,12 @@ window.__ANDEN_CONFIG__ = window.__ANDEN_CONFIG__ || {
   thirdOffsetXRatioAdjust: 0.1,
 
   // Obstacles (gap and spawn)
-  gapRatio: 0.275,           // gap size as fraction of canvas width
+  gapRatio: 0.275 * 1.5,     // gap size as fraction of canvas width (50% taller for the new canvas)
   gapMin: 48,                // minimum gap in px
 
   // Trail and spawn tuning
   trailLengthMin: 80,        // minimum trail buffer entries
-  spawnIntervalMsBase: Math.round(90 * (1000 / 60)), // ms between spawns base
+  spawnIntervalMsBase: Math.round(180 * (1000 / 60)), // ms between spawns base (double spacing for tall canvas)
 
   // Grace period at start (ms)
   graceMs: 1200,
@@ -56,7 +56,7 @@ window.__ANDEN_CONFIG__ = window.__ANDEN_CONFIG__ || {
   santaSpriteScale: 0.66,
   // Hitbox scale: fraction of the bird's width/height used for collision checks
   // Values <1 shrink the hitbox making collisions more forgiving
-  reindeerHitBoxScale: 0.9,
+  reindeerHitBoxScale: 0.72,
 };
 
 /* End of config */

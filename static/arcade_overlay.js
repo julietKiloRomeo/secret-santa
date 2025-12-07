@@ -751,11 +751,8 @@
     window.addEventListener('keydown', keyHandler, true);
 
     pointerHandler = function (evt) {
-      if (!panel.contains(evt.target)) {
-        evt.preventDefault();
-        evt.stopPropagation();
-        requestClose(false);
-      }
+      evt.preventDefault();
+      evt.stopPropagation();
     };
 
     showOverlay(panel);
@@ -948,11 +945,8 @@
     window.addEventListener('keydown', localKeyHandler, true);
 
     pointerHandler = function (evt) {
-      if (!panel.contains(evt.target)) {
-        evt.preventDefault();
-        evt.stopPropagation();
-        closeOverlay();
-      }
+      evt.preventDefault();
+      evt.stopPropagation();
     };
 
     showOverlay(panel);
@@ -1077,14 +1071,17 @@
     const userTitle = typeof title === 'string' ? title.trim() : '';
     const userMessage = typeof message === 'string' ? message.trim() : '';
     const effectiveTitle = userTitle || 'Ny high score!';
+    if (!qualifies && overlayLocked) {
+      return;
+    }
     const defaultMessage = qualifies
       ? 'Skriv dit navn til julemandens liste.'
-      : 'Listen er fuld, men din score bliver gemt – slå top 10 for at se den.';
+      : 'Top 10 er fyldt – slå listen for at skrive dit navn.';
     const effectiveMessage = userMessage || defaultMessage;
     showLeaderboardPanel({
       gameId,
       score,
-      allowEntry: typeof score === 'number' && score > 0,
+      allowEntry: typeof score === 'number' && score > 0 && qualifies,
       allowSkip,
       title: effectiveTitle,
       message: effectiveMessage,
