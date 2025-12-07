@@ -36,6 +36,10 @@
   };
   const sprites = {};
   const DEFAULT_REINDEER_ASPECT = 148 / 109; // natural sprite ratio (height / width)
+  const LEVEL_TWO_SCORE = 25;
+  const LEVEL_THREE_SCORE = 50;
+  const PREVIEW_LEAD_MS = 1000; // ms lead (1s before spawn) for the level-two indicator
+  const LEVEL_UP_STATUS_TEXT = "Level up!";
   function loadSprite(name, path) {
     const img = new Image();
     img.src = path;
@@ -91,6 +95,13 @@
       if (!Array.isArray(bag[key])) bag[key] = [];
       bag[key].push(payload);
     } catch (e) {}
+  }
+
+  function nowMs() {
+    if (typeof performance !== "undefined" && performance.now) {
+      return performance.now();
+    }
+    return Date.now();
   }
 
   function removeDuplicateScorePill() {
@@ -338,6 +349,7 @@
       typeof cfg.spawnIntervalMsBase !== "undefined"
         ? cfg.spawnIntervalMsBase
         : SPAWN_INTERVAL_MS_BASE;
+    nextSpawnDueMs = lastSpawnMs + SPAWN_INTERVAL_MS;
 
     // initialize trail buffer
     trail.length = 0;
@@ -345,6 +357,8 @@
       trail.push({ x: PLAYER_X, y: bird.y });
 
     initBackground();
+    nextGapPlan = null;
+    ensureNextGapPlan();
   }
 
   // Audio: try to find a user-supplied audio file in /static
@@ -451,9 +465,46 @@
   // Grace period (ms) at start before falling begins; config may override on resize
   let GRACE_MS = 1200;
   let graceRemainingMs = 0;
+  let currentLevel = 1;
+  let indicatorReadyAfterClear = false;
+  let nextGapPlan = null;
+  let nextSpawnDueMs = 0;
+  let currentFrameTimestamp = 0;
+  let statusClearTimer = null;
+  let statusMessageToken = 0;
 
-  function setStatus(text) {
-    statusEl.textContent = text || "";
+  function setStatus(text, options = {}) {
+    if (!statusEl) return;
+    if (statusClearTimer) {
+      clearTimeout(statusClearTimer);
+      statusClearTimer = null;
+    }
+    statusMessageToken += 1;
+    const message = text || "";
+    statusEl.textContent = message;
+    const shouldHide = !message;
+    const kind = options?.kind || null;
+    if (shouldHide) {
+      statusEl.classList.add("is-hidden");
+      statusEl.classList.remove("is-level-up");
+      statusEl.classList.add("anden-pill-muted");
+      return;
+    }
+    statusEl.classList.remove("is-hidden");
+    statusEl.classList.toggle("is-level-up", kind === "level-up");
+    statusEl.classList.toggle("anden-pill-muted", kind !== "level-up");
+  }
+
+  function showTemporaryStatus(text, options = {}) {
+    if (!statusEl) return;
+    const durationMs =
+      typeof options?.durationMs === "number" ? options.durationMs : 2000;
+    setStatus(text, options);
+    const token = statusMessageToken;
+    statusClearTimer = setTimeout(() => {
+      if (statusMessageToken !== token) return;
+      setStatus("");
+    }, durationMs);
   }
 
   function isOverlayActive() {
@@ -463,9 +514,24 @@
     return legacy && legacy.style.display !== "none";
   }
 
-  function spawnChimney() {
+  function computeRandomGapTop() {
     const span = Math.max(30, MAX_TOP);
-    const topHeight = 30 + Math.random() * span;
+    return 30 + Math.random() * span;
+  }
+
+  function clampGapTop(candidate) {
+    const span = Math.max(30, MAX_TOP);
+    const minTop = 30;
+    const maxTop = minTop + span;
+    if (!isFinite(candidate)) return computeRandomGapTop();
+    return Math.min(maxTop, Math.max(minTop, candidate));
+  }
+
+  function spawnChimney(forcedTop) {
+    const topHeight =
+      typeof forcedTop === "number"
+        ? clampGapTop(forcedTop)
+        : computeRandomGapTop();
     chimneys.push({ x: WIDTH + 10, top: topHeight, passed: false });
     const timestamp =
       typeof performance !== "undefined" && performance.now
@@ -474,6 +540,21 @@
     pushDebugEvent("chimneySpawns", { timestamp });
     chimneySpawnLog.push(timestamp);
     if (chimneySpawnLog.length > 32) chimneySpawnLog.shift();
+  }
+
+  function ensureNextGapPlan() {
+    if (nextGapPlan && isFinite(nextGapPlan.top)) {
+      return nextGapPlan;
+    }
+    nextGapPlan = { top: computeRandomGapTop() };
+    return nextGapPlan;
+  }
+
+  function spawnChimneyFromPlan() {
+    const plan = ensureNextGapPlan();
+    spawnChimney(plan.top);
+    nextGapPlan = null;
+    ensureNextGapPlan();
   }
 
   function reset() {
@@ -487,6 +568,8 @@
     chimneys.length = 0;
     frame = 0;
     score = 0;
+    currentLevel = 1;
+    indicatorReadyAfterClear = false;
     running = true;
     setStatus("");
     // initialize trail so the chain has sensible starting values (anchor X)
@@ -494,7 +577,11 @@
     for (let i = 0; i < TRAIL_LENGTH; i++)
       trail.push({ x: PLAYER_X, y: bird.y });
     graceRemainingMs = GRACE_MS;
-    lastSpawnMs = performance.now() + graceRemainingMs;
+    const startNow = nowMs();
+    lastSpawnMs = startNow + graceRemainingMs;
+    nextSpawnDueMs = lastSpawnMs + SPAWN_INTERVAL_MS;
+    nextGapPlan = null;
+    ensureNextGapPlan();
     try {
       if (window.arcadeOverlay && window.arcadeOverlay.hideOverlay) {
         window.arcadeOverlay.hideOverlay();
@@ -523,6 +610,37 @@
     }
   }
 
+  function announceLevelUp(level) {
+    showTemporaryStatus(LEVEL_UP_STATUS_TEXT, {
+      durationMs: 2600,
+      kind: "level-up",
+    });
+  }
+
+  function updateLevelProgress() {
+    const prevLevel = currentLevel;
+    if (score >= LEVEL_THREE_SCORE) {
+      currentLevel = 3;
+    } else if (score >= LEVEL_TWO_SCORE) {
+      currentLevel = 2;
+    } else {
+      currentLevel = 1;
+    }
+    if (currentLevel > prevLevel) {
+      announceLevelUp(currentLevel);
+      if (currentLevel >= 3) {
+        indicatorReadyAfterClear = true;
+      }
+    }
+  }
+
+  function handleGapCleared() {
+    updateLevelProgress();
+    if (currentLevel >= 3) {
+      indicatorReadyAfterClear = true;
+    }
+  }
+
   function consumeGracePeriod() {
     if (graceRemainingMs <= 0) return;
     graceRemainingMs = 0;
@@ -532,8 +650,12 @@
           ? performance.now()
           : Date.now();
       lastSpawnMs = now;
+      nextSpawnDueMs = lastSpawnMs + SPAWN_INTERVAL_MS;
+      ensureNextGapPlan();
     } catch (e) {
       lastSpawnMs = Date.now();
+      nextSpawnDueMs = lastSpawnMs + SPAWN_INTERVAL_MS;
+      ensureNextGapPlan();
     }
   }
 
@@ -548,10 +670,12 @@
   }
 
   function updateObstacles(dt, ts) {
+    ensureNextGapPlan();
     // Spawn chimneys by elapsed time
     if (ts - lastSpawnMs > SPAWN_INTERVAL_MS) {
-      spawnChimney();
+      spawnChimneyFromPlan();
       lastSpawnMs = ts;
+      nextSpawnDueMs = ts + SPAWN_INTERVAL_MS;
     }
 
     // Move chimneys using px/sec speed
@@ -565,6 +689,7 @@
       if (!chimneys[i].passed && chimneys[i].x + 40 < leadX) {
         chimneys[i].passed = true;
         score += 1;
+        handleGapCleared();
       }
       if (chimneys[i].x < -80) chimneys.splice(i, 1);
     }
@@ -631,6 +756,7 @@
     const dtMs = ts - lastFrameTs;
     const dt = dtMs / 1000; // seconds
     lastFrameTs = ts;
+    currentFrameTimestamp = ts;
     if (!running) {
       requestAnimationFrame(frameLoop);
       return;
@@ -692,6 +818,8 @@
       ctx.fillRect(c.x - 4, c.top - 8, 48, 8);
       ctx.fillRect(c.x - 4, c.top + GAP, 48, 8);
     }
+
+    drawGapIndicator();
 
     // santa (bird) + chain-following parts
     // Santa and sleigh follow the lead reindeer's vertical trajectory with a delay
@@ -854,6 +982,49 @@
     ctx.fillStyle = "#f0f8ff";
     ctx.textAlign = "right";
     ctx.fillText(`Score ${score}`, x + boxWidth - 12, y + boxHeight - 12);
+    ctx.restore();
+  }
+
+  function shouldDisplayGapIndicator() {
+    if (currentLevel < 2) return false;
+    ensureNextGapPlan();
+    if (!nextGapPlan) return false;
+    if (!currentFrameTimestamp) return false;
+    if (currentLevel >= 3 && indicatorReadyAfterClear) {
+      return true;
+    }
+    if (!nextSpawnDueMs) return false;
+    return currentFrameTimestamp >= nextSpawnDueMs - PREVIEW_LEAD_MS;
+  }
+
+  function drawGapIndicator() {
+    if (!shouldDisplayGapIndicator()) return;
+    const plan = ensureNextGapPlan();
+    if (!plan) return;
+    const clampedTop = clampGapTop(plan.top);
+    const gapTop = Math.max(12, Math.min(HEIGHT - GAP - 12, clampedTop));
+    const gapHeight = Math.min(GAP, HEIGHT - gapTop - 12);
+    const indicatorWidth = Math.max(8, Math.round(WIDTH * 0.05));
+    const indicatorPadding = Math.max(12, Math.round(WIDTH * 0.035));
+    const x = WIDTH - indicatorWidth - indicatorPadding;
+    const y = gapTop;
+    const levelThree = currentLevel >= 3 && indicatorReadyAfterClear;
+    ctx.save();
+    ctx.globalAlpha = levelThree ? 0.8 : 0.6;
+    ctx.fillStyle = levelThree
+      ? "rgba(255, 215, 0, 0.22)"
+      : "rgba(255, 255, 255, 0.18)";
+    ctx.fillRect(x, y, indicatorWidth, gapHeight);
+    ctx.strokeStyle = levelThree ? "#ffd700" : "#f4ffff";
+    ctx.lineWidth = 2;
+    if (ctx.setLineDash) ctx.setLineDash([6, 6]);
+    ctx.strokeRect(x, y, indicatorWidth, gapHeight);
+    if (ctx.setLineDash) ctx.setLineDash([]);
+    ctx.font = `${Math.max(10, Math.round(WIDTH * 0.03))}px 'Space Mono', monospace`;
+    ctx.fillStyle = levelThree ? "#ffe999" : "#f0f8ff";
+    ctx.textAlign = "center";
+    const labelY = Math.max(16, y - 6);
+    ctx.fillText("NEXT", x + indicatorWidth / 2, labelY);
     ctx.restore();
   }
 
