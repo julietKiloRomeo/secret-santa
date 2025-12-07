@@ -8,8 +8,8 @@
   if (!ctx) {
     return;
   }
-  const scoreEl = document.getElementById("santa-score");
   const statusEl = document.getElementById("santa-status");
+  removeDuplicateScorePill();
 
   try {
     canvas.style.touchAction = "none";
@@ -91,6 +91,20 @@
       if (!Array.isArray(bag[key])) bag[key] = [];
       bag[key].push(payload);
     } catch (e) {}
+  }
+
+  function removeDuplicateScorePill() {
+    try {
+      const pill = document.getElementById("santa-score");
+      if (!pill) return;
+      if (typeof pill.remove === "function") {
+        pill.remove();
+      } else {
+        pill.style.display = "none";
+      }
+    } catch (err) {
+      console.warn("Failed removing duplicate score pill", err);
+    }
   }
 
   // Background parallax: clouds and silhouettes
@@ -312,7 +326,7 @@
       typeof cfg.flapVY !== "undefined" ? cfg.flapVY : -260;
     FLAP_VY = baseFlapVY * scale;
     BASE_SPEED_PX_S = (cfg.baseSpeedPxPerS || 120) * scale;
-    SPEED_PER_SCORE_PX_S = (cfg.speedPerScorePxPerS || 6) * scale;
+    SPEED_PER_SCORE_PX_S = (cfg.speedPerScorePxPerS || 3) * scale;
     const defaultGapRatio = 0.275 * 1.5;
     const gapRatio =
       typeof cfg.gapRatio !== "undefined" ? cfg.gapRatio : defaultGapRatio;
@@ -422,7 +436,7 @@
 
   // Speed scaling per second (placeholders)
   let BASE_SPEED_PX_S = 120;
-  let SPEED_PER_SCORE_PX_S = 6;
+  let SPEED_PER_SCORE_PX_S = 3;
 
   const chimneys = [];
   const chimneySpawnLog = [];
@@ -551,7 +565,6 @@
       if (!chimneys[i].passed && chimneys[i].x + 40 < leadX) {
         chimneys[i].passed = true;
         score += 1;
-        scoreEl.textContent = `Score: ${score}`;
       }
       if (chimneys[i].x < -80) chimneys.splice(i, 1);
     }

@@ -28,3 +28,13 @@ def test_anden_config_file_exists_and_keys():
     ]
     missing = [k for k in keys if k not in s]
     assert not missing, f"Missing config keys in static/anden_config.js: {missing}"
+
+
+def test_speed_per_score_scaling_is_slowed():
+    """Ensure the config documents the slower 50% speed increase."""
+    text = Path('static/anden_config.js').read_text()
+    expected = 'speedPerScorePxPerS: 3'
+    assert expected in text, (
+        'Flappy Santa should only gain half as much speed per score; update static/anden_config.js '
+        f'to include `{expected}` so the default matches the intended pacing.'
+    )

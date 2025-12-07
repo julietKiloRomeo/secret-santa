@@ -30,7 +30,7 @@ window.__ANDEN_CONFIG__ = window.__ANDEN_CONFIG__ || {
 
   // Speed scaling
   baseSpeedPxPerS: 120,      // px/s base horizontal movement
-  speedPerScorePxPerS: 6,    // px/s added per scored obstacle
+  speedPerScorePxPerS: 3,    // px/s added per scored obstacle (50% slower ramp)
 
   // Player / reindeer horizontal anchors expressed as ratios of canvas width
   // PLAYER_X is computed as canvasWidth * playerXRatio
