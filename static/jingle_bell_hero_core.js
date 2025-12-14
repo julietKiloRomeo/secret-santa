@@ -1,7 +1,7 @@
 export const MAX_LIVES = 3;
-export const HIT_ZONE_Y = 500;
-export const SCROLL_SPEED = 200;
-export const HIT_TOLERANCE = 50;
+export const HIT_ZONE_Y = 640;
+export const SCROLL_SPEED = 220;
+export const HIT_TOLERANCE = 70;
 export const READY_TIME = 2.0;
 
 const PITCH_MAP = {
@@ -82,6 +82,8 @@ export function processTiedNotes(events) {
 export class AudioPlayer {
   constructor() {
     this.ctx = null;
+    this.holds = new Map();
+    this.holdCounter = 0;
   }
 
   ensureCtx() {
@@ -107,5 +109,36 @@ export class AudioPlayer {
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
     osc.start();
     osc.stop(ctx.currentTime + duration);
+  }
+
+  startHold(freq) {
+    const ctx = this.ensureCtx();
+    if (!ctx) return null;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    osc.start();
+    const id = ++this.holdCounter;
+    this.holds.set(id, {
+      osc,
+      gain
+    });
+    return id;
+  }
+
+  stopHold(id) {
+    const ctx = this.ensureCtx();
+    const hold = this.holds.get(id);
+    if (!ctx || !hold) return;
+    try {
+      hold.gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+      hold.osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {// ignore
+    }
+    this.holds.delete(id);
   }
 }

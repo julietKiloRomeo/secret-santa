@@ -3,20 +3,46 @@ import ReactDOMClientRuntime from './react_dom_client_runtime.js';
 import * as _jingle_bell_hero_chart from './jingle_bell_hero_chart.js';
 import * as _jingle_bell_hero_core from './jingle_bell_hero_core.js';
 
-const _react_runtime = { default: ReactRuntime };
-const _react_dom_client_runtime = { default: ReactDOMClientRuntime };
-
+const React = ReactRuntime;
 const {
   useState,
   useEffect,
   useRef
-} = _react_runtime.default;
+} = React;
 const {
   createRoot
-} = _react_dom_client_runtime.default;
+} = ReactDOMClientRuntime;
+
 const isBrowser = typeof window !== 'undefined';
 const VIEW_WIDTH = 800;
-const VIEW_HEIGHT = 700;
+const VIEW_HEIGHT = 820;
+const LANES = [1, 2, 3, 4];
+const LANE_WIDTH = VIEW_WIDTH / (LANES.length + 1);
+const HIT_WINDOW_SEC = _jingle_bell_hero_core.HIT_TOLERANCE / _jingle_bell_hero_core.SCROLL_SPEED;
+const LEVEL_SONGS = ['partridge-1', 'partridge-1', 'partridge-2', 'partridge-2', 'partridge-3', 'partridge-3'];
+
+const laneX = lane => lane * LANE_WIDTH;
+const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+const timingScore = delta => {
+  const ad = Math.abs(delta);
+  if (ad <= HIT_WINDOW_SEC * 0.35) {
+    return {
+      label: 'PERFECT!',
+      points: 150
+    };
+  }
+  if (ad <= HIT_WINDOW_SEC * 0.8) {
+    return {
+      label: 'GOOD',
+      points: 110
+    };
+  }
+  return {
+    label: 'OK',
+    points: 80
+  };
+};
+
 export default function JingleBellHero() {
   const [gameState, setGameState] = useState('menu');
   const [progressionIndex, setProgressionIndex] = useState(0);
@@ -29,95 +55,57 @@ export default function JingleBellHero() {
   const [songs, setSongs] = useState({});
   const [loadingSongs, setLoadingSongs] = useState(true);
   const [songError, setSongError] = useState('');
-  const [debugStats, setDebugStats] = useState({ visibleNotes: 0, sampleY: [], loadedSongs: [] });
+  const [debugStats, setDebugStats] = useState({
+    visibleNotes: 0,
+    loadedSongs: []
+  });
+  const [laneEffects, setLaneEffects] = useState([]);
   const startTimeRef = useRef(null);
   const audioPlayerRef = useRef(isBrowser ? new _jingle_bell_hero_core.AudioPlayer() : null);
-  const sustainedNotesRef = useRef([]);
+  const notesRef = useRef([]);
   const playedNotesRef = useRef(new Set());
   const heldNotesRef = useRef(new Set());
   const completedNotesRef = useRef(new Set());
+  const holdHandlesRef = useRef(new Map());
+  const activeKeysRef = useRef(new Set());
   const animationRef = useRef(null);
   const rootRef = useRef(null);
-  const getLaneX = lane => lane * (VIEW_WIDTH / 5);
-  const getLanePercent = lane => lane * 20;
-  const bellNodes = [1, 2, 3, 4].map(lane => _react_runtime.default.createElement("g", {
-    key: `bell-${lane}`,
-    role: "button",
-    "aria-label": "🔔",
-    tabIndex: 0,
-    transform: `translate(${getLaneX(lane)}, ${_jingle_bell_hero_core.HIT_ZONE_Y + 70})`,
-    onClick: () => handleBellClick(lane),
-    onTouchStart: e => {
-      e.preventDefault();
-      handleBellClick(lane);
-    },
-    onKeyDown: e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleBellClick(lane);
-      }
-    },
-    style: {
-      cursor: 'pointer',
-      pointerEvents: 'auto'
-    }
-  }, _react_runtime.default.createElement("text", {
-    x: "0",
-    y: "0",
-    textAnchor: "middle",
-    fontSize: "64"
-  }, "\uD83D\uDD14"), _react_runtime.default.createElement("text", {
-    x: "0",
-    y: "28",
-    textAnchor: "middle",
-    fontSize: "14",
-    fill: "#fff",
-    fontWeight: "bold"
-  }, ['D', 'F', 'J', 'K'][lane - 1]), hitFeedback.filter(f => f.lane === lane).map((f, i) => _react_runtime.default.createElement("text", {
-    key: `${f.lane}-${i}-${f.time}`,
-    x: "0",
-    y: "-60",
-    textAnchor: "middle",
-    fontSize: "20",
-    fill: f.text === 'PERFECT!' || f.text === 'RELEASE!' ? '#22c55e' : '#f87171'
-  }, f.text))));
-
-  const setupLevel = levelIndex => {
-    const currentLevel = _jingle_bell_hero_chart.PROGRESSION[levelIndex];
-    const {
-      difficulty,
-      speedIndex,
-      songId
-    } = currentLevel;
-    const config = _jingle_bell_hero_chart.DIFFICULTIES[difficulty];
-    const speed = config.speeds[speedIndex];
-    const chartEvents = songs[songId] || [];
-    const songWithFreq = (0, _jingle_bell_hero_core.addFrequencies)(chartEvents);
-    const scaledSong = songWithFreq.map(event => ({
-      ...event,
-      time: event.time / speed.speedMultiplier
-    }));
-    const originalNotes = (0, _jingle_bell_hero_core.processTiedNotes)(scaledSong);
-    sustainedNotesRef.current = originalNotes.map(note => ({
-      ...note,
-      startTime: note.startTime + _jingle_bell_hero_core.READY_TIME,
-      endTime: note.endTime + _jingle_bell_hero_core.READY_TIME
-    }));
-    playedNotesRef.current = new Set();
-    heldNotesRef.current = new Set();
-    completedNotesRef.current = new Set();
-    startTimeRef.current = Date.now();
-  };
   const songsReady = !loadingSongs && !songError && Object.keys(songs).length === _jingle_bell_hero_chart.SONG_MANIFEST.length;
+  const nowSeconds = () => {
+    if (!startTimeRef.current) return 0;
+    return (performance.now() - startTimeRef.current) / 1000;
+  };
+
+  const addLaneEffect = (lane, type, duration = 450) => {
+    const expiry = Date.now() + duration;
+    setLaneEffects(prev => [...prev, {
+      lane,
+      type,
+      expiry,
+      id: `${lane}-${type}-${expiry}-${Math.random().toString(36).slice(2, 6)}`
+    }]);
+  };
+
+  useEffect(() => {
+    if (!laneEffects.length) return undefined;
+    const id = setInterval(() => {
+      const now = Date.now();
+      setLaneEffects(prev => prev.filter(e => e.expiry > now));
+    }, 120);
+    return () => clearInterval(id);
+  }, [laneEffects.length]);
 
   useEffect(() => {
     let active = true;
     setLoadingSongs(true);
     _jingle_bell_hero_chart.loadSongCharts().then(data => {
       if (!active) return;
-      setSongError('');
       setSongs(data);
-      setDebugStats(prev => ({ ...prev, loadedSongs: Object.keys(data) }));
+      setSongError('');
+      setDebugStats(prev => ({
+        ...prev,
+        loadedSongs: Object.keys(data)
+      }));
     }).catch(err => {
       console.error(err);
       if (active) {
@@ -133,14 +121,57 @@ export default function JingleBellHero() {
     };
   }, []);
 
+  const setupLevel = levelIndex => {
+    const currentLevel = _jingle_bell_hero_chart.PROGRESSION[levelIndex];
+    const {
+      difficulty,
+      speedIndex
+    } = currentLevel;
+    const config = _jingle_bell_hero_chart.DIFFICULTIES[difficulty];
+    const speed = config.speeds[speedIndex];
+    const songId = LEVEL_SONGS[levelIndex] || currentLevel.songId;
+    const chartEvents = songs[songId] || [];
+    const easedChart = levelIndex < 2 ? chartEvents.map(event => ({
+      ...event,
+      notes: event.notes && event.notes.length ? [event.notes[0]] : []
+    })).filter(e => e.notes.length) : chartEvents;
+    const songWithFreq = (0, _jingle_bell_hero_core.addFrequencies)(easedChart);
+    const scaledSong = songWithFreq.map(event => ({
+      ...event,
+      time: event.time / speed.speedMultiplier
+    }));
+    const prepared = (0, _jingle_bell_hero_core.processTiedNotes)(scaledSong).map((note, idx) => ({
+      ...note,
+      id: `${songId}-${idx}`,
+      startTime: note.startTime + _jingle_bell_hero_core.READY_TIME,
+      endTime: note.endTime + _jingle_bell_hero_core.READY_TIME
+    }));
+    notesRef.current = prepared;
+    playedNotesRef.current = new Set();
+    heldNotesRef.current = new Set();
+    completedNotesRef.current = new Set();
+    startTimeRef.current = performance.now();
+    setCurrentTime(0);
+  };
+
   useEffect(() => {
     if (gameState !== 'playing' || !songsReady) return undefined;
     setupLevel(progressionIndex);
     const loop = () => {
       if (!startTimeRef.current) return;
-      const now = (Date.now() - startTimeRef.current) / 1000;
+      const now = (performance.now() - startTimeRef.current) / 1000;
       setCurrentTime(now);
-      const lastNote = sustainedNotesRef.current[sustainedNotesRef.current.length - 1];
+      notesRef.current.forEach((note, idx) => {
+        if (playedNotesRef.current.has(idx) || completedNotesRef.current.has(idx)) return;
+        const laneHeld = activeKeysRef.current.has(note.lane) || Array.from(heldNotesRef.current).some(hIdx => notesRef.current[hIdx]?.lane === note.lane);
+        const windowEnd = note.startTime + HIT_WINDOW_SEC;
+        if (laneHeld && now >= note.startTime) {
+          registerMiss(note.lane, idx);
+        } else if (now > windowEnd && !heldNotesRef.current.has(idx)) {
+          registerMiss(note.lane, idx);
+        }
+      });
+      const lastNote = notesRef.current[notesRef.current.length - 1];
       if (lastNote && now > lastNote.endTime + 2) {
         if (progressionIndex < _jingle_bell_hero_chart.PROGRESSION.length - 1) {
           setProgressionIndex(prev => prev + 1);
@@ -149,40 +180,45 @@ export default function JingleBellHero() {
         }
         return;
       }
+      heldNotesRef.current.forEach(idx => {
+        const note = notesRef.current[idx];
+        const endWindow = HIT_WINDOW_SEC;
+        if (now > note.endTime + endWindow) {
+          const handle = holdHandlesRef.current.get(idx);
+          if (handle) {
+            audioPlayerRef.current?.stopHold(handle);
+            holdHandlesRef.current.delete(idx);
+          }
+          heldNotesRef.current.delete(idx);
+          completedNotesRef.current.add(idx);
+          setCombo(0);
+          setMissStreak(m => Math.min(4, m + 1));
+        }
+      });
       animationRef.current = requestAnimationFrame(loop);
     };
     animationRef.current = requestAnimationFrame(loop);
-    setCurrentTime(0);
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
   }, [gameState, progressionIndex, songsReady, songs]);
+
   useEffect(() => {
     if (!isBrowser) return undefined;
-    const loop = () => {
+    const id = requestAnimationFrame(() => {
       setDebugStats(prev => ({
         ...prev,
-        visibleNotes: sustainedNotesRef.current.filter((_, idx) => !completedNotesRef.current.has(idx)).length,
-        sampleY: sustainedNotesRef.current.slice(0, 5).map(n => ({
-          lane: n.lane,
-          start: _jingle_bell_hero_core.HIT_ZONE_Y - (n.startTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED,
-          end: _jingle_bell_hero_core.HIT_ZONE_Y - (n.endTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED
-        }))
+        visibleNotes: notesRef.current.filter((_, idx) => !completedNotesRef.current.has(idx)).length
       }));
-      requestAnimationFrame(loop);
-    };
-    const id = requestAnimationFrame(loop);
+    });
     return () => cancelAnimationFrame(id);
   }, [currentTime]);
+
   useEffect(() => {
     if (!isBrowser) return undefined;
     const handler = event => {
-      if (gameState === 'ended') {
-        resetGame();
-        return;
-      }
       if (gameState !== 'playing') return;
       const keyMap = {
         d: 1,
@@ -192,29 +228,50 @@ export default function JingleBellHero() {
       };
       const lane = keyMap[event.key ? event.key.toLowerCase() : ''];
       if (lane) {
-        handleBellClick(lane);
+        event.preventDefault();
+        if (!activeKeysRef.current.has(lane)) {
+          activeKeysRef.current.add(lane);
+          handleInputStart(lane);
+        }
+      }
+    };
+    const upHandler = event => {
+      if (gameState !== 'playing') return;
+      const keyMap = {
+        d: 1,
+        f: 2,
+        j: 3,
+        k: 4
+      };
+      const lane = keyMap[event.key ? event.key.toLowerCase() : ''];
+      if (lane) {
+        event.preventDefault();
+        activeKeysRef.current.delete(lane);
+        handleInputEnd(lane);
       }
     };
     window.addEventListener('keydown', handler);
+    window.addEventListener('keyup', upHandler);
     return () => {
       window.removeEventListener('keydown', handler);
+      window.removeEventListener('keyup', upHandler);
     };
   }, [gameState]);
+
   const startGame = () => {
     if (!songsReady) {
       setSongError('Sangene er ikke klar endnu. Prøv igen om et øjeblik.');
       return;
     }
-    setupLevel(0);
     setProgressionIndex(0);
-    setGameState('playing');
     setScore(0);
     setCombo(0);
     setLives(_jingle_bell_hero_core.MAX_LIVES);
     setMissStreak(0);
-    setCurrentTime(0);
     setHitFeedback([]);
+    setGameState('playing');
   };
+
   const resetGame = () => {
     setGameState('menu');
     setProgressionIndex(0);
@@ -224,7 +281,8 @@ export default function JingleBellHero() {
     setMissStreak(0);
     setHitFeedback([]);
   };
-  const handleBellClick = lane => {
+
+  const handleInputStart = lane => {
     if (gameState === 'ended') {
       resetGame();
       return;
@@ -234,60 +292,85 @@ export default function JingleBellHero() {
       return;
     }
     if (gameState !== 'playing') return;
-    const notesInZone = sustainedNotesRef.current.filter((note, idx) => {
+    const now = nowSeconds();
+    const notesInZone = notesRef.current.filter((note, idx) => {
       if (playedNotesRef.current.has(idx)) return false;
       if (note.lane !== lane) return false;
-      const noteY = _jingle_bell_hero_core.HIT_ZONE_Y - (note.startTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED;
-      return Math.abs(noteY - _jingle_bell_hero_core.HIT_ZONE_Y) < _jingle_bell_hero_core.HIT_TOLERANCE;
+      return Math.abs(note.startTime - now) <= HIT_WINDOW_SEC;
     });
     if (notesInZone.length > 0) {
       const note = notesInZone[0];
-      const idx = sustainedNotesRef.current.indexOf(note);
+      const idx = notesRef.current.indexOf(note);
+      const { label, points } = timingScore(note.startTime - now);
       playedNotesRef.current.add(idx);
       if (note.isSustained) {
         heldNotesRef.current.add(idx);
+        const handle = audioPlayerRef.current?.startHold(note.freq);
+        if (handle) {
+          holdHandlesRef.current.set(idx, handle);
+        }
+        addLaneEffect(lane, 'hold', 1200);
       } else {
         completedNotesRef.current.add(idx);
+        audioPlayerRef.current?.playNote(note.freq, 0.25);
+        addLaneEffect(lane, 'hit', 350);
       }
-      const duration = note.isSustained ? note.endTime - note.startTime + 0.2 : 0.3;
-      audioPlayerRef.current?.playNote(note.freq, duration);
-      setScore(s => s + 100);
+      setScore(s => s + points);
       setCombo(c => c + 1);
       setMissStreak(0);
       setHitFeedback(prev => [...prev, {
         lane,
         time: Date.now(),
-        text: 'PERFECT!'
+        text: note.isSustained ? 'HOLD!' : label
       }]);
       setTimeout(() => {
-        setHitFeedback(prev => prev.filter(f => Date.now() - f.time <= 500));
-      }, 500);
+        setHitFeedback(prev => prev.filter(f => Date.now() - f.time <= 450));
+      }, 450);
       return;
     }
-    const heldNotesInLane = sustainedNotesRef.current.filter((note, idx) => {
-      if (!heldNotesRef.current.has(idx)) return false;
-      if (note.lane !== lane) return false;
-      const noteEndY = _jingle_bell_hero_core.HIT_ZONE_Y - (note.endTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED;
-      return Math.abs(noteEndY - _jingle_bell_hero_core.HIT_ZONE_Y) < _jingle_bell_hero_core.HIT_TOLERANCE;
-    });
-    if (heldNotesInLane.length > 0) {
-      const note = heldNotesInLane[0];
-      const idx = sustainedNotesRef.current.indexOf(note);
-      heldNotesRef.current.delete(idx);
-      completedNotesRef.current.add(idx);
-      setScore(s => s + 100);
+    registerMiss(lane);
+  };
+
+  const handleInputEnd = lane => {
+    if (gameState !== 'playing') return;
+    const now = nowSeconds();
+    const heldNotesInLane = notesRef.current.filter((note, idx) => heldNotesRef.current.has(idx) && note.lane === lane);
+    if (!heldNotesInLane.length) return;
+    const note = heldNotesInLane[0];
+    const idx = notesRef.current.indexOf(note);
+    const delta = note.endTime - now;
+    const within = Math.abs(delta) <= HIT_WINDOW_SEC * 1.2;
+    const handle = holdHandlesRef.current.get(idx);
+    if (handle) {
+      audioPlayerRef.current?.stopHold(handle);
+      holdHandlesRef.current.delete(idx);
+    }
+    heldNotesRef.current.delete(idx);
+    completedNotesRef.current.add(idx);
+    if (within) {
+      const { label, points } = timingScore(delta);
+      setScore(s => s + points);
       setCombo(c => c + 1);
       setMissStreak(0);
+      addLaneEffect(lane, 'release', 300);
       setHitFeedback(prev => [...prev, {
         lane,
         time: Date.now(),
         text: 'RELEASE!'
       }]);
       setTimeout(() => {
-        setHitFeedback(prev => prev.filter(f => Date.now() - f.time <= 500));
-      }, 500);
-      return;
+        setHitFeedback(prev => prev.filter(f => Date.now() - f.time <= 450));
+      }, 450);
+    } else {
+      registerMiss(lane);
     }
+  };
+
+  const registerMiss = (lane, idx) => {
+    if (typeof idx === 'number') {
+      completedNotesRef.current.add(idx);
+    }
+    addLaneEffect(lane, 'miss', 500);
     setCombo(0);
     setMissStreak(m => {
       const newStreak = m + 1;
@@ -310,18 +393,19 @@ export default function JingleBellHero() {
       text: 'MISS'
     }]);
     setTimeout(() => {
-      setHitFeedback(prev => prev.filter(f => Date.now() - f.time <= 500));
-    }, 500);
+      setHitFeedback(prev => prev.filter(f => Date.now() - f.time <= 450));
+    }, 450);
   };
+
   useEffect(() => {
     const isTestEnv = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
     if (isTestEnv && typeof window !== 'undefined') {
       window.__JingleBellHeroTestHooks__ = {
         setSustainedNotes: notes => {
-          sustainedNotesRef.current = notes;
+          notesRef.current = notes;
         },
         setCurrentTime,
-        triggerBell: handleBellClick,
+        triggerBell: handleInputStart,
         resetRefs: () => {
           playedNotesRef.current = new Set();
           heldNotesRef.current = new Set();
@@ -346,132 +430,270 @@ export default function JingleBellHero() {
       };
     }
     return undefined;
-  }, [handleBellClick, score, combo, lives, missStreak]);
+  }, [handleInputStart, score, combo, lives, missStreak]);
 
-  /* istanbul ignore next */
+  const laneBackgrounds = LANES.map(lane => React.createElement("rect", {
+    key: `lane-${lane}`,
+    x: laneX(lane) - LANE_WIDTH * 0.45,
+    y: 40,
+    width: LANE_WIDTH * 0.9,
+    height: VIEW_HEIGHT - 120,
+    rx: "18",
+    fill: lane % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+    stroke: "rgba(255,255,255,0.08)",
+    strokeWidth: "2"
+  }));
+
+  const bellNodes = LANES.map(lane => React.createElement("g", {
+    key: `bell-${lane}`,
+    "data-testid": `bell-${lane}`,
+    role: "button",
+    "aria-label": "🔔",
+    tabIndex: 0,
+    transform: `translate(${laneX(lane)}, ${_jingle_bell_hero_core.HIT_ZONE_Y + 70})`,
+    onClick: () => {
+      handleInputStart(lane);
+      handleInputEnd(lane);
+    },
+    onPointerDown: e => {
+      e.preventDefault();
+      handleInputStart(lane);
+    },
+    onPointerUp: e => {
+      e.preventDefault();
+      handleInputEnd(lane);
+    },
+    onKeyDown: e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleInputStart(lane);
+      }
+    },
+    onKeyUp: e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleInputEnd(lane);
+      }
+    },
+    style: {
+      cursor: 'pointer',
+      pointerEvents: 'auto'
+    }
+  }, React.createElement("circle", {
+    cx: "0",
+    cy: "-10",
+    r: "30",
+    fill: "url(#bell-glow)",
+    opacity: "0.45"
+  }), laneEffects.filter(e => e.lane === lane && e.type === 'hit').map(e => React.createElement("circle", {
+    key: e.id,
+    cx: "0",
+    cy: "-10",
+    r: "36",
+    fill: "#34d399",
+    opacity: "0.35"
+  })), laneEffects.filter(e => e.lane === lane && e.type === 'hold').map(e => React.createElement("rect", {
+    key: e.id,
+    x: -24,
+    y: -86,
+    width: "48",
+    height: "140",
+    rx: "18",
+    fill: "#22c55e",
+    opacity: "0.18"
+  })), laneEffects.filter(e => e.lane === lane && e.type === 'miss').map(e => React.createElement("circle", {
+    key: e.id,
+    cx: "0",
+    cy: "-10",
+    r: "40",
+    fill: "#ef4444",
+    opacity: "0.25"
+  })), React.createElement("text", {
+    x: "0",
+    y: "10",
+    textAnchor: "middle",
+    fontSize: "52"
+  }, "\uD83D\uDD14"), React.createElement("text", {
+    x: "0",
+    y: "32",
+    textAnchor: "middle",
+    fontSize: "14",
+    fill: "#fff",
+    fontWeight: "bold"
+  }, ['D', 'F', 'J', 'K'][lane - 1]), hitFeedback.filter(f => f.lane === lane).map((f, i) => React.createElement("text", {
+    key: `${f.lane}-${i}-${f.time}`,
+    x: "0",
+    y: "-70",
+    textAnchor: "middle",
+    fontSize: "20",
+    fill: f.text === 'PERFECT!' || f.text === 'RELEASE!' || f.text === 'HOLD!' ? '#22c55e' : '#f87171'
+  }, f.text))));
+
+  const noteElements = notesRef.current.map((note, idx) => {
+    if (completedNotesRef.current.has(idx)) return null;
+    const centerX = laneX(note.lane);
+    const startY = _jingle_bell_hero_core.HIT_ZONE_Y - (note.startTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED;
+    const endY = _jingle_bell_hero_core.HIT_ZONE_Y - (note.endTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED;
+    if (startY < -220 || startY > VIEW_HEIGHT + 320) return null;
+    const isStartHit = playedNotesRef.current.has(idx);
+    const isHeld = heldNotesRef.current.has(idx);
+    if (note.isSustained) {
+      const actualStartY = isStartHit ? _jingle_bell_hero_core.HIT_ZONE_Y : startY;
+      const clampedEndY = clamp(endY, 60, _jingle_bell_hero_core.HIT_ZONE_Y);
+      return React.createElement("g", {
+        key: `note-${note.id}`,
+        "data-testid": "note",
+        className: "pointer-events-none"
+      }, React.createElement("line", {
+        x1: centerX,
+        y1: clampedEndY,
+        x2: centerX,
+        y2: actualStartY,
+        stroke: isHeld ? '#22c55e' : '#fbbf24',
+        strokeWidth: "10",
+        opacity: isHeld ? 0.85 : 1
+      }), endY <= _jingle_bell_hero_core.HIT_ZONE_Y && React.createElement("circle", {
+        cx: centerX,
+        cy: clampedEndY,
+        r: "15",
+        fill: isHeld ? '#22c55e' : '#fbbf24',
+        stroke: "#000",
+        strokeWidth: "2"
+      }), !isStartHit && React.createElement("circle", {
+        cx: centerX,
+        cy: startY,
+        r: "18",
+        fill: "#fbbf24",
+        stroke: "#000",
+        strokeWidth: "3"
+      }), isHeld && React.createElement("circle", {
+        cx: centerX,
+        cy: _jingle_bell_hero_core.HIT_ZONE_Y,
+        r: "22",
+        fill: "none",
+        stroke: "#22c55e",
+        strokeWidth: "4",
+        opacity: "0.6"
+      }));
+    }
+    return React.createElement("g", {
+      key: `note-${note.id}`,
+      "data-testid": "note",
+      className: "pointer-events-none"
+    }, React.createElement("circle", {
+      cx: centerX,
+      cy: startY,
+      r: "18",
+      fill: "#fbbf24",
+      stroke: "#000",
+      strokeWidth: "3"
+    }), isStartHit && React.createElement("circle", {
+      cx: centerX,
+      cy: _jingle_bell_hero_core.HIT_ZONE_Y,
+      r: "22",
+      fill: "none",
+      stroke: "#22c55e",
+      strokeWidth: "4",
+      opacity: "0.6"
+    }), playedNotesRef.current.has(idx) && !isHeld && React.createElement("circle", {
+      cx: centerX,
+      cy: _jingle_bell_hero_core.HIT_ZONE_Y,
+      r: "30",
+      fill: "#22c55e",
+      opacity: "0.15"
+    }));
+  }).filter(Boolean);
+
+  const hitLine = React.createElement("line", {
+    key: "hit-line",
+    "data-testid": "hit-line",
+    x1: "0",
+    y1: _jingle_bell_hero_core.HIT_ZONE_Y,
+    x2: VIEW_WIDTH,
+    y2: _jingle_bell_hero_core.HIT_ZONE_Y,
+    stroke: "#fff",
+    strokeWidth: "8",
+    opacity: "0.9"
+  });
+
+  const svgChildren = [...laneBackgrounds, hitLine, ...noteElements, ...bellNodes];
+
   if (gameState === 'menu') {
-    return _react_runtime.default.createElement("div", {
+    return React.createElement("div", {
       ref: rootRef,
-      className: "flex flex-col items-center justify-center min-h-[640px] sm:min-h-[720px] bg-gradient-to-b from-blue-950 via-purple-900 to-indigo-900 w-full rounded-3xl shadow-2xl p-4 sm:p-6 text-center gap-3"
-    }, _react_runtime.default.createElement("div", {
-      className: "flex w-full items-center justify-between text-sm text-white/70"
-    }, _react_runtime.default.createElement("div", null, "Tredje Advent"), _react_runtime.default.createElement("div", null, "Player: ", isBrowser && window.__defaultPlayerName__ ? window.__defaultPlayerName__ : 'Nisse')), songError && _react_runtime.default.createElement("p", {
+      className: "flex flex-col items-center justify-center min-h-[640px] sm:min-h-[720px] bg-gradient-to-b from-slate-900 via-indigo-900 to-purple-900 w-full rounded-3xl shadow-2xl p-6 text-center gap-4"
+    }, React.createElement("div", {
+      className: "text-3xl font-bold text-white"
+    }, "Jingle Bell Hero"), React.createElement("p", {
+      className: "text-white/80"
+    }, "Tr\u00e6f nisse-bj\u00e6lderne med D / F / J / K eller tryk direkte p\u00e5 bj\u00e6lderne."), songError && React.createElement("p", {
       className: "text-red-200 text-sm"
-    }, songError), loadingSongs && _react_runtime.default.createElement("p", {
+    }, songError), loadingSongs && React.createElement("p", {
       className: "text-white/70 text-sm"
-    }, "Loading songs\u2026"), _react_runtime.default.createElement("button", {
+    }, "Loading songs\u2026"), React.createElement("button", {
       onClick: startGame,
       disabled: !songsReady,
       className: `px-10 py-4 bg-yellow-500 text-red-900 font-bold text-xl rounded-lg shadow-lg transform transition ${songsReady ? 'hover:bg-yellow-400 hover:scale-105' : 'opacity-60 cursor-not-allowed'}`
     }, "START"));
   }
 
-  /* istanbul ignore next */
   if (gameState === 'ended') {
     const isVictory = progressionIndex >= _jingle_bell_hero_chart.PROGRESSION.length - 1 && lives > 0;
-    return _react_runtime.default.createElement("div", {
+    return React.createElement("div", {
       className: "flex flex-col items-center justify-center min-h-[640px] bg-gradient-to-b from-red-900 via-green-900 to-red-900 rounded-3xl shadow-2xl p-8 text-center space-y-4"
-    }, _react_runtime.default.createElement("h1", {
+    }, React.createElement("h1", {
       className: "text-4xl font-bold text-yellow-300"
-    }, isVictory ? '🎉 Victory! 🎉' : 'Game Over!'), _react_runtime.default.createElement("p", {
+    }, isVictory ? '🎉 Victory! 🎉' : 'Game Over!'), React.createElement("p", {
       className: "text-2xl text-white"
-    }, "Final Score: ", score), _react_runtime.default.createElement("p", {
+    }, "Final Score: ", score), React.createElement("p", {
       className: "text-lg text-gray-200"
-    }, "Reached Level ", Math.min(progressionIndex + 1, _jingle_bell_hero_chart.PROGRESSION.length), " of ", _jingle_bell_hero_chart.PROGRESSION.length), _react_runtime.default.createElement("button", {
+    }, "Reached Level ", Math.min(progressionIndex + 1, _jingle_bell_hero_chart.PROGRESSION.length), " of ", _jingle_bell_hero_chart.PROGRESSION.length), React.createElement("button", {
       onClick: resetGame,
-      className: "px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-red-900 font-bold text-xl rounded-lg shadow-lg"
+      className: "px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-red-900 font-bold text-xl rounded-lg"
     }, "BACK TO MENU"));
   }
 
-  const noteElements = sustainedNotesRef.current.map((note, idx) => {
-    if (completedNotesRef.current.has(idx)) return null;
-    const laneX = getLaneX(note.lane);
-    const startY = _jingle_bell_hero_core.HIT_ZONE_Y - (note.startTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED;
-    const endY = _jingle_bell_hero_core.HIT_ZONE_Y - (note.endTime - currentTime) * _jingle_bell_hero_core.SCROLL_SPEED;
-    if (startY < -200 || startY > VIEW_HEIGHT + 400) return null;
-    const isStartHit = playedNotesRef.current.has(idx);
-    const isHeld = heldNotesRef.current.has(idx);
-    if (note.isSustained) {
-      const actualStartY = isStartHit ? _jingle_bell_hero_core.HIT_ZONE_Y : startY;
-      const clampedEndY = Math.max(0, Math.min(endY, _jingle_bell_hero_core.HIT_ZONE_Y));
-      return _react_runtime.default.createElement("g", {
-        key: `note-${idx}`,
-        className: "pointer-events-none"
-      }, _react_runtime.default.createElement("line", {
-        x1: laneX,
-        y1: clampedEndY,
-        x2: laneX,
-        y2: actualStartY,
-        stroke: isHeld ? '#22c55e' : '#fbbf24',
-        strokeWidth: "8",
-        opacity: isHeld ? 0.8 : 1
-      }), endY <= _jingle_bell_hero_core.HIT_ZONE_Y && _react_runtime.default.createElement("circle", {
-        cx: laneX,
-        cy: clampedEndY,
-        r: "14",
-        fill: isHeld ? '#22c55e' : '#fbbf24',
-        stroke: "#000",
-        strokeWidth: "2"
-      }), !isStartHit && _react_runtime.default.createElement("circle", {
-        cx: laneX,
-        cy: startY,
-        r: "14",
-        fill: "#fbbf24",
-        stroke: "#000",
-        strokeWidth: "2"
-      }));
-    }
-    return _react_runtime.default.createElement("circle", {
-      key: `note-${idx}`,
-      cx: laneX,
-      cy: startY,
-      r: "18",
-      fill: "#fbbf24",
-      stroke: "#000",
-      strokeWidth: "3",
-      className: "pointer-events-none"
-    });
-  }).filter(Boolean);
-  const hitLine = _react_runtime.default.createElement("line", {
-    key: "hit-line",
-    x1: "0",
-    y1: _jingle_bell_hero_core.HIT_ZONE_Y,
-    x2: VIEW_WIDTH,
-    y2: _jingle_bell_hero_core.HIT_ZONE_Y,
-    stroke: "#fff",
-    strokeWidth: "6",
-    opacity: "0.8"
-  });
-  const svgChildren = [...noteElements, hitLine, ...bellNodes];
-  /* istanbul ignore next */
-  return _react_runtime.default.createElement("div", {
+  return React.createElement("div", {
     ref: rootRef,
-    className: "relative w-full min-h-[640px] sm:min-h-[720px] bg-gradient-to-b from-blue-900 via-purple-900 to-indigo-900 overflow-hidden rounded-3xl shadow-2xl"
-  }, _react_runtime.default.createElement("div", {
-    className: "absolute top-4 left-4 text-white z-10 space-y-1"
-  }, _react_runtime.default.createElement("div", {
-    className: "text-3xl font-bold"
-  }, "Score: ", score), _react_runtime.default.createElement("div", {
-    className: "text-2xl"
-  }, "Combo: ", combo, "x"), _react_runtime.default.createElement("div", {
-    className: "text-2xl"
-  }, "Lives: ", '❤️'.repeat(lives) || '💔'), missStreak > 0 && _react_runtime.default.createElement("div", {
-    className: "text-xl text-red-400"
-  }, "Miss Streak: ", missStreak, "/4"), _react_runtime.default.createElement("div", {
-    className: "text-xl text-yellow-300 mt-2"
-  }, "Level ", progressionIndex + 1, "/", _jingle_bell_hero_chart.PROGRESSION.length), _react_runtime.default.createElement("div", {
-    className: "text-md text-gray-300"
-  }, _jingle_bell_hero_chart.DIFFICULTIES[_jingle_bell_hero_chart.PROGRESSION[progressionIndex].difficulty].speeds[_jingle_bell_hero_chart.PROGRESSION[progressionIndex].speedIndex].name)), _react_runtime.default.createElement("div", {
-    className: "absolute top-4 right-4 text-white z-10 text-[10px] bg-black/30 px-2 py-1 rounded"
-  }, "Notes: ", debugStats.visibleNotes, debugStats.sampleY.length ? ` y=${debugStats.sampleY[0].start.toFixed(1)}` : '', _react_runtime.default.createElement("div", null, "Songs: ", debugStats.loadedSongs.join(',') || '—'), songError && _react_runtime.default.createElement("div", {
-    className: "text-red-200"
-  }, songError)), _react_runtime.default.createElement("div", {
-    className: "relative w-full h-full"
-  }, _react_runtime.default.createElement("svg", {
+    className: "relative w-full max-w-5xl mx-auto aspect-[4/5] sm:aspect-[16/10] bg-gradient-to-b from-slate-950 via-indigo-950 to-purple-900 overflow-hidden rounded-3xl shadow-2xl"
+  }, React.createElement("svg", {
     className: "absolute inset-0 w-full h-full",
     viewBox: `0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`,
-    preserveAspectRatio: "xMidYMid meet"
-  }, svgChildren)));
+    preserveAspectRatio: "xMidYMax meet",
+    "data-testid": "playfield"
+  }, React.createElement("defs", null, React.createElement("linearGradient", {
+    id: "bell-glow",
+    x1: "0%",
+    y1: "0%",
+    x2: "0%",
+    y2: "100%"
+  }, React.createElement("stop", {
+    offset: "0%",
+    stopColor: "#fbbf24",
+    stopOpacity: "0.9"
+  }), React.createElement("stop", {
+    offset: "100%",
+    stopColor: "#f59e0b",
+    stopOpacity: "0.2"
+  }))), svgChildren), React.createElement("div", {
+    className: "absolute top-4 left-4 text-white z-10 space-y-1 bg-black/25 rounded-lg px-3 py-2"
+  }, React.createElement("div", {
+    className: "text-2xl font-bold"
+  }, "Score: ", score), React.createElement("div", {
+    className: "text-lg"
+  }, "Combo: ", combo, "x"), React.createElement("div", {
+    className: "text-lg"
+  }, "Lives: ", '❤️'.repeat(lives) || '💔'), missStreak > 0 && React.createElement("div", {
+    className: "text-sm text-red-200"
+  }, "Miss Streak: ", missStreak, "/4"), React.createElement("div", {
+    className: "text-sm text-yellow-200"
+  }, "Level ", progressionIndex + 1, "/", _jingle_bell_hero_chart.PROGRESSION.length), React.createElement("div", {
+    className: "text-xs text-white/80"
+  }, _jingle_bell_hero_chart.DIFFICULTIES[_jingle_bell_hero_chart.PROGRESSION[progressionIndex].difficulty].speeds[_jingle_bell_hero_chart.PROGRESSION[progressionIndex].speedIndex].name)), React.createElement("div", {
+    className: "absolute top-4 right-4 text-white z-10 text-[10px] bg-black/30 px-2 py-1 rounded"
+  }, "Notes: ", debugStats.visibleNotes, React.createElement("div", null, "Songs: ", debugStats.loadedSongs.join(',') || '—'), songError && React.createElement("div", {
+    className: "text-red-200"
+  }, songError)));
 }
 if (typeof document !== 'undefined') {
   const mount = () => {
@@ -479,7 +701,7 @@ if (typeof document !== 'undefined') {
     if (el && !el.__jingleBellHeroRoot__) {
       const root = createRoot(el);
       el.__jingleBellHeroRoot__ = root;
-      root.render(_react_runtime.default.createElement(JingleBellHero, null));
+      root.render(React.createElement(JingleBellHero, null));
     }
   };
   if (document.readyState === 'loading') {

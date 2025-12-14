@@ -131,6 +131,40 @@ describe('AudioPlayer', () => {
     expect(mockCtx.createOscillator).toHaveBeenCalled();
     expect(mockCtx.createGain).toHaveBeenCalled();
   });
+
+  test('startHold and stopHold wrap sustained playback', () => {
+    const osc = {
+      type: '',
+      frequency: { value: 0 },
+      connect: jest.fn(),
+      start: jest.fn(),
+      stop: jest.fn(),
+    };
+    const gain = {
+      connect: jest.fn(),
+      gain: {
+        setValueAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+      },
+    };
+    const mockCtx = {
+      currentTime: 0,
+      destination: {},
+      createOscillator: jest.fn(() => osc),
+      createGain: jest.fn(() => gain),
+    };
+    window.AudioContext = jest.fn(() => mockCtx);
+    window.webkitAudioContext = undefined;
+    const player = new AudioPlayer();
+    const id = player.startHold(220);
+    expect(id).toBeTruthy();
+    expect(mockCtx.createOscillator).toHaveBeenCalledTimes(1);
+    player.stopHold(id);
+    expect(gain.gain.exponentialRampToValueAtTime).toHaveBeenCalled();
+    expect(osc.stop).toHaveBeenCalled();
+    // Ensure stopping unknown id is safe
+    expect(() => player.stopHold(9999)).not.toThrow();
+  });
 });
 
 describe('JingleBellHero component', () => {
@@ -173,9 +207,40 @@ describe('JingleBellHero component', () => {
     });
     await screen.findByText(/Score:/i);
     await waitFor(() => {
-      const circles = document.querySelectorAll('svg circle');
-      expect(circles.length).toBeGreaterThan(0);
+      const noteGroups = document.querySelectorAll('[data-testid="note"]');
+      expect(noteGroups.length).toBeGreaterThan(0);
     });
   });
 
+  test('bells and hit line stay anchored at the bottom of the playfield', async () => {
+    render(<JingleBellHero />);
+    const startButton = screen.getByRole('button', { name: /start/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(startButton);
+      await Promise.resolve();
+    });
+    const svg = await screen.findByTestId('playfield');
+    const bells = svg.querySelectorAll('[data-testid^="bell-"]');
+    expect(bells.length).toBe(4);
+    const hitLine = svg.querySelector('[data-testid="hit-line"]');
+    expect(hitLine).not.toBeNull();
+  });
+
+  test('notes spawn within the visible playfield range', async () => {
+    render(<JingleBellHero />);
+    const startButton = screen.getByRole('button', { name: /start/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(startButton);
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      const circles = Array.from(document.querySelectorAll('[data-testid="note"] circle'));
+      expect(circles.length).toBeGreaterThan(0);
+      const ys = circles.map((c) => parseFloat(c.getAttribute('cy') || c.getAttribute('y1') || '0'));
+      const inFrame = ys.some((y) => y >= 0 && y <= 800);
+      expect(inFrame).toBe(true);
+    });
+  });
 });
