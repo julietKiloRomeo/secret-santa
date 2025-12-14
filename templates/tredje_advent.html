@@ -1,49 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}Tredje Advent{% endblock %}
 {% block content %}
-  <div class="max-w-3xl mx-auto p-6 text-center">
-    <h1 class="text-3xl font-bold mb-4">Tredje Advent — 🦌 Reindeer Rush</h1>
-    <p class="mb-4">Guide Dasher through an endless winter valley. Tap or press space to jump over frozen ponds, hold for a super leap, and duck under icy branches while chasing carrots for bonus points.</p>
-    <p class="mb-2">Player: <strong>{{ default_name|default('Nisse') }}</strong></p>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+  <div class="max-w-6xl mx-auto p-4 sm:p-6">
+    <h1 class="sr-only">Jingle Bell Hero</h1>
+    <div
+      id="jingle-bell-hero-root"
+      class="min-h-[720px] sm:min-h-[820px] rounded-3xl border border-white/10 bg-gradient-to-b from-blue-900 via-purple-900 to-indigo-900 shadow-2xl flex items-center justify-center text-center text-white/80 overflow-hidden"
+    >
       <div>
-        <div class="mb-3 space-y-1 text-left">
-          <div class="text-xl font-semibold">Distance: <span id="reindeer-score">0 m</span></div>
-          <div class="text-lg font-semibold">Score: <span id="reindeer-total-score">0 pts</span></div>
-          <div class="text-sm text-gray-600">Bonus: <span id="reindeer-bonus">0 pts</span></div>
-          <div class="text-xs text-gray-500">
-            Controls: tap/click for jump, hold for a charged leap, and swipe or press <strong>Down</strong> to duck under icy branches.
-          </div>
-          <div class="text-xs text-gray-500">
-            Game auto-starts once you interact; collide with an obstacle to trigger the game-over overlay.
-          </div>
-        </div>
-        <div class="border rounded-md p-2 bg-white" style="height:260px; display:flex; align-items:center; justify-content:center;">
-          <div id="reindeer-canvas" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#666">Tap or press Space to begin</div>
-        </div>
-        <div class="mt-2 text-sm text-left text-gray-600 space-y-1">
-          <p>Speed: <strong id="reindeer-speed">0</strong> px/s · Obstacles dodged: <strong id="reindeer-obstacles">0</strong> · Next item: <strong id="reindeer-next-item">—</strong></p>
-          <p class="text-xs text-gray-500">Bonus pickups boost your score and stretch each run. Stay airborne to rack up meters!</p>
-        </div>
-      </div>
-      <div>
-        <h2 class="text-xl font-semibold mb-2">Leaderboard</h2>
-        <button
-          type="button"
-          class="mb-3 inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
-          data-arcade-leaderboard
-          data-games="forste-advent,anden-advent,tredje-advent"
-          data-start-game="tredje-advent"
-        >
-          Se alle top 10 lister
-        </button>
-        <div id="reindeer-leaderboard" class="border rounded-md p-2 bg-white" style="min-height:200px"></div>
+        <p class="text-lg">Loading Jingle Bell Hero…</p>
+        <p class="text-sm text-white/60">If nothing appears, ensure JavaScript is enabled.</p>
       </div>
     </div>
   </div>
-  <script>window.__defaultPlayerName__ = "{{ default_name|default('Nisse') }}";</script>
+
+  <script>
+    window.__jbhSongBase = "{{ url_for('static', filename='songs') }}";
+  </script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script>
+    window.ReactDOMClient = window.ReactDOM;
+  </script>
+  <script type="module" src="{{ url_for('static', filename='jingle_bell_hero_app.js') }}"></script>
   <script src="{{ url_for('static', filename='arcade_overlay.js') }}"></script>
   <script src="{{ url_for('static', filename='leaderboard_buttons.js') }}"></script>
-  <script src="/static/reindeer_rush.js"></script>
 {% endblock %}

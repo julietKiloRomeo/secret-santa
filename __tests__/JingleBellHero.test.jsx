@@ -1,0 +1,181 @@
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import JingleBellHero from '../static/jingle_bell_hero_app';
+import { pitchToFreq, addFrequencies, processTiedNotes, AudioPlayer } from '../static/jingle_bell_hero_core';
+
+class MockOscillator {
+  constructor() {
+    this.type = 'sine';
+    this.frequency = { value: 0 };
+  }
+  connect() {}
+  start() {}
+  stop() {}
+}
+
+class MockGain {
+  constructor() {
+    this.gain = {
+      setValueAtTime: () => {},
+      exponentialRampToValueAtTime: () => {},
+    };
+  }
+  connect() {}
+}
+
+class MockAudioContext {
+  constructor() {
+    this.currentTime = 0;
+  }
+  createOscillator() {
+    return new MockOscillator();
+  }
+  createGain() {
+    return new MockGain();
+  }
+}
+
+beforeAll(() => {
+  global.AudioContext = MockAudioContext;
+  global.webkitAudioContext = MockAudioContext;
+  if (!global.requestAnimationFrame) {
+    global.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
+  }
+  if (!global.cancelAnimationFrame) {
+    global.cancelAnimationFrame = (id) => clearTimeout(id);
+  }
+});
+
+const demoSong = [
+  { time: 0, notes: [{ pitch: 'c4', lane: 1, tied: false }] },
+  { time: 1, notes: [{ pitch: 'd4', lane: 2, tied: false }] },
+  { time: 2, notes: [{ pitch: 'e4', lane: 3, tied: false }] },
+];
+
+beforeEach(() => {
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: async () => demoSong }));
+});
+
+afterEach(() => {
+  delete global.fetch;
+});
+
+describe('jingle bell hero utilities', () => {
+  test('pitchToFreq matches concert A for a4', () => {
+    expect(pitchToFreq('a4')).toBeCloseTo(440, 3);
+  });
+
+  test('pitchToFreq falls back when note is malformed', () => {
+    expect(pitchToFreq('invalid')).toBe(440);
+  });
+
+  test('addFrequencies injects frequency metadata', () => {
+    const events = [
+      { time: 0, notes: [{ pitch: 'c4', lane: 1, tied: false }] },
+    ];
+    const enriched = addFrequencies(events);
+    expect(enriched[0].notes[0]).toHaveProperty('freq');
+    expect(enriched[0].notes[0].freq).toBeGreaterThan(200);
+  });
+
+  test('processTiedNotes stitches sustained segments', () => {
+    const events = [
+      { time: 0, notes: [{ pitch: 'c4', lane: 2, tied: true }] },
+      { time: 1, notes: [{ pitch: 'c4', lane: 2, tied: false }] },
+    ];
+    const processed = processTiedNotes(events);
+    expect(processed).toHaveLength(1);
+    expect(processed[0]).toMatchObject({ isSustained: true, startTime: 0, endTime: 1 });
+  });
+});
+
+describe('AudioPlayer', () => {
+  const originalAudioCtx = window.AudioContext;
+  const originalWebkitAudioCtx = window.webkitAudioContext;
+
+  afterEach(() => {
+    window.AudioContext = originalAudioCtx;
+    window.webkitAudioContext = originalWebkitAudioCtx;
+  });
+
+  test('returns null context when AudioContext is unavailable', () => {
+    delete window.AudioContext;
+    delete window.webkitAudioContext;
+    const player = new AudioPlayer();
+    expect(player.ensureCtx()).toBeNull();
+  });
+
+  test('creates oscillator when AudioContext exists', () => {
+    const mockCtx = {
+      currentTime: 0,
+      destination: {},
+      createOscillator: jest.fn(() => ({
+        type: '',
+        frequency: { value: 0 },
+        connect: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+      })),
+      createGain: jest.fn(() => ({
+        connect: jest.fn(),
+        gain: {
+          setValueAtTime: jest.fn(),
+          exponentialRampToValueAtTime: jest.fn(),
+        },
+      })),
+    };
+    window.AudioContext = jest.fn(() => mockCtx);
+    window.webkitAudioContext = undefined;
+    const player = new AudioPlayer();
+    expect(player.ensureCtx()).toBe(mockCtx);
+    player.playNote(330, 0.1);
+    expect(mockCtx.createOscillator).toHaveBeenCalled();
+    expect(mockCtx.createGain).toHaveBeenCalled();
+  });
+});
+
+describe('JingleBellHero component', () => {
+  test('renders menu and moves into playing state after clicking start', async () => {
+    render(<JingleBellHero />);
+    const startButton = screen.getByRole('button', { name: /start/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(startButton);
+      await Promise.resolve();
+    });
+    await screen.findByText(/Score:/i);
+    expect(screen.getByText(/Level 1/)).toBeInTheDocument();
+  });
+
+  test('clicking a bell outside the hit window increments miss streak', async () => {
+    render(<JingleBellHero />);
+    const startButton = screen.getByRole('button', { name: /start/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(startButton);
+      await Promise.resolve();
+    });
+    await screen.findByText(/Score:/i);
+    const bells = screen.getAllByRole('button', { name: '🔔' });
+    await act(async () => {
+      fireEvent.click(bells[0]);
+      await Promise.resolve();
+    });
+    expect(await screen.findByText(/Miss Streak: 1\/4/)).toBeInTheDocument();
+  });
+
+  test('notes render onto the playfield once songs load', async () => {
+    render(<JingleBellHero />);
+    const startButton = screen.getByRole('button', { name: /start/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(startButton);
+      await Promise.resolve();
+    });
+    await screen.findByText(/Score:/i);
+    await waitFor(() => {
+      const circles = document.querySelectorAll('svg circle');
+      expect(circles.length).toBeGreaterThan(0);
+    });
+  });
+
+});

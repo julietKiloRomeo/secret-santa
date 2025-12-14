@@ -1,18 +1,27 @@
-def test_tredje_advent_page_contains_reindeer_rush_canvas_and_script():
+def test_tredje_advent_page_mounts_jingle_bell_hero_react_shell():
     from app import app
 
     client = app.test_client()
-    # login_required redirects if no session user set, so set a session user
     with client.session_transaction() as sess:
         sess['user'] = 'guest'
-    r = client.get('/tredje-advent')
-    assert r.status_code == 200
-    html = r.get_data(as_text=True)
-    # Page should include the placeholder canvas container
-    assert 'id="reindeer-canvas"' in html
-    # Script include for client
-    assert '/static/reindeer_rush.js' in html
-    # New HUD controls and text should be present
-    assert 'id="reindeer-score"' in html
-    assert 'Controls:' in html
-    assert 'reindeer-next-item' in html
+    resp = client.get('/tredje-advent')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'id="jingle-bell-hero-root"' in html
+    assert '/static/jingle_bell_hero_app.js' in html
+    assert '__jbhSongBase' in html
+    assert 'react.production.min.js' in html
+    assert 'react-dom.production.min.js' in html
+    assert 'ReactDOMClient = window.ReactDOM' in html
+
+
+def test_tredje_advent_page_keeps_arcade_leaderboard_controls():
+    from app import app
+
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess['user'] = 'guest'
+    resp = client.get('/tredje-advent')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'data-arcade-leaderboard' not in html
