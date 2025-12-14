@@ -13,7 +13,7 @@
     body { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/api/placeholder/1920/1080'); background-size: cover; }
   </style>
 </head>
-<body class="text-white min-h-screen">
+<body class="text-white min-h-screen {% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
   <nav class="bg-red-800 bg-opacity-95 fixed w-full top-0 z-50 shadow">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-14">
@@ -26,6 +26,7 @@
               {% if session.get('user') %}
                 {# Lodtrækning (gift-drawing) - quick access to your recipient #}
                 <a href="/lodtraekning" class="text-white hover:underline">Lodtrækning</a>
+                <a href="/high-scores" class="text-white hover:underline">High Scores</a>
 
                 {# First Advent #}
                 {% set _disabled = not game_enabled_for_user('forste-advent') %}
@@ -66,6 +67,7 @@
     <div id="mobile-menu" role="navigation" class="md:hidden hidden px-2 pt-2 pb-3 space-y-1">
       {% if session.get('user') %}
         <a href="/lodtraekning" class="block px-3 py-2 rounded-md text-base font-medium text-white">Lodtrækning</a>
+        <a href="/high-scores" class="block px-3 py-2 rounded-md text-base font-medium text-white">High Scores</a>
 
         {% set _disabled = not game_enabled_for_user('forste-advent') %}
         <a href="/forste-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>

@@ -123,7 +123,7 @@ init_games_db()
 
 def canonical_game_key(game: str) -> str:
     if game == "reindeer-rush":
-        return "tredje-advent"
+        return "fjerde-advent"
     return game
 
 
@@ -132,7 +132,7 @@ def migrate_reindeer_rush_alias():
     try:
         cur = con.cursor()
         cur.execute(
-            "UPDATE scores SET game = 'tredje-advent' WHERE game = 'reindeer-rush'"
+            "UPDATE scores SET game = 'fjerde-advent' WHERE game = 'reindeer-rush'"
         )
         cur.execute("DELETE FROM games WHERE game = 'reindeer-rush'")
         con.commit()
@@ -141,6 +141,25 @@ def migrate_reindeer_rush_alias():
 
 
 migrate_reindeer_rush_alias()
+
+
+def migrate_tredje_scores_to_fjerde():
+    """Move legacy Reindeer Rush scores to the new Fjerde Advent bucket once."""
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(*) FROM scores WHERE game = 'fjerde-advent'")
+        fjerde_count = cur.fetchone()[0] or 0
+        cur.execute("SELECT COUNT(*) FROM scores WHERE game = 'tredje-advent'")
+        tredje_count = cur.fetchone()[0] or 0
+        if tredje_count and fjerde_count == 0:
+            cur.execute("UPDATE scores SET game = 'fjerde-advent' WHERE game = 'tredje-advent'")
+            con.commit()
+    finally:
+        con.close()
+
+
+migrate_tredje_scores_to_fjerde()
 
 def is_game_enabled(game: str) -> bool:
     game = canonical_game_key(game)
@@ -293,12 +312,26 @@ def tredje_advent():
 @app.route('/fjerde-advent')
 @login_required
 def fjerde_advent():
-    return render_game_view('fjerde-advent', 'fjerde_advent.html', title='Fjerde Advent')
+    default_name = session.get('user', 'Nisse')
+    return render_game_view('fjerde-advent', 'fjerde_advent.html', title='Fjerde Advent', default_name=default_name)
 
 @app.route('/glaedelig-jul')
 @login_required
 def glaedelig_jul():
     return render_game_view('glaedelig-jul', 'glaedelig_jul.html', title='Glædelig Jul')
+
+
+@app.route('/high-scores')
+@login_required
+def high_scores():
+    games = [
+        ("forste-advent", "Første Advent — Snake"),
+        ("anden-advent", "Anden Advent — Flappy Santa"),
+        ("tredje-advent", "Tredje Advent — Jingle Bell Hero"),
+        ("fjerde-advent", "Fjerde Advent — Reindeer Rush"),
+        ("glaedelig-jul", "Glædelig Jul"),
+    ]
+    return render_template('high_scores.html', games=games)
 
 @app.route('/lodtraekning')
 @login_required

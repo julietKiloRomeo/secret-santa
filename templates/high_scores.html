@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}High Scores{% endblock %}
+{% block content %}
+  <div class="max-w-4xl mx-auto p-4 sm:p-6 text-white">
+    <div class="bg-slate-900/80 rounded-2xl shadow-xl p-6 sm:p-8 border border-white/10">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h1 class="text-2xl font-bold">High Scores</h1>
+          <p class="text-sm text-white/70">Swipe or use Prev/Next to browse games. Tap a score to celebrate!</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="hs-prev" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10">Prev</button>
+          <button id="hs-next" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10">Next</button>
+        </div>
+      </div>
+      <div class="flex items-center justify-between bg-slate-800/80 rounded-lg px-4 py-3 border border-white/10">
+        <div class="text-lg font-semibold" id="hs-game-label">Loading…</div>
+        <button id="hs-home" class="text-sm text-yellow-300 hover:text-yellow-200 underline">Back to menu</button>
+      </div>
+      <div class="mt-4">
+        <ol id="hs-list" class="space-y-2 text-sm"></ol>
+      </div>
+      <div id="hs-status" class="mt-3 text-sm text-red-200 hidden"></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const games = {{ games|tojson }};
+      let idx = 0;
+      const listEl = document.getElementById('hs-list');
+      const labelEl = document.getElementById('hs-game-label');
+      const statusEl = document.getElementById('hs-status');
+      const prevBtn = document.getElementById('hs-prev');
+      const nextBtn = document.getElementById('hs-next');
+      const homeBtn = document.getElementById('hs-home');
+
+      function renderScores(scores) {
+        listEl.innerHTML = '';
+        if (!scores || !scores.length) {
+          const li = document.createElement('li');
+          li.textContent = 'Ingen scores endnu.';
+          listEl.appendChild(li);
+          return;
+        }
+        scores.slice(0, 10).forEach((entry, i) => {
+          const li = document.createElement('li');
+          li.className = 'flex items-center justify-between bg-slate-800/60 px-3 py-2 rounded-lg border border-white/5';
+          const left = document.createElement('div');
+          left.className = 'flex items-center gap-2';
+          const rank = document.createElement('span');
+          rank.className = 'font-bold text-yellow-300';
+          rank.textContent = i + 1;
+          const name = document.createElement('span');
+          name.textContent = entry.name;
+          left.append(rank, name);
+          const pts = document.createElement('span');
+          pts.className = 'font-mono text-sm';
+          pts.textContent = entry.score;
+          li.append(left, pts);
+          listEl.appendChild(li);
+        });
+      }
+
+      async function loadScores() {
+        const [gameId, label] = games[idx] || games[0];
+        labelEl.textContent = label || gameId;
+        statusEl.classList.add('hidden');
+        listEl.innerHTML = '<li class="text-sm text-white/70">Henter scores…</li>';
+        try {
+          const resp = await fetch(`/api/scores/${gameId}`);
+          if (!resp.ok) throw new Error(`Status ${resp.status}`);
+          const data = await resp.json();
+          renderScores(data.scores || []);
+        } catch (err) {
+          statusEl.textContent = 'Kunne ikke hente scores.';
+          statusEl.classList.remove('hidden');
+          console.error(err);
+        }
+      }
+
+      function clampIdx() {
+        if (idx < 0) idx = games.length - 1;
+        if (idx >= games.length) idx = 0;
+      }
+
+      prevBtn?.addEventListener('click', () => {
+        idx -= 1;
+        clampIdx();
+        loadScores();
+      });
+      nextBtn?.addEventListener('click', () => {
+        idx += 1;
+        clampIdx();
+        loadScores();
+      });
+      homeBtn?.addEventListener('click', () => {
+        window.location.href = '/';
+      });
+
+      loadScores();
+    })();
+  </script>
+{% endblock %}
