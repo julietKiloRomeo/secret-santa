@@ -165,6 +165,40 @@ describe('AudioPlayer', () => {
     // Ensure stopping unknown id is safe
     expect(() => player.stopHold(9999)).not.toThrow();
   });
+
+  test('playError produces a harsh tone when context exists', () => {
+    const mockCtx = {
+      currentTime: 0,
+      destination: {},
+      createOscillator: jest.fn(() => ({
+        type: '',
+        frequency: { value: 0, exponentialRampToValueAtTime: jest.fn() },
+        connect: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+      })),
+      createGain: jest.fn(() => ({
+        connect: jest.fn(),
+        gain: {
+          setValueAtTime: jest.fn(),
+          exponentialRampToValueAtTime: jest.fn(),
+        },
+      })),
+    };
+    window.AudioContext = jest.fn(() => mockCtx);
+    window.webkitAudioContext = undefined;
+    const player = new AudioPlayer();
+    player.playError(0.1);
+    expect(mockCtx.createOscillator).toHaveBeenCalled();
+    expect(mockCtx.createGain).toHaveBeenCalled();
+  });
+
+  test('playError is a no-op when no audio context is available', () => {
+    delete window.AudioContext;
+    delete window.webkitAudioContext;
+    const player = new AudioPlayer();
+    expect(() => player.playError(0.1)).not.toThrow();
+  });
 });
 
 describe('JingleBellHero component', () => {

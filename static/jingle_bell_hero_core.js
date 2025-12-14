@@ -111,6 +111,22 @@ export class AudioPlayer {
     osc.stop(ctx.currentTime + duration);
   }
 
+  playError(duration = 0.25) {
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 90;
+    osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start();
+    osc.stop(ctx.currentTime + duration + 0.05);
+  }
+
   startHold(freq) {
     const ctx = this.ensureCtx();
     if (!ctx) return null;

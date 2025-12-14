@@ -55,10 +55,6 @@ export default function JingleBellHero() {
   const [songs, setSongs] = useState({});
   const [loadingSongs, setLoadingSongs] = useState(true);
   const [songError, setSongError] = useState('');
-  const [debugStats, setDebugStats] = useState({
-    visibleNotes: 0,
-    loadedSongs: []
-  });
   const [laneEffects, setLaneEffects] = useState([]);
   const [speedLabel, setSpeedLabel] = useState('');
   const startTimeRef = useRef(null);
@@ -105,10 +101,6 @@ export default function JingleBellHero() {
       if (!active) return;
       setSongs(data);
       setSongError('');
-      setDebugStats(prev => ({
-        ...prev,
-        loadedSongs: Object.keys(data)
-      }));
     }).catch(err => {
       console.error(err);
       if (active) {
@@ -210,17 +202,6 @@ export default function JingleBellHero() {
 
   useEffect(() => {
     if (!isBrowser) return undefined;
-    const id = requestAnimationFrame(() => {
-      setDebugStats(prev => ({
-        ...prev,
-        visibleNotes: notesRef.current.filter((_, idx) => !completedNotesRef.current.has(idx)).length
-      }));
-    });
-    return () => cancelAnimationFrame(id);
-  }, [currentTime]);
-
-  useEffect(() => {
-    if (!isBrowser) return undefined;
     const handler = event => {
       if (gameState !== 'playing') return;
       const keyMap = {
@@ -305,6 +286,11 @@ export default function JingleBellHero() {
       if (note.lane !== lane) return false;
       return Math.abs(note.startTime - now) <= HIT_WINDOW_SEC;
     });
+    const otherNotesInWindow = notesRef.current.filter((note, idx) => {
+      if (playedNotesRef.current.has(idx)) return false;
+      if (note.lane === lane) return false;
+      return Math.abs(note.startTime - now) <= HIT_WINDOW_SEC;
+    });
     if (notesInZone.length > 0) {
       const note = notesInZone[0];
       const idx = notesRef.current.indexOf(note);
@@ -335,7 +321,14 @@ export default function JingleBellHero() {
       }, 450);
       return;
     }
-    registerMiss(lane);
+    if (otherNotesInWindow.length > 0) {
+      registerMiss(lane, undefined, {
+        heavy: true,
+        playError: true
+      });
+    } else {
+      registerMiss(lane);
+    }
   };
 
   const handleInputEnd = lane => {
@@ -373,17 +366,19 @@ export default function JingleBellHero() {
     }
   };
 
-  const registerMiss = (lane, idx) => {
+  const registerMiss = (lane, idx, options = {}) => {
+    const heavy = options.heavy || false;
+    const playError = options.playError || false;
     if (typeof idx === 'number') {
       completedNotesRef.current.add(idx);
     }
     addLaneEffect(lane, 'miss', 500);
     setCombo(0);
     setMissStreak(m => {
-      const newStreak = m + 1;
+      const newStreak = m + (heavy ? 2 : 1);
       if (newStreak >= 4) {
         setLives(l => {
-          const updated = l - 1;
+          const updated = l - (heavy ? 2 : 1);
           if (updated <= 0) {
             setGameState('ended');
             return 0;
@@ -394,6 +389,9 @@ export default function JingleBellHero() {
       }
       return newStreak;
     });
+    if (playError) {
+      audioPlayerRef.current?.playError(0.2);
+    }
     setHitFeedback(prev => [...prev, {
       lane,
       time: Date.now(),
@@ -724,7 +722,7 @@ export default function JingleBellHero() {
     className: "text-xs text-white/80"
   }, speedLabel || _jingle_bell_hero_chart.DIFFICULTIES[_jingle_bell_hero_chart.PROGRESSION[Math.min(progressionIndex, _jingle_bell_hero_chart.PROGRESSION.length - 1)].difficulty].speeds[_jingle_bell_hero_chart.PROGRESSION[Math.min(progressionIndex, _jingle_bell_hero_chart.PROGRESSION.length - 1)].speedIndex].name)), React.createElement("div", {
     className: "absolute top-4 right-4 text-white z-10 text-[10px] bg-black/30 px-2 py-1 rounded"
-  }, "Notes: ", debugStats.visibleNotes, React.createElement("div", null, "Songs: ", debugStats.loadedSongs.join(',') || '—'), songError && React.createElement("div", {
+  }, songError && React.createElement("div", {
     className: "text-red-200"
   }, songError)));
 }
