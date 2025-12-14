@@ -60,6 +60,7 @@ export default function JingleBellHero() {
     loadedSongs: []
   });
   const [laneEffects, setLaneEffects] = useState([]);
+  const [speedLabel, setSpeedLabel] = useState('');
   const startTimeRef = useRef(null);
   const audioPlayerRef = useRef(isBrowser ? new _jingle_bell_hero_core.AudioPlayer() : null);
   const notesRef = useRef([]);
@@ -70,6 +71,8 @@ export default function JingleBellHero() {
   const activeKeysRef = useRef(new Set());
   const animationRef = useRef(null);
   const rootRef = useRef(null);
+  const endlessBoostRef = useRef(0);
+  const submittedScoreRef = useRef(false);
   const songsReady = !loadingSongs && !songError && Object.keys(songs).length === _jingle_bell_hero_chart.SONG_MANIFEST.length;
   const nowSeconds = () => {
     if (!startTimeRef.current) return 0;
@@ -122,23 +125,26 @@ export default function JingleBellHero() {
   }, []);
 
   const setupLevel = levelIndex => {
-    const currentLevel = _jingle_bell_hero_chart.PROGRESSION[levelIndex];
+    const baseIndex = Math.min(levelIndex, _jingle_bell_hero_chart.PROGRESSION.length - 1);
+    const currentLevel = _jingle_bell_hero_chart.PROGRESSION[baseIndex];
     const {
       difficulty,
       speedIndex
     } = currentLevel;
     const config = _jingle_bell_hero_chart.DIFFICULTIES[difficulty];
     const speed = config.speeds[speedIndex];
-    const songId = LEVEL_SONGS[levelIndex] || currentLevel.songId;
+    const songId = LEVEL_SONGS[levelIndex] || LEVEL_SONGS[LEVEL_SONGS.length - 1] || currentLevel.songId;
     const chartEvents = songs[songId] || [];
     const easedChart = levelIndex < 2 ? chartEvents.map(event => ({
       ...event,
       notes: event.notes && event.notes.length ? [event.notes[0]] : []
     })).filter(e => e.notes.length) : chartEvents;
     const songWithFreq = (0, _jingle_bell_hero_core.addFrequencies)(easedChart);
+    const speedBoost = Math.max(0, levelIndex - (_jingle_bell_hero_chart.PROGRESSION.length - 1));
+    const speedMultiplier = speed.speedMultiplier * (1 + speedBoost * 0.08);
     const scaledSong = songWithFreq.map(event => ({
       ...event,
-      time: event.time / speed.speedMultiplier
+      time: event.time / speedMultiplier
     }));
     const prepared = (0, _jingle_bell_hero_core.processTiedNotes)(scaledSong).map((note, idx) => ({
       ...note,
@@ -150,6 +156,7 @@ export default function JingleBellHero() {
     playedNotesRef.current = new Set();
     heldNotesRef.current = new Set();
     completedNotesRef.current = new Set();
+    setSpeedLabel(`${config.speeds[speedIndex].name}${speedBoost ? ` x${speedMultiplier.toFixed(2)}` : ''}`);
     startTimeRef.current = performance.now();
     setCurrentTime(0);
   };
@@ -173,11 +180,7 @@ export default function JingleBellHero() {
       });
       const lastNote = notesRef.current[notesRef.current.length - 1];
       if (lastNote && now > lastNote.endTime + 2) {
-        if (progressionIndex < _jingle_bell_hero_chart.PROGRESSION.length - 1) {
-          setProgressionIndex(prev => prev + 1);
-        } else {
-          setGameState('ended');
-        }
+        setProgressionIndex(prev => prev + 1);
         return;
       }
       heldNotesRef.current.forEach(idx => {
@@ -264,6 +267,8 @@ export default function JingleBellHero() {
       return;
     }
     setProgressionIndex(0);
+    endlessBoostRef.current = 0;
+    submittedScoreRef.current = false;
     setScore(0);
     setCombo(0);
     setLives(_jingle_bell_hero_core.MAX_LIVES);
@@ -275,6 +280,8 @@ export default function JingleBellHero() {
   const resetGame = () => {
     setGameState('menu');
     setProgressionIndex(0);
+    endlessBoostRef.current = 0;
+    submittedScoreRef.current = false;
     setLives(_jingle_bell_hero_core.MAX_LIVES);
     setScore(0);
     setCombo(0);
@@ -431,6 +438,32 @@ export default function JingleBellHero() {
     }
     return undefined;
   }, [handleInputStart, score, combo, lives, missStreak]);
+
+  useEffect(() => {
+    if (gameState !== 'ended' || submittedScoreRef.current) return undefined;
+    submittedScoreRef.current = true;
+    let cancelled = false;
+    const run = async () => {
+      if (typeof window === 'undefined') return;
+      const overlay = window.arcadeOverlay;
+      if (overlay && overlay.handleHighScoreFlow) {
+        try {
+          await overlay.handleHighScoreFlow({
+            gameId: 'tredje-advent',
+            score,
+            allowSkip: true,
+            title: 'Jingle Bell Hero'
+          });
+        } catch (e) {
+          if (!cancelled) console.error('High score flow failed', e);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [gameState, score]);
 
   const laneBackgrounds = LANES.map(lane => React.createElement("rect", {
     key: `lane-${lane}`,
@@ -689,7 +722,7 @@ export default function JingleBellHero() {
     className: "text-sm text-yellow-200"
   }, "Level ", progressionIndex + 1, "/", _jingle_bell_hero_chart.PROGRESSION.length), React.createElement("div", {
     className: "text-xs text-white/80"
-  }, _jingle_bell_hero_chart.DIFFICULTIES[_jingle_bell_hero_chart.PROGRESSION[progressionIndex].difficulty].speeds[_jingle_bell_hero_chart.PROGRESSION[progressionIndex].speedIndex].name)), React.createElement("div", {
+  }, speedLabel || _jingle_bell_hero_chart.DIFFICULTIES[_jingle_bell_hero_chart.PROGRESSION[Math.min(progressionIndex, _jingle_bell_hero_chart.PROGRESSION.length - 1)].difficulty].speeds[_jingle_bell_hero_chart.PROGRESSION[Math.min(progressionIndex, _jingle_bell_hero_chart.PROGRESSION.length - 1)].speedIndex].name)), React.createElement("div", {
     className: "absolute top-4 right-4 text-white z-10 text-[10px] bg-black/30 px-2 py-1 rounded"
   }, "Notes: ", debugStats.visibleNotes, React.createElement("div", null, "Songs: ", debugStats.loadedSongs.join(',') || '—'), songError && React.createElement("div", {
     className: "text-red-200"
