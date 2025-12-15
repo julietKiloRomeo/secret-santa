@@ -277,4 +277,26 @@ describe('JingleBellHero component', () => {
       expect(inFrame).toBe(true);
     });
   });
+
+  test('play area suppresses pinch/long-press defaults', async () => {
+    render(<JingleBellHero />);
+    const startButton = screen.getByRole('button', { name: /start/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    await act(async () => {
+      fireEvent.click(startButton);
+      await Promise.resolve();
+    });
+    const playArea = screen.getByTestId('jbh-root');
+    expect(playArea.style.touchAction).toBe('none');
+    expect(playArea.style.userSelect).toBe('none');
+    expect(playArea.style.WebkitUserSelect).toBe('none');
+    expect(playArea.style.WebkitTouchCallout).toBe('none');
+    expect(playArea.style.WebkitTapHighlightColor).toBe('transparent');
+    const selectionEvent = new Event('selectstart', { bubbles: true, cancelable: true });
+    playArea.dispatchEvent(selectionEvent);
+    expect(selectionEvent.defaultPrevented).toBe(true);
+    const contextEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    playArea.dispatchEvent(contextEvent);
+    expect(contextEvent.defaultPrevented).toBe(true);
+  });
 });

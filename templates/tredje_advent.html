@@ -1,6 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}Tredje Advent{% endblock %}
 {% block content %}
+  <style>
+    #jingle-bell-hero-root,
+    #jingle-bell-hero-root * {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-drag: none;
+    }
+  </style>
   <div class="max-w-6xl mx-auto p-4 sm:p-6">
     <h1 class="sr-only">Jingle Bell Hero</h1>
     <div
@@ -15,7 +26,8 @@
   </div>
   <a
     href="/"
-    class="fixed left-4 bottom-4 z-50 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur border border-white/20 hover:bg-white/25"
+    class="fixed left-3 top-3 sm:left-4 sm:top-auto sm:bottom-4 z-50 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur border border-white/20 hover:bg-white/25"
+    style="padding-bottom: env(safe-area-inset-bottom, 0px);"
   >
     ← Til forsiden
   </a>

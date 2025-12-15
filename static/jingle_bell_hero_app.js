@@ -20,6 +20,15 @@ const LANES = [1, 2, 3, 4];
 const LANE_WIDTH = VIEW_WIDTH / (LANES.length + 1);
 const HIT_WINDOW_SEC = _jingle_bell_hero_core.HIT_TOLERANCE / _jingle_bell_hero_core.SCROLL_SPEED;
 const LEVEL_SONGS = ['partridge-1', 'partridge-1', 'partridge-2', 'partridge-2', 'partridge-3', 'partridge-3'];
+const INTERACTION_LOCK_STYLE = {
+  touchAction: 'none',
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitTouchCallout: 'none',
+  WebkitTapHighlightColor: 'transparent',
+  WebkitUserDrag: 'none',
+  overscrollBehavior: 'contain'
+};
 
 const laneX = lane => lane * LANE_WIDTH;
 const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
@@ -239,6 +248,54 @@ export default function JingleBellHero() {
     return () => {
       window.removeEventListener('keydown', handler);
       window.removeEventListener('keyup', upHandler);
+    };
+  }, [gameState]);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return undefined;
+    const preventMultiTouch = event => {
+      if (event.touches && event.touches.length > 1) {
+        event.preventDefault();
+      }
+    };
+    const blockGesture = event => {
+      if (node.contains(event.target)) {
+        event.preventDefault();
+      }
+    };
+    const preventSelection = event => {
+      event.preventDefault();
+    };
+    const blockContextMenu = event => {
+      if (node.contains(event.target)) {
+        event.preventDefault();
+      }
+    };
+    const passiveFalse = {
+      passive: false
+    };
+    node.addEventListener('touchstart', preventMultiTouch, passiveFalse);
+    node.addEventListener('touchmove', preventMultiTouch, passiveFalse);
+    node.addEventListener('gesturestart', preventMultiTouch);
+    node.addEventListener('gesturechange', preventMultiTouch);
+    node.addEventListener('gestureend', preventMultiTouch);
+    node.addEventListener('selectstart', preventSelection);
+    document.addEventListener('gesturestart', blockGesture, passiveFalse);
+    document.addEventListener('gesturechange', blockGesture, passiveFalse);
+    document.addEventListener('gestureend', blockGesture, passiveFalse);
+    document.addEventListener('contextmenu', blockContextMenu);
+    return () => {
+      node.removeEventListener('touchstart', preventMultiTouch, passiveFalse);
+      node.removeEventListener('touchmove', preventMultiTouch, passiveFalse);
+      node.removeEventListener('gesturestart', preventMultiTouch);
+      node.removeEventListener('gesturechange', preventMultiTouch);
+      node.removeEventListener('gestureend', preventMultiTouch);
+      node.removeEventListener('selectstart', preventSelection);
+      document.removeEventListener('gesturestart', blockGesture, passiveFalse);
+      document.removeEventListener('gesturechange', blockGesture, passiveFalse);
+      document.removeEventListener('gestureend', blockGesture, passiveFalse);
+      document.removeEventListener('contextmenu', blockContextMenu);
     };
   }, [gameState]);
 
@@ -648,10 +705,16 @@ export default function JingleBellHero() {
   });
 
   const svgChildren = [...laneBackgrounds, hitLine, ...noteElements, ...bellNodes];
+  const rootInteractionProps = {
+    ref: rootRef,
+    "data-testid": "jbh-root",
+    onContextMenu: e => e.preventDefault(),
+    style: INTERACTION_LOCK_STYLE
+  };
 
   if (gameState === 'menu') {
     return React.createElement("div", {
-      ref: rootRef,
+      ...rootInteractionProps,
       className: "flex flex-col items-center justify-center min-h-[640px] sm:min-h-[720px] bg-gradient-to-b from-slate-900 via-indigo-900 to-purple-900 w-full rounded-3xl shadow-2xl p-6 text-center gap-4"
     }, React.createElement("div", {
       className: "text-3xl font-bold text-white"
@@ -671,6 +734,7 @@ export default function JingleBellHero() {
   if (gameState === 'ended') {
     const isVictory = progressionIndex >= _jingle_bell_hero_chart.PROGRESSION.length - 1 && lives > 0;
     return React.createElement("div", {
+      ...rootInteractionProps,
       className: "flex flex-col items-center justify-center min-h-[640px] bg-gradient-to-b from-red-900 via-green-900 to-red-900 rounded-3xl shadow-2xl p-8 text-center space-y-4"
     }, React.createElement("h1", {
       className: "text-4xl font-bold text-yellow-300"
@@ -685,7 +749,7 @@ export default function JingleBellHero() {
   }
 
   return React.createElement("div", {
-    ref: rootRef,
+    ...rootInteractionProps,
     className: "relative w-full max-w-5xl mx-auto aspect-[4/5] sm:aspect-[16/10] bg-gradient-to-b from-slate-950 via-indigo-950 to-purple-900 overflow-hidden rounded-3xl shadow-2xl"
   }, React.createElement("svg", {
     className: "absolute inset-0 w-full h-full",
