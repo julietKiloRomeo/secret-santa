@@ -5,11 +5,12 @@
   const STYLE_ID = 'arcade-overlay-styles';
   const OVERLAY_ID = 'arcade-overlay';
   const LEADERBOARD_LIMIT = 10;
-  const DEFAULT_GAMES = ['forste-advent', 'anden-advent', 'tredje-advent'];
+  const DEFAULT_GAMES = ['forste-advent', 'anden-advent', 'tredje-advent', 'fjerde-advent'];
   const GAME_LABELS = {
     'forste-advent': 'Første Advent — Snake',
     'anden-advent': 'Anden Advent — Flappy Santa',
-    'tredje-advent': 'Tredje Advent — Reindeer Rush',
+    'tredje-advent': 'Tredje Advent — Jingle Bell Hero',
+    'fjerde-advent': 'Fjerde Advent — Reindeer Rush',
     'reindeer-rush': 'Reindeer Rush',
   };
   let overlayEl = null;
@@ -35,7 +36,7 @@
   function normalizeGameId(value) {
     if (!value) return '';
     const raw = String(value).trim().toLowerCase();
-    if (raw === 'reindeer-rush') return 'tredje-advent';
+    if (raw === 'reindeer-rush') return 'fjerde-advent';
     return raw;
   }
 
@@ -59,7 +60,7 @@
         align-items: center;
         justify-content: center;
         background: radial-gradient(circle at top, rgba(10, 15, 40, 0.95), rgba(2, 4, 12, 0.92));
-        z-index: 1000;
+        z-index: 2000;
         backdrop-filter: blur(3px);
       }
       #${OVERLAY_ID}.visible { display: flex; }
@@ -751,6 +752,10 @@
     window.addEventListener('keydown', keyHandler, true);
 
     pointerHandler = function (evt) {
+      const target = evt.target;
+      if (target && (target.closest('input, textarea, button, select') || target.isContentEditable)) {
+        return;
+      }
       evt.preventDefault();
       evt.stopPropagation();
     };
@@ -945,6 +950,10 @@
     window.addEventListener('keydown', localKeyHandler, true);
 
     pointerHandler = function (evt) {
+      const target = evt.target;
+      if (target && (target.closest('input, textarea, button, select') || target.isContentEditable)) {
+        return;
+      }
       evt.preventDefault();
       evt.stopPropagation();
     };
