@@ -62,6 +62,7 @@
         background: radial-gradient(circle at top, rgba(10, 15, 40, 0.95), rgba(2, 4, 12, 0.92));
         z-index: 2000;
         backdrop-filter: blur(3px);
+        touch-action: none;
       }
       #${OVERLAY_ID}.visible { display: flex; }
       .arcade-panel {
@@ -99,6 +100,7 @@
         width: 100%;
         margin-top: 1rem;
         box-shadow: 0 0 12px rgba(37, 255, 224, 0.8);
+        touch-action: manipulation;
       }
       .arcade-panel button:hover {
         background: #2dffe9;
@@ -124,6 +126,7 @@
         letter-spacing: 1px;
         caret-color: #25ffe0;
         box-shadow: inset 0 0 12px rgba(37, 255, 224, 0.25);
+        touch-action: manipulation;
       }
       .arcade-input:focus {
         outline: none;

@@ -24,6 +24,7 @@
   const baseGroundOffset = 40;
   const GROUND_SURFACE_ROW = (window.ReindeerGround && window.ReindeerGround.SURFACE_ROW) || 78;
   const playerHomeX = 80;
+  const DEATH_OVERLAY_DELAY = 520;
   const DEATH_SCREEN_DURATION = 1500;
   const RIP_SCREEN_PATH = '/static/rip.png';
   const RUDOLPH_SET = {
@@ -80,7 +81,7 @@
   let spriteLoadStarted = false;
   const rudolphSprites = { run: [], jump: [], slide: null };
   const extraSprites = { candy: null, snowman: null, ground: null };
-  const deathOverlay = { sprite: null, active: false };
+  const deathOverlay = { sprite: null, active: false, visible: false, showAt: 0 };
   const snowParticles = [];
   const sparkParticles = [];
   let parallaxPhase = 0;
@@ -120,6 +121,10 @@
     calmWindow: 0
   };
 
+  function canStartNewRun() {
+    return !running && !highScoreFlowInFlight && !pendingStopReason && !deathOverlay.active;
+  }
+
   function initCanvas() {
     const holder = el('reindeer-canvas');
     if (!holder) return;
@@ -151,6 +156,9 @@
     if (!shouldLockCanvasFocus()) return;
     if (canvasHolder && document.activeElement !== canvasHolder) {
       canvasHolder.focus({ preventScroll: true });
+    }
+    if (deathOverlay.active && !deathOverlay.visible && performance.now() >= deathOverlay.showAt) {
+      deathOverlay.visible = true;
     }
   }
 
@@ -229,9 +237,11 @@
     snowParticles.length = 0;
     sparkParticles.length = 0;
     deathTimerMs = 0;
+    deathOverlay.active = false;
+    deathOverlay.visible = false;
+    deathOverlay.showAt = 0;
     pendingStopReason = null;
     highScoreFlowInFlight = false;
-    deathOverlay.active = false;
     seedPlatforms();
     placePlayerOnSafePlatform();
     lastTs = 0;
@@ -244,6 +254,7 @@
     dashCooldown = 0;
     dashInvulnTimer = 0;
     coyoteTimer = 0;
+    dashReturnTimer = 0;
     if (gestureInterpreter) {
       gestureInterpreter.setGrounded(true);
     }
@@ -265,7 +276,7 @@
   }
 
   function startGame() {
-    if (running) return;
+    if (!canStartNewRun()) return;
     initCanvas();
     resetGame();
     running = true;
@@ -294,6 +305,7 @@
     }
     if (shouldSubmitScore && window.arcadeOverlay && window.arcadeOverlay.handleHighScoreFlow) {
       try {
+        highScoreFlowInFlight = true;
         await window.arcadeOverlay.handleHighScoreFlow({
           gameId: 'tredje-advent',
           score: totalScore,
@@ -303,6 +315,8 @@
         });
       } catch (e) {
         console.error('Arcade high score flow failed', e);
+      } finally {
+        highScoreFlowInFlight = false;
       }
     } else if (shouldSubmitScore) {
       console.warn('Arcade overlay not available; high score entry skipped.');
@@ -312,16 +326,15 @@
   function handlePlayerDeath(reason = 'collision-with-obstacle') {
     deathTimerMs = Math.max(deathTimerMs, DEATH_SCREEN_DURATION);
     deathOverlay.active = true;
+    deathOverlay.visible = false;
+    deathOverlay.showAt = performance.now() + DEATH_OVERLAY_DELAY;
     pendingStopReason = reason;
     spawnSparkBurst(player.x + player.w * 0.5, player.y + player.h * 0.5, 42);
-    if (!highScoreFlowInFlight) {
-      highScoreFlowInFlight = true;
-      stopGame(reason, { delayHighScoreMs: DEATH_SCREEN_DURATION }).finally(() => {
-        pendingStopReason = null;
-        highScoreFlowInFlight = false;
-        deathOverlay.active = false;
-      });
-    }
+    stopGame(reason, { delayHighScoreMs: DEATH_SCREEN_DURATION }).finally(() => {
+      pendingStopReason = null;
+      deathOverlay.active = false;
+      deathOverlay.visible = false;
+    });
     requestAnimationFrame(loop);
   }
 
@@ -1034,7 +1047,7 @@
     ctx.font = '13px "Press Start 2P", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
     ctx.fillText(`${Math.floor(distance)} m`, 12, 20);
 
-    if (!running && deathOverlay.active) {
+    if (!running && deathOverlay.active && deathOverlay.visible) {
       drawDeathOverlay();
     }
   }

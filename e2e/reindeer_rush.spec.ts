@@ -266,4 +266,10 @@ test('high score name field focuses on tap', async ({ page }) => {
   await input.waitFor({ state: 'visible', timeout: 5000 });
   await input.click();
   await expect(input).toBeFocused();
+
+  // Landscape should still allow entry
+  await page.setViewportSize({ width: 820, height: 420 });
+  await expect(input).toBeFocused();
+  await input.type('Test');
+  await expect(input).toHaveValue('Test');
 });
