@@ -17,7 +17,7 @@
   const snowmanMinGapScreens = 1.0;
   const snowmanGapJitter = [120, 260];
   const snowmanBonus = 120;
-  const snowmanSize = { w: 126, h: 162 }; // scaled up 3x for threat visibility
+  const snowmanSize = { w: 259, h: 216 }; // sprite's native size for clean aspect
   const playerStandingHeight = 36;
   const playerDuckHeight = 24;
   const baseGroundOffset = 40;
@@ -47,6 +47,13 @@
     snowman: '/static/sprites/snowman.png',
     ground: '/static/sprites/ground.png'
   };
+  const AUDIO_SOURCES = {
+    music: '/static/arcade-kid.mp3',
+    jump: '/static/jump.mp3',
+    death: '/static/explosion.mp3',
+    coin: '/static/coin.mp3'
+  };
+  const groundCache = { canvas: null };
   const Physics = typeof Matter !== 'undefined' ? Matter : null;
 
   let canvas, ctx, width = 600, height = 260, dpr = window.devicePixelRatio || 1;
@@ -92,6 +99,17 @@
   let deathTimerMs = 0;
   let pendingStopReason = null;
   let highScoreFlowInFlight = false;
+  let platformClusterId = 0;
+  const snowmanMetrics = {
+    natural: { w: snowmanSize.w, h: snowmanSize.h },
+    drawScale: 0.65,
+    aspect: snowmanSize.w / snowmanSize.h,
+    bottomPadding: 18,
+    topPadding: 0,
+    hitbox: { minX: 0, maxX: Math.round(snowmanSize.w * 0.88), minY: 0, maxY: snowmanSize.h - 1 }
+  };
+  let musicStarted = false;
+  const audio = { music: null, jump: null, death: null, coin: null };
 
   const player = {
     x: playerHomeX,
@@ -194,6 +212,12 @@
     rudolphSprites.slide = primeSprite(RUDOLPH_SET.slide);
     extraSprites.candy = primeSprite(EXTRA_SPRITES.candy);
     extraSprites.snowman = primeSprite(EXTRA_SPRITES.snowman);
+    if (extraSprites.snowman) {
+      extraSprites.snowman.onload = () => computeSnowmanMetrics(extraSprites.snowman);
+      if (extraSprites.snowman.complete) {
+        computeSnowmanMetrics(extraSprites.snowman);
+      }
+    }
     extraSprites.ground = primeSprite(EXTRA_SPRITES.ground);
     deathOverlay.sprite = deathOverlay.sprite || primeSprite(RIP_SCREEN_PATH);
     if (extraSprites.ground) {
@@ -215,6 +239,107 @@
 
   function spriteReady(img) {
     return Boolean(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+  }
+
+  function computeSnowmanMetrics(img) {
+    try {
+      if (typeof document === 'undefined') return;
+      const w = img.naturalWidth || snowmanSize.w;
+      const h = img.naturalHeight || snowmanSize.h;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('canvas context unavailable');
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      const cols = new Array(w).fill(0);
+      const rows = new Array(h).fill(0);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const alpha = data[(y * w + x) * 4 + 3];
+          cols[x] += alpha;
+          rows[y] += alpha;
+        }
+      }
+      const xs = cols.map((v, i) => (v > 0 ? i : null)).filter((v) => v !== null);
+      const ys = rows.map((v, i) => (v > 0 ? i : null)).filter((v) => v !== null);
+      const minX = xs.length ? Math.min(...xs) : 0;
+      const maxX = xs.length ? Math.max(...xs) : w - 1;
+      const minY = ys.length ? Math.min(...ys) : 0;
+      const maxY = ys.length ? Math.max(...ys) : h - 1;
+      const totalAlpha = cols.reduce((sum, v) => sum + v, 0) || 1;
+      const cutoffTarget = totalAlpha * 0.88;
+      let running = 0;
+      let cutoffX = maxX;
+      for (let i = 0; i < cols.length; i++) {
+        running += cols[i];
+        if (running >= cutoffTarget) {
+          cutoffX = i;
+          break;
+        }
+      }
+      const trimmedMaxX = Math.min(maxX, cutoffX);
+      const hitboxMaxX =
+        trimmedMaxX - minX < (maxX - minX) * 0.65
+          ? maxX
+          : trimmedMaxX;
+      snowmanMetrics.natural = { w, h };
+      snowmanMetrics.aspect = w / h;
+      snowmanMetrics.bottomPadding = Math.max(0, h - (maxY + 1));
+      snowmanMetrics.topPadding = Math.max(0, minY);
+      snowmanMetrics.hitbox = { minX, maxX: hitboxMaxX, minY, maxY };
+    } catch (err) {
+      console.warn('Unable to compute snowman metrics', err);
+    }
+  }
+
+  function createAudio(src, options = {}) {
+    if (typeof Audio === 'undefined') return null;
+    const el = new Audio(src);
+    el.preload = 'auto';
+    el.loop = Boolean(options.loop);
+    if (typeof options.volume === 'number') {
+      el.volume = options.volume;
+    }
+    return el;
+  }
+
+  function ensureSound(key) {
+    if (audio[key]) return audio[key];
+    const opts = key === 'music' ? { loop: true, volume: 0.45 } : { volume: 0.7 };
+    audio[key] = createAudio(AUDIO_SOURCES[key], opts);
+    return audio[key];
+  }
+
+  function playSound(key) {
+    const sound = ensureSound(key);
+    if (!sound) return;
+    try {
+      sound.currentTime = 0;
+      const res = sound.play();
+      if (res && typeof res.catch === 'function') {
+        res.catch(() => {});
+      }
+    } catch (err) {
+      console.warn('Audio playback blocked', err);
+    }
+  }
+
+  function ensureMusicPlaying() {
+    const music = ensureSound('music');
+    if (!music) return;
+    music.loop = true;
+    if (musicStarted && music.play && music.paused === false) return;
+    musicStarted = true;
+    try {
+      const res = music.play();
+      if (res && typeof res.catch === 'function') {
+        res.catch(() => {});
+      }
+    } catch (err) {
+      console.warn('Music playback blocked', err);
+    }
   }
 
   function resetGame() {
@@ -272,12 +397,14 @@
     gameState.ravineCount = 0;
     gameState.calmWindow = 0;
     animationClock = 0;
+    platformClusterId = 0;
   }
 
   function startGame() {
     if (!canStartNewRun()) return;
     initCanvas();
     resetGame();
+    ensureMusicPlaying();
     running = true;
     gameState.running = true;
     refocusCanvas();
@@ -328,6 +455,7 @@
     deathOverlay.visible = false;
     deathOverlay.showAt = performance.now() + DEATH_OVERLAY_DELAY;
     pendingStopReason = reason;
+    playSound('death');
     spawnSparkBurst(player.x + player.w * 0.5, player.y + player.h * 0.5, 42);
     stopGame(reason, { delayHighScoreMs: DEATH_SCREEN_DURATION }).finally(() => {
       pendingStopReason = null;
@@ -409,10 +537,25 @@
   }
 
   function spawnSnowmanAt(x) {
-    const surface = platformSurfaceAt(x + snowmanSize.w * 0.5);
+    const drawW = snowmanMetrics.natural.w * snowmanMetrics.drawScale;
+    const drawH = snowmanMetrics.natural.h * snowmanMetrics.drawScale;
+    const surface = platformSurfaceAt(x + drawW * 0.5);
     if (!surface) return null;
-    const y = surface.y - snowmanSize.h;
-    const snowman = { x, y, w: snowmanSize.w, h: snowmanSize.h, alive: true };
+    const y = surface.y - drawH + snowmanMetrics.bottomPadding * snowmanMetrics.drawScale;
+    const hitbox = {
+      x: snowmanMetrics.hitbox.minX * snowmanMetrics.drawScale,
+      y: snowmanMetrics.hitbox.minY * snowmanMetrics.drawScale,
+      w: (snowmanMetrics.hitbox.maxX - snowmanMetrics.hitbox.minX + 1) * snowmanMetrics.drawScale,
+      h: (snowmanMetrics.hitbox.maxY - snowmanMetrics.hitbox.minY + 1) * snowmanMetrics.drawScale
+    };
+    const snowman = {
+      x,
+      y,
+      w: drawW,
+      h: drawH,
+      hitbox,
+      alive: true
+    };
     snowmen.push(snowman);
     return snowman;
   }
@@ -446,9 +589,12 @@
     snowmanGapPx = calcSnowmanGap(width);
     platformBufferEnabled = true;
     // Anchor platform covering the spawn position to avoid immediate falls.
+    const anchorCluster = ++platformClusterId;
     const anchor = createPlatformInstance(playerHomeX - getGroundBaseWidth() * 0.15, baseline, 0.9);
+    anchor.clusterId = anchorCluster;
     platforms.push(anchor);
-    spawnIslandCluster(anchor.x + anchor.width + 40, baseline);
+    const firstClusterStart = anchor.x + anchor.width - 12;
+    spawnIslandCluster(firstClusterStart, baseline, anchorCluster);
     ensurePlatformBuffer();
     rebuildPlatformBodies();
   }
@@ -512,18 +658,20 @@
     return null;
   }
 
-  function spawnIslandCluster(startX, baseSurfaceY) {
+  function spawnIslandCluster(startX, baseSurfaceY, clusterIdOverride = null) {
     const minY = 120;
     const maxY = height - 60;
     const pieces = Math.floor(getRandomInterval(1, 6));
+    const clusterId = clusterIdOverride || ++platformClusterId;
     let cursor = startX;
     let surface = clamp(baseSurfaceY, minY, maxY);
     for (let i = 0; i < pieces; i++) {
       const scale = 0.75 + Math.random() * 0.3;
       const y = clamp(surface + getRandomInterval(-12, 12), minY, maxY);
       const plat = createPlatformInstance(cursor, y, scale);
+      plat.clusterId = clusterId;
       platforms.push(plat);
-      const connector = getRandomInterval(-14, 20);
+      const connector = getRandomInterval(-14, 0);
       cursor += plat.width + connector;
       surface = y;
     }
@@ -634,6 +782,7 @@
     player.vy = jumpVel;
     player.grounded = false;
     coyoteTimer = 0;
+    playSound('jump');
     if (gestureInterpreter) {
       gestureInterpreter.setGrounded(false);
     }
@@ -913,12 +1062,16 @@
       for (let i = snowmen.length - 1; i >= 0; i--) {
         const s = snowmen[i];
         if (!s || !s.alive) continue;
-        if (rectsOverlap(player.x, player.y, player.w, player.h, s.x, s.y, s.w, s.h)) {
+        const hb = s.hitbox || { x: 0, y: 0, w: s.w, h: s.h };
+        const hx = s.x + hb.x;
+        const hy = s.y + hb.y;
+        if (rectsOverlap(player.x, player.y, player.w, player.h, hx, hy, hb.w, hb.h)) {
           const smashing = dashActive || dashInvulnTimer > 0;
           if (smashing) {
             snowmen.splice(i, 1);
             spawnSnowBurst(s.x + s.w * 0.5, s.y + s.h * 0.5, 42);
             bonusScore += snowmanBonus;
+            playSound('coin');
             continue;
           }
           handlePlayerDeath('hit-snowman');
@@ -1276,7 +1429,8 @@
 
   window.__reindeerRushDebug__ = {
     getObstacles: () => platforms.map((p) => ({ width: p.width, surfaceY: p.surfaceY })),
-    getPlatforms: () => platforms.map((p) => ({ x: p.x, width: p.width, surfaceY: p.surfaceY })),
+    getPlatforms: () =>
+      platforms.map((p) => ({ x: p.x, width: p.width, surfaceY: p.surfaceY, clusterId: p.clusterId })),
     getPlayer: () => ({ x: player.x, y: player.y, grounded: player.grounded }),
     triggerDash: () => triggerDash(),
     getSnowmen: () => snowmen.map((s) => ({ x: s.x, y: s.y, w: s.w, h: s.h })),
@@ -1285,6 +1439,25 @@
       const placed = spawnSnowmanAt(x);
       if (placed) snowmanGapPx = calcSnowmanGap(width);
       return placed;
+    },
+    getSnowmanMetrics: () => {
+      const drawWidth = snowmanMetrics.natural.w * snowmanMetrics.drawScale;
+      const drawHeight = snowmanMetrics.natural.h * snowmanMetrics.drawScale;
+      return {
+        drawWidth,
+        drawHeight,
+        aspect: snowmanMetrics.aspect,
+        bottomPadding: snowmanMetrics.bottomPadding,
+        hitbox: {
+          x: snowmanMetrics.hitbox.minX * snowmanMetrics.drawScale,
+          y: snowmanMetrics.hitbox.minY * snowmanMetrics.drawScale,
+          w: (snowmanMetrics.hitbox.maxX - snowmanMetrics.hitbox.minX + 1) * snowmanMetrics.drawScale,
+          h: (snowmanMetrics.hitbox.maxY - snowmanMetrics.hitbox.minY + 1) * snowmanMetrics.drawScale
+        }
+      };
+    },
+    setSnowmanMetricsForTest: (metrics) => {
+      Object.assign(snowmanMetrics, metrics || {});
     },
     isDeathScreenActive: () => deathOverlay.active,
     testSnowmanSpacing: (count = 3) => {
@@ -1300,6 +1473,7 @@
     },
     clearPlatforms: () => {
       platforms.length = 0;
+      platformClusterId = 0;
       ensurePlatformBuffer();
     },
     dropAllPlatforms: () => {
@@ -1311,6 +1485,8 @@
       ensurePlatformBuffer();
     },
     start: () => startGame(),
-    isImmersiveActive: () => immersiveActive
+    isImmersiveActive: () => immersiveActive,
+    stepForTest: (dt = 16) => updateScene(dt),
+    triggerDeathForTest: () => handlePlayerDeath('test-invoked')
   };
 })();
