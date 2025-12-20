@@ -1,10 +1,10 @@
 (function () {
-  const DEFAULT_GAMES = ['forste-advent', 'anden-advent', 'tredje-advent'];
+  const DEFAULT_GAMES = ['forste-advent', 'anden-advent', 'tredje-advent', 'fjerde-advent'];
 
   function normalizeGameId(value) {
     if (!value) return '';
     const raw = String(value).trim().toLowerCase();
-    if (raw === 'reindeer-rush') return 'tredje-advent';
+    if (raw === 'reindeer-rush') return 'fjerde-advent';
     return raw;
   }
 

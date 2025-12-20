@@ -49,7 +49,7 @@
             if (result.success) {
                 playHoHo();
                 persistLoginSuccess(result);
-                window.location.reload();
+                window.setTimeout(() => window.location.reload(), 50);
             } else {
                 document.querySelector('[data-js="error"]').style.display = 'block';
                 document.querySelector('[data-js="success"]').style.display = 'none';

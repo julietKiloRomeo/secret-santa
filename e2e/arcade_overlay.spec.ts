@@ -163,7 +163,7 @@ test.describe('Arcade overlay high score flow', () => {
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
   });
 
-  test('non-qualifying score only shows the leaderboard', async ({ page }) => {
+  test('non-qualifying score only shows the leaderboard and skips name entry', async ({ page }) => {
     const topScores = {
       scores: Array.from({ length: 10 }, (_, idx) => ({
         name: `Player ${idx + 1}`,
@@ -171,9 +171,15 @@ test.describe('Arcade overlay high score flow', () => {
       })),
     };
 
+    let postRequests = 0;
     await page.route('**/api/scores/forste-advent', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(topScores) });
+        return;
+      }
+      if (route.request().method() === 'POST') {
+        postRequests += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         return;
       }
       await route.fallback();
@@ -193,13 +199,14 @@ test.describe('Arcade overlay high score flow', () => {
 
     const overlay = page.locator('#arcade-overlay.visible');
     await overlay.waitFor();
-    await expect(overlay.locator('.arcade-panel h2')).toHaveText(/Top\s*10/i);
-    await expect(overlay.locator('.arcade-panel')).not.toContainText(/Ny high score/i);
+    await expect(overlay.locator('.arcade-panel h2')).toHaveText(/Hall of Fame/i);
+    await expect(overlay.locator('.arcade-panel')).toContainText(/Too low/i);
     await expect(overlay.locator('.arcade-scores')).toBeVisible();
     await expect(overlay.locator('input.arcade-input')).toHaveCount(0);
 
     await overlay.getByRole('button', { name: /Luk/i }).click();
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
+    expect(postRequests).toBe(0);
   });
 
   test('non-qualifying leaderboard can be dismissed with enter or tap', async ({ page }) => {
@@ -232,6 +239,7 @@ test.describe('Arcade overlay high score flow', () => {
 
     const overlay = page.locator('#arcade-overlay.visible');
     await overlay.waitFor();
+    await expect(overlay.locator('input.arcade-input')).toHaveCount(0);
     await page.keyboard.press('Enter');
     await expect(page.locator('#arcade-overlay.visible')).toHaveCount(0);
 

@@ -3,60 +3,34 @@
 {% block body_attrs %}data-immersive-stage="reindeer-rush" data-immersive-active="0"{% endblock %}
 {% block content %}
   <div class="max-w-4xl mx-auto p-6 space-y-6" aria-live="polite">
-    <header class="text-center space-y-3">
-      <p class="text-sm uppercase tracking-widest text-rose-200">Fjerde Advent</p>
-      <h1 class="text-3xl font-bold">🦌 Reindeer Rush</h1>
-      <p class="text-base text-gray-200">Guide Dasher through an endless winter valley. Hold for soaring jumps, swipe to duck, and chase carrots for bonus glow.</p>
-      <p class="text-sm text-gray-300">Player: <strong>{{ default_name|default('Nisse') }}</strong></p>
-    </header>
-
-    <section class="grid gap-6 md:grid-cols-2">
-      <div class="rounded-2xl bg-white/90 p-5 text-gray-900 shadow-xl">
-        <div class="space-y-1">
-          <p class="text-lg font-semibold">Distance: <span id="reindeer-score">0 m</span></p>
-          <p class="font-semibold">Score: <span id="reindeer-total-score">0 pts</span></p>
-          <p class="text-sm text-gray-600">Bonus: <span id="reindeer-bonus">0 pts</span></p>
-        </div>
-        <div class="mt-4 space-y-1 text-sm text-gray-600">
-          <p>Controls: tap/click to jump, hold to charge, swipe down or press ↓ to duck beneath icy branches.</p>
-          <p>Speed: <strong id="reindeer-speed">0</strong> px/s · Obstacles dodged: <strong id="reindeer-obstacles">0</strong> · Next item: <strong id="reindeer-next-item">—</strong></p>
-        </div>
-        <div class="mt-6">
-          <button
-            type="button"
-            id="reindeer-enter-immersive"
-            data-immersive-launch
-            class="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 px-4 py-3 text-white font-semibold shadow-lg hover:from-indigo-400 hover:to-sky-400"
-          >
-            Launch Full-screen valley
-          </button>
-          <p class="mt-2 text-xs text-gray-500">The lobby keeps stats visible, but once you launch we hide the chrome so only the reindeer and the valley remain. Press ESC to exit.</p>
-        </div>
-      </div>
-
-      <div class="rounded-2xl bg-white/80 p-5 text-gray-900 shadow-xl space-y-3">
-        <h2 class="text-xl font-semibold">Arcade records</h2>
-        <p class="text-sm text-gray-600">We now surface highscores through the universal overlay. Pop it open at any time:</p>
-        <button
-          type="button"
-          class="inline-flex w-full items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-500"
-          data-arcade-leaderboard
-          data-games="forste-advent,anden-advent,tredje-advent,fjerde-advent"
-          data-start-game="fjerde-advent"
-        >
-          View arcade leaderboards
-        </button>
-        <div class="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-500">
-          Launch the scenic run to submit a new score using the overlay prompt when the arcade calls for your name.
-        </div>
-      </div>
+    <section class="rounded-2xl bg-white/90 p-5 text-gray-900 shadow-xl space-y-2 text-center">
+      <p class="text-sm text-gray-600">Player: <strong>{{ default_name|default('Nisse') }}</strong></p>
+      <p class="text-lg font-semibold">Distance: <span id="reindeer-score">0 m</span></p>
+      <p class="font-semibold">Score: <span id="reindeer-total-score">0 pts</span></p>
+      <p class="text-sm text-gray-600">Bonus: <span id="reindeer-bonus">0 pts</span></p>
+      <p class="text-sm text-gray-600">Tap/Space to start running · Swipe down to slide · Swipe right to dash</p>
+      <p class="text-xs text-gray-500">Speed: <strong id="reindeer-speed">0</strong> px/s · Obstacles: <strong id="reindeer-obstacles">0</strong> · Next item: <strong id="reindeer-next-item">—</strong></p>
+    </section>
+    <section id="reindeer-pwa-cta" class="rounded-2xl bg-blue-900/70 p-4 text-sm text-white shadow-lg flex flex-col gap-2 items-center" hidden>
+      <p class="font-semibold text-center">Install Reindeer Rush for full-screen play</p>
+      <button
+        id="reindeer-install-pwa"
+        type="button"
+        class="px-4 py-2 rounded-full bg-amber-400 text-blue-900 font-bold shadow hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-300"
+        hidden
+      >
+        Install on this device
+      </button>
+      <p id="reindeer-install-ios-hint" class="text-xs text-amber-100 text-center" hidden>
+        On iPhone: tap the Share icon and choose "Add to Home Screen" to play fullscreen.
+      </p>
     </section>
   </div>
 
   <div id="reindeer-immersive-stage" class="reindeer-immersive-stage" aria-hidden="true">
     <div class="reindeer-immersive-backdrop"></div>
     <div class="reindeer-immersive-frame" role="application" aria-label="Reindeer Rush full-screen canvas">
-      <div id="reindeer-canvas" class="reindeer-immersive-canvas" role="presentation">Tap launch to begin</div>
+      <div id="reindeer-canvas" class="reindeer-immersive-canvas" role="presentation">Tap or press space to start running</div>
     </div>
     <p id="reindeer-immersive-hint" class="reindeer-immersive-hint">Rotate for landscape play</p>
     <button type="button" id="reindeer-exit-immersive" class="reindeer-immersive-exit" aria-label="Exit Reindeer Rush landscape mode">Exit scenic view</button>
@@ -71,5 +45,50 @@
   <script>window.__defaultPlayerName__ = "{{ default_name|default('Nisse') }}";</script>
   <script src="{{ url_for('static', filename='arcade_overlay.js') }}"></script>
   <script src="{{ url_for('static', filename='leaderboard_buttons.js') }}"></script>
+  <script src="{{ url_for('static', filename='matter.min.js') }}"></script>
+  <script src="/static/reindeer_gestures.js"></script>
+  <script src="/static/reindeer_ground.js"></script>
   <script src="/static/reindeer_rush.js"></script>
+  <script>
+    (function () {
+      const cta = document.getElementById('reindeer-pwa-cta');
+      const installBtn = document.getElementById('reindeer-install-pwa');
+      const iosHint = document.getElementById('reindeer-install-ios-hint');
+      if (!cta) return;
+      const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      let deferredPrompt = null;
+
+      function showCTA() {
+        cta.hidden = false;
+        if (!deferredPrompt && installBtn) {
+          installBtn.hidden = true;
+        }
+      }
+
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredPrompt = event;
+        if (installBtn) installBtn.hidden = false;
+        showCTA();
+      });
+
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          installBtn.disabled = true;
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          installBtn.disabled = false;
+          installBtn.hidden = true;
+          deferredPrompt = null;
+        });
+      }
+
+      if (isiOS && !isStandalone) {
+        if (iosHint) iosHint.hidden = false;
+        showCTA();
+      }
+    })();
+  </script>
 {% endblock %}

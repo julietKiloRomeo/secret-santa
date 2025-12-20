@@ -289,6 +289,9 @@ body[data-immersive-active="1"] main > div {
   justify-content: center;
   z-index: 1200;
   pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .reindeer-immersive-stage[data-active="1"] {
@@ -325,6 +328,10 @@ body[data-immersive-active="1"] main > div {
   font-size: clamp(1rem, 1.5vw, 1.25rem);
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .reindeer-immersive-hint {

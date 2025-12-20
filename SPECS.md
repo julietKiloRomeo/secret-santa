@@ -8,7 +8,8 @@ Overview
 - Two small in-browser mini-games are available for advent pages:
   - `Første Advent` — Jule Snake (classic snake game)
 - `Anden Advent` — Flappy Santa (santa flapping through chimneys)
-- `Tredje Advent` — Reindeer Rush endless runner: guide a reindeer through a scrolling winter landscape, jumping over frozen ponds and ducking under low-hanging icicles while collecting carrots and candy canes. The game lives at `/tredje-advent`, submits scores to `/api/scores/tredje-advent`, and is powered by `static/reindeer_rush.js`; art, richer audio, and power-ups remain TODO. Automated tests cover the API (`tests/test_tredje_advent_scores.py`, `tests/test_tredje_advent_integration.py`) and HTML shell (`tests/test_tredje_advent_client.py`).
+- `Tredje Advent` — Jingle Bell Hero rhythm bells: match the falling notes with lane buttons D/F/J/K across six tiers. The React client (`static/jingle_bell_hero_app.js`) is loaded via import maps at `/tredje-advent` and posts to `/api/scores/tredje-advent`. Tests cover the API (`tests/test_tredje_advent_scores.py`, `tests/test_tredje_advent_integration.py`), HTML shell (`tests/test_tredje_advent_client.py`), and component logic (`__tests__/JingleBellHero.test.jsx`).
+- `Fjerde Advent` — Reindeer Rush endless runner now lives at `/fjerde-advent` with the immersive canvas (`static/reindeer_rush.js`) and posts to `/api/scores/fjerde-advent`. Server/client coverage comes from `tests/test_fjerde_advent_client.py` and the Playwright spec (`e2e/reindeer_rush.spec.ts`).
 - Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
 
 API Endpoints
@@ -57,7 +58,8 @@ Pages / Routes
 - `/` — Index / roulette login page. After successful login it reveals the recipient.
 - `/forste-advent` — Snake mini-game. If the game is disabled for non-admins, shows an Under Construction page with title "Første Advent". Admins always see the game.
 - `/anden-advent` — Flappy Santa mini-game. Same availability rules as above.
-- `/tredje-advent` — Hosts the Reindeer Rush endless runner. If the game is disabled for non-admins it falls back to the standard Under Construction view.
+- `/tredje-advent` — Hosts the Jingle Bell Hero React experience with rhythm controls and the shared overlay. If the game is disabled for non-admins it falls back to the standard Under Construction view.
+- `/fjerde-advent` — Hosts the Reindeer Rush endless runner and immersive canvas shell moved from Tredje Advent.
 - `/fjerde-advent`, `/glaedelig-jul` — pages exist and may show "Under Construction" until implemented or enabled.
 - `/admin` — Admin panel, only accessible to admin users after login.
 

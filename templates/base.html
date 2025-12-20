@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>{% block title %}Secret Santa{% endblock %}</title>
   <!-- Tailwind CDN for quick integration (suitable for development) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
   <style>
     /* Small custom overrides that are easier to keep here than inlined HTML */
@@ -129,6 +130,13 @@
           // Update aria-expanded to reflect open state for screen readers
           toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
         }
+      });
+    }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('{{ url_for('static', filename='sw.js') }}').catch((err) => {
+        console.warn('SW registration failed', err);
       });
     }
   </script>

@@ -244,4 +244,73 @@ test.describe("Anden Advent - physics and obstacle unit checks", () => {
     const scoreNum = m ? Number(m[1]) : 0;
     expect(scoreNum).toBeGreaterThanOrEqual(0);
   });
+
+  test("a touch tap during a restart clears grace so the first flap lifts immediately", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      (window as any).__ANDEN_CONFIG__ = (window as any).__ANDEN_CONFIG__ || {};
+      (window as any).__ANDEN_CONFIG__.graceMs = 3200;
+    });
+
+    await page.goto("/");
+    await page.fill("#name", "playwright");
+    await page.fill("#code", "pw-test-123");
+    await Promise.all([
+      page.waitForResponse(
+        (r) =>
+          r.url().endsWith("/api/login") && r.request().method() === "POST",
+      ),
+      page.click("button[type=submit]"),
+    ]);
+
+    await page.goto("/anden-advent");
+    const canvas = page.locator("#santa-canvas");
+    await expect(canvas).toBeVisible();
+
+    // Wait for the lightweight test harness to be available
+    await page.waitForFunction(() => {
+      const hooks = (window as any).__ANDEN_TEST__;
+      return (
+        !!hooks &&
+        typeof hooks.getLeadY === "function" &&
+        typeof hooks.forceStop === "function" &&
+        typeof hooks.getGraceMs === "function"
+      );
+    });
+
+    // Simulate a completed run so the next tap would normally restart the game
+    await page.evaluate(() => {
+      (window as any).__ANDEN_TEST__.forceStop();
+    });
+
+    const beforeY = await page.evaluate(() => {
+      return (window as any).__ANDEN_TEST__.getLeadY();
+    });
+
+    await page.dispatchEvent("#santa-canvas", "pointerdown", {
+      pointerType: "touch",
+      isPrimary: true,
+      bubbles: true,
+      cancelable: true,
+      clientX: 10,
+      clientY: 10,
+    });
+
+    // Give the frame loop a moment to process the tap
+    await page.waitForTimeout(120);
+
+    const graceAfter = await page.evaluate(() => {
+      return (window as any).__ANDEN_TEST__.getGraceMs();
+    });
+    expect(graceAfter).toBeLessThanOrEqual(0);
+
+    await page.waitForTimeout(180);
+    const afterY = await page.evaluate(() => {
+      return (window as any).__ANDEN_TEST__.getLeadY();
+    });
+
+    // Y decreases when Santa moves upward, so the new Y should be noticeably lower
+    expect(afterY).toBeLessThan(beforeY - 3);
+  });
 });

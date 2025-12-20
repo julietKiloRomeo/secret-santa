@@ -6,8 +6,7 @@
 
   const baseJumpVel = -0.55;
   const maxJumpVel = -0.75;
-  const jumpChargeWindow = 420;
-  const doubleJumpMinCharge = 90;
+  const jumpChargeWindow = 0;
   const coyoteTimeMs = 120;
   const dashDurationMs = 260;
   const dashCooldownMs = 450;
@@ -627,13 +626,12 @@
     }
   }
 
-  function performJump(heldMs = 0) {
+  function performJump() {
     if (player.ducking) {
       endDuck();
     }
-    const charge = Math.min(1, Math.max(0, heldMs / jumpChargeWindow));
-    const chargeVel = baseJumpVel + (maxJumpVel - baseJumpVel) * charge;
-    player.vy = chargeVel;
+    const jumpVel = maxJumpVel;
+    player.vy = jumpVel;
     player.grounded = false;
     coyoteTimer = 0;
     if (gestureInterpreter) {
@@ -644,15 +642,14 @@
   function triggerGroundJump(heldMs = 0) {
     ensureGameRunning();
     doubleJumpAvailable = true;
-    performJump(heldMs);
+    performJump();
   }
 
   function triggerDoubleJump(heldMs = 0) {
     ensureGameRunning();
     if (!doubleJumpAvailable || player.grounded) return;
-    const effectiveCharge = Math.max(doubleJumpMinCharge, heldMs);
     doubleJumpAvailable = false;
-    performJump(effectiveCharge);
+    performJump();
   }
 
   function triggerJumpAction(heldMs = 0) {
@@ -728,8 +725,7 @@
     if (gestureInterpreter) {
       gestureInterpreter.pointerUp(event);
     } else {
-      const heldMs = performance.now() - pointerState.startTs;
-      triggerJumpAction(heldMs);
+      triggerJumpAction(0);
     }
     pointerState.active = false;
     pointerState.pointerId = null;
@@ -750,7 +746,7 @@
     if (ev.code === 'Space') {
       ev.preventDefault();
       ensureGameRunning();
-      beginSpaceCharge();
+      triggerJumpAction(0);
       return;
     }
     if (ev.code === 'ArrowRight') {
@@ -768,28 +764,11 @@
   function handleKeyUp(ev) {
     if (ev.code === 'Space') {
       ev.preventDefault();
-      releaseSpaceCharge();
       return;
     }
     if (ev.code === 'ArrowDown') {
       endDuck();
     }
-  }
-
-  function beginSpaceCharge() {
-    if (spaceHeld) return;
-    if (!immersiveActive) {
-      enterImmersiveStage();
-    }
-    spaceHeld = true;
-    spaceStart = performance.now();
-  }
-
-  function releaseSpaceCharge() {
-    if (!spaceHeld) return;
-    const heldMs = performance.now() - spaceStart;
-    spaceHeld = false;
-    triggerJumpAction(heldMs);
   }
 
   function setupInput() {
@@ -1027,21 +1006,6 @@
     }
 
     drawReindeerCharacter();
-
-    const holdTime = pointerState.active
-      ? performance.now() - pointerState.startTs
-      : spaceHeld
-        ? performance.now() - spaceStart
-        : 0;
-    if (holdTime > 40 && !pointerState.swiped) {
-      const progress = Math.min(1, holdTime / jumpChargeWindow);
-      const arcRadius = player.w + 6;
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(player.x + player.w / 2, player.y - 4, arcRadius, Math.PI, Math.PI + Math.PI * progress);
-      ctx.stroke();
-    }
 
     ctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
     ctx.font = '13px "Press Start 2P", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';

@@ -13,8 +13,9 @@ test('mobile screenshots for games (iPhone-like viewport)', async ({ page }) => 
     page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
     page.click('button[type=submit]'),
   ]);
-  const loginJson = await loginResp.json();
-  if (!loginJson || !loginJson.success) throw new Error('Login failed for Playwright test account: ' + JSON.stringify(loginJson));
+  if (!loginResp.ok()) {
+    throw new Error(`Login failed for Playwright test account: status ${loginResp.status()}`);
+  }
 
   // First: Snake
   await page.goto('/forste-advent');
@@ -25,7 +26,8 @@ test('mobile screenshots for games (iPhone-like viewport)', async ({ page }) => 
 
   // Then: Flappy Santa
   await page.goto('/anden-advent');
-  await page.waitForSelector('#santa-canvas', { state: 'visible' });
-  await page.waitForTimeout(250);
+  const canvas = await page.waitForSelector('#santa-canvas', { state: 'visible' });
+  await page.waitForTimeout(400);
   await page.screenshot({ path: 'out/anden_advent_mobile.png', fullPage: true });
+  await canvas.screenshot({ path: 'out/anden_advent_reindeer_front.png' });
 });

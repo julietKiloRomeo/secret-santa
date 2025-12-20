@@ -40,7 +40,8 @@ Mini-games share a neon arcade overlay for high scores. When a run ends:
 - `secret-santa-2024.json` — current year’s assignments.
 - `templates/index.html` — UI template.
 - `static/styles.css` — app styling.
-- `tredje-advent` — Reindeer Rush endless runner served at `/tredje-advent` with leaderboard integration at `/api/scores/tredje-advent`. The canvas client (`static/reindeer_rush.js`) powers the advent view; art, richer audio, and power-ups remain TODO.
+- `tredje-advent` — Jingle Bell Hero, a four-lane rhythm mini-game served via a React module (`static/jingle_bell_hero_app.js`) and import maps. Scores post to `/api/scores/tredje-advent` and share the overlay controls used by the other games.
+- `fjerde-advent` — Reindeer Rush endless runner housed at `/fjerde-advent`, retaining the immersive canvas client (`static/reindeer_rush.js`) and leaderboard integration at `/api/scores/fjerde-advent`.
 - `Dockerfile` — container build for production.
 - `pyproject.toml` — Python project config and dependencies.
 
