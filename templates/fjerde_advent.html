@@ -2,11 +2,30 @@
 {% block title %}Fjerde Advent{% endblock %}
 {% block body_attrs %}data-immersive-stage="reindeer-rush" data-immersive-active="0"{% endblock %}
 {% block content %}
+  <style>
+    .reindeer-snowman-hint {
+      position: absolute;
+      left: 50%;
+      bottom: 12%;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.82);
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 9999px;
+      border: 1px solid rgba(248, 250, 252, 0.2);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      transition: opacity 240ms ease;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
   <div class="max-w-4xl mx-auto p-6 space-y-6" aria-live="polite">
     <section class="rounded-2xl bg-white/90 p-5 text-gray-900 shadow-xl space-y-2 text-center">
       <p class="text-sm text-gray-600">Player: <strong>{{ default_name|default('Nisse') }}</strong></p>
-      <p class="text-lg font-semibold">Distance: <span id="reindeer-score">0 m</span></p>
-      <p class="font-semibold">Score: <span id="reindeer-total-score">0 pts</span></p>
+      <p class="text-lg font-semibold">Run score: <span id="reindeer-score">0 pts</span></p>
+      <p class="font-semibold">Total score: <span id="reindeer-total-score">0 pts</span></p>
       <p class="text-sm text-gray-600">Bonus: <span id="reindeer-bonus">0 pts</span></p>
       <p class="text-sm text-gray-600">Tap/Space to start running · Swipe down to slide · Swipe right to dash</p>
       <p class="text-xs text-gray-500">Speed: <strong id="reindeer-speed">0</strong> px/s · Obstacles: <strong id="reindeer-obstacles">0</strong> · Next item: <strong id="reindeer-next-item">—</strong></p>
@@ -31,6 +50,7 @@
     <div class="reindeer-immersive-backdrop"></div>
     <div class="reindeer-immersive-frame" role="application" aria-label="Reindeer Rush full-screen canvas">
       <div id="reindeer-canvas" class="reindeer-immersive-canvas" role="presentation">Tap or press space to start running</div>
+      <div id="reindeer-snowman-hint" class="reindeer-snowman-hint">Swipe to dash through snowmen</div>
     </div>
     <p id="reindeer-immersive-hint" class="reindeer-immersive-hint">Rotate for landscape play</p>
     <button type="button" id="reindeer-exit-immersive" class="reindeer-immersive-exit" aria-label="Exit Reindeer Rush landscape mode">Exit scenic view</button>

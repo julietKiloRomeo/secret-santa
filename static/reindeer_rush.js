@@ -5,7 +5,7 @@
   }
 
   const baseJumpVel = -0.55;
-  const maxJumpVel = -0.75;
+  const maxJumpVel = -0.75 * Math.SQRT2 * 0.66;
   const jumpChargeWindow = 0;
   const coyoteTimeMs = 120;
   const dashDurationMs = 260;
@@ -24,7 +24,7 @@
   const GROUND_SURFACE_ROW = (window.ReindeerGround && window.ReindeerGround.SURFACE_ROW) || 78;
   const playerHomeX = 80;
   const DEATH_OVERLAY_DELAY = 520;
-  const DEATH_SCREEN_DURATION = 1500;
+  const DEATH_SCREEN_DURATION = 2500;
   const RIP_SCREEN_PATH = '/static/rip.png';
   const RUDOLPH_SET = {
     run: [
@@ -47,12 +47,36 @@
     snowman: '/static/sprites/snowman.png',
     ground: '/static/sprites/ground.png'
   };
+  const BG_SPRITES = {
+    moon: '/static/BG/moon.png',
+    star1: '/static/BG/star-1.png',
+    star2: '/static/BG/star-2.png',
+    cloud1: '/static/BG/cloud-1.png',
+    cloud2: '/static/BG/cloud-2.png'
+  };
+  const SKY_COLOR = '#0d093a';
   const AUDIO_SOURCES = {
-    music: '/static/arcade-kid.mp3',
+    musicIntro: '/static/retro-platform.mp3',
+    musicMain: '/static/arcade-kid.mp3',
     jump: '/static/jump.mp3',
     death: '/static/explosion.mp3',
     coin: '/static/coin.mp3'
   };
+  const INTRO_JUMPS_RANGE = [2, 2];
+  const INTRO_RUNWAY_SCREENS = 1.05;
+  const INTRO_EXTRA_STEP_SCREENS = 3.6;
+  const INTRO_CLUSTER_RANGE = [3, 5];
+  const INTRO_FORCED_STEP_RANGE = [150, 210];
+  const INTRO_SINGLE_STEP_RISE = [70, 110];
+  const INTRO_DOUBLE_STEP_RISE = [140, 170];
+  const INTRO_SURFACE_MIN_FRACTION = 0.12;
+  const INTRO_SURFACE_MAX_FRACTION = 0.92;
+  const INTRO_SURFACE_MIN_Y = 30;
+  const INTRO_SURFACE_MAX_PADDING = 28;
+  const INTRO_SNOWMAN_DELAY_MS = 4800;
+  const SNOWMAN_UNLOCK_DISTANCE = 450;
+  const GAP_INTRO_DISTANCE = 1000;
+  const GAP_RAMP_DISTANCE = 1500;
   const groundCache = { canvas: null };
   const Physics = typeof Matter !== 'undefined' ? Matter : null;
 
@@ -87,19 +111,37 @@
   let spriteLoadStarted = false;
   const rudolphSprites = { run: [], jump: [], slide: null };
   const extraSprites = { candy: null, snowman: null, ground: null };
+  const bgSprites = { moon: null, star1: null, star2: null, cloud1: null, cloud2: null };
   const deathOverlay = { sprite: null, active: false, visible: false, showAt: 0 };
   const snowParticles = [];
   const sparkParticles = [];
-  let parallaxPhase = 0;
+  const stars = [];
+  const clouds = [];
+  let skyPhase = 0;
+  let twinkleIndex = 0;
+  let activeTwinkle = null;
+  let twinkleTimer = 0;
+  let twinkleCooldown = 0;
   let platformBufferEnabled = true;
   let uiElapsed = 0;
   let targetFrameMs = 20; // ~50 FPS cap
   let dashTargetX = playerHomeX;
   let currentPlatform = null;
+  let suppressDeathsForTest = false;
+  let cameraBaselineY = 0;
+  let cameraY = 0;
+  let cameraTargetY = 0;
   let deathTimerMs = 0;
   let pendingStopReason = null;
   let highScoreFlowInFlight = false;
   let platformClusterId = 0;
+  let introClusterPlan = null;
+  let introPlanQueue = [];
+  let groundScale = 1;
+  let snowmanHintEl = null;
+  let snowmanHintShown = false;
+  let snowmanDashSucceeded = false;
+  let snowmanHintHideAt = 0;
   const snowmanMetrics = {
     natural: { w: snowmanSize.w, h: snowmanSize.h },
     drawScale: 0.65,
@@ -108,8 +150,18 @@
     topPadding: 0,
     hitbox: { minX: 0, maxX: Math.round(snowmanSize.w * 0.88), minY: 0, maxY: snowmanSize.h - 1 }
   };
-  let musicStarted = false;
-  const audio = { music: null, jump: null, death: null, coin: null };
+  let musicStartedKey = null;
+  let currentMusicKey = 'musicIntro';
+  const audio = { musicIntro: null, musicMain: null, jump: null, death: null, coin: null };
+  let runElapsedMs = 0;
+  let gapMode = 'intro';
+  let introState = {
+    jumpTarget: INTRO_JUMPS_RANGE[0],
+    jumpsPlaced: 0,
+    jumpCooldown: 0,
+    snowmanUnlocked: false,
+    introSnowmanPlaced: false
+  };
 
   const player = {
     x: playerHomeX,
@@ -142,6 +194,12 @@
     return !running && !highScoreFlowInFlight && !pendingStopReason && !deathOverlay.active;
   }
 
+  function updateDeathOverlayVisibility() {
+    if (deathOverlay.active && !deathOverlay.visible && performance.now() >= deathOverlay.showAt) {
+      deathOverlay.visible = true;
+    }
+  }
+
   function initCanvas() {
     const holder = el('reindeer-canvas');
     if (!holder) return;
@@ -166,6 +224,7 @@
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     holder.style.touchAction = 'none';
+    ensureSnowmanHint();
     refocusCanvas();
   }
 
@@ -188,16 +247,186 @@
     const rect = canvas.getBoundingClientRect();
     width = Math.max(300, Math.floor(rect.width));
     height = Math.max(120, Math.floor(rect.height));
+    const naturalGroundWidth = groundNaturalWidth();
+    groundScale = Math.min(1, width / (naturalGroundWidth * 4.5));
+    cameraBaselineY = Math.round(height * 0.68);
     dashForwardNudge = Math.max(player.w * 1.2, Math.min(width * 0.2, 100));
     dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    resetSkyDecorations();
+    const baseSurface = currentPlatform ? currentPlatform.surfaceY : cameraBaselineY;
+    cameraTargetY = cameraBaselineY - baseSurface;
+    cameraY = cameraTargetY;
   }
 
   function clamp(value, min, max) {
     if (Number.isNaN(value)) return min;
     return Math.min(max, Math.max(min, value));
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function seededNoise(seed) {
+    const x = Math.sin(seed * 1337.77) * 43758.5453123;
+    return x - Math.floor(x);
+  }
+
+  function resetSkyDecorations() {
+    layoutStars();
+    seedCloudField();
+    twinkleIndex = 0;
+    activeTwinkle = null;
+    twinkleTimer = 0;
+    twinkleCooldown = 140;
+  }
+
+  function layoutStars() {
+    stars.length = 0;
+    const count = Math.max(12, Math.round(width / 48));
+    const padX = Math.max(18, width * 0.05);
+    const padY = Math.max(12, height * 0.1);
+    for (let i = 0; i < count; i++) {
+      const nx = seededNoise(i + 3 + width);
+      const ny = seededNoise(i * 2 + height);
+      const x = padX + nx * (width - padX * 2);
+      const y = padY + ny * (height * 0.55);
+      stars.push({ x, y });
+    }
+  }
+
+  function seedCloudField() {
+    clouds.length = 0;
+    const count = Math.max(3, Math.round(width / 260));
+    const span = width + 240;
+    for (let i = 0; i < count; i++) {
+      const offset = (span / count) * i;
+      clouds.push(createCloud(offset, i + 1));
+    }
+  }
+
+  function createCloud(baseX, seed = 1) {
+    const spriteKey = seededNoise(seed + 1) > 0.5 ? 'cloud2' : 'cloud1';
+    const scale = 0.7 + seededNoise(seed + 3) * 0.5;
+    const yRatio = clamp(0.06 + seededNoise(seed + 5) * 0.32, 0.04, 0.44);
+    const depth = 0.55 + seededNoise(seed + 7) * 0.4;
+    return {
+      spriteKey,
+      x: baseX + seededNoise(seed + 11) * 80,
+      yRatio,
+      scale,
+      depth
+    };
+  }
+
+  function updateStars(dt) {
+    if (!stars.length) return;
+    if (activeTwinkle !== null) {
+      twinkleTimer = Math.max(0, twinkleTimer - dt);
+      if (twinkleTimer === 0) {
+        activeTwinkle = null;
+        twinkleCooldown = 160 + seededNoise(twinkleIndex + 19) * 240;
+      }
+    } else {
+      twinkleCooldown = Math.max(0, twinkleCooldown - dt);
+      if (twinkleCooldown === 0) {
+        activeTwinkle = twinkleIndex % stars.length;
+        twinkleIndex = (twinkleIndex + 1) % stars.length;
+        twinkleTimer = 180 + seededNoise(twinkleIndex + 23) * 200;
+        twinkleCooldown = 60;
+      }
+    }
+  }
+
+  function updateClouds(dt, speedPxPerMs) {
+    if (!clouds.length) return;
+    const baseSpeed = speedPxPerMs > 0 ? speedPxPerMs * 0.18 : 0.08;
+    const drift = baseSpeed + 0.02;
+    const resetX = width + 220;
+    for (let i = 0; i < clouds.length; i++) {
+      const cloud = clouds[i];
+      const sprite = bgSprites[cloud.spriteKey];
+      const ready = spriteReady(sprite);
+      const spriteW = ready ? sprite.naturalWidth * cloud.scale : 140 * cloud.scale;
+      const travel = drift * cloud.depth * dt;
+      cloud.x -= travel;
+      if (cloud.x + spriteW < -180) {
+        cloud.x = resetX + seededNoise(i + skyPhase) * 120;
+        cloud.yRatio = clamp(0.05 + seededNoise(i + skyPhase * 0.1) * 0.34, 0.05, 0.46);
+      }
+    }
+  }
+
+  function drawSkyBackdrop() {
+    if (!ctx) return;
+    ctx.fillStyle = SKY_COLOR;
+    ctx.fillRect(0, 0, width, height);
+    drawStars();
+    drawMoon();
+    drawClouds();
+  }
+
+  function drawStars() {
+    const twinkleReady = spriteReady(bgSprites.star2);
+    for (let i = 0; i < stars.length; i++) {
+      const star = stars[i];
+      const twinkling = activeTwinkle === i;
+      const sprite = twinkling && twinkleReady ? bgSprites.star2 : bgSprites.star1;
+      if (spriteReady(sprite)) {
+        const w = sprite.naturalWidth;
+        const h = sprite.naturalHeight;
+        ctx.drawImage(sprite, Math.round(star.x), Math.round(star.y), Math.round(w), Math.round(h));
+      } else {
+        const size = twinkling ? 3 : 2;
+        ctx.fillStyle = twinkling ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.8)';
+        ctx.fillRect(Math.round(star.x), Math.round(star.y), size, size);
+      }
+    }
+  }
+
+  function drawMoon() {
+    const sprite = bgSprites.moon;
+    const ready = spriteReady(sprite);
+    const aspect = ready && sprite.naturalHeight ? sprite.naturalWidth / sprite.naturalHeight : 1;
+    let drawW = ready ? sprite.naturalWidth * 0.85 : 72;
+    let drawH = ready ? sprite.naturalHeight * 0.85 : 72;
+    if (ready && aspect > 0) {
+      drawH = drawW / aspect;
+    }
+    const margin = Math.max(18, width * 0.04);
+    const x = width - drawW - margin;
+    const y = Math.max(12, height * 0.08);
+    if (ready) {
+      ctx.drawImage(sprite, Math.round(x), Math.round(y), Math.round(drawW), Math.round(drawH));
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.beginPath();
+      ctx.arc(Math.round(x + drawW / 2), Math.round(y + drawH / 2), Math.round(drawW / 2), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawClouds() {
+    for (let i = 0; i < clouds.length; i++) {
+      const cloud = clouds[i];
+      const sprite = bgSprites[cloud.spriteKey];
+      const ready = spriteReady(sprite);
+      const baseW = ready ? sprite.naturalWidth : 160;
+      const baseH = ready ? sprite.naturalHeight : 90;
+      const drawW = baseW * cloud.scale;
+      const drawH = baseH * cloud.scale;
+      const x = cloud.x;
+      const y = cloud.yRatio * height;
+      if (ready) {
+        ctx.drawImage(sprite, Math.round(x), Math.round(y), Math.round(drawW), Math.round(drawH));
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillRect(Math.round(x), Math.round(y), Math.round(drawW), Math.round(drawH));
+      }
+    }
   }
 
   function preloadRudolphSprites() {
@@ -219,6 +448,11 @@
       }
     }
     extraSprites.ground = primeSprite(EXTRA_SPRITES.ground);
+    bgSprites.moon = primeSprite(BG_SPRITES.moon);
+    bgSprites.star1 = primeSprite(BG_SPRITES.star1);
+    bgSprites.star2 = primeSprite(BG_SPRITES.star2);
+    bgSprites.cloud1 = primeSprite(BG_SPRITES.cloud1);
+    bgSprites.cloud2 = primeSprite(BG_SPRITES.cloud2);
     deathOverlay.sprite = deathOverlay.sprite || primeSprite(RIP_SCREEN_PATH);
     if (extraSprites.ground) {
       extraSprites.ground.onload = () => {
@@ -250,7 +484,9 @@
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('canvas context unavailable');
+      if (!ctx || typeof ctx.getImageData !== 'function') {
+        return;
+      }
       ctx.drawImage(img, 0, 0);
       const data = ctx.getImageData(0, 0, w, h).data;
       const cols = new Array(w).fill(0);
@@ -307,7 +543,8 @@
 
   function ensureSound(key) {
     if (audio[key]) return audio[key];
-    const opts = key === 'music' ? { loop: true, volume: 0.45 } : { volume: 0.7 };
+    const isMusic = key === 'musicIntro' || key === 'musicMain';
+    const opts = isMusic ? { loop: true, volume: 0.45 } : { volume: 0.7 };
     audio[key] = createAudio(AUDIO_SOURCES[key], opts);
     return audio[key];
   }
@@ -327,19 +564,70 @@
   }
 
   function ensureMusicPlaying() {
-    const music = ensureSound('music');
+    const music = ensureSound(currentMusicKey);
     if (!music) return;
     music.loop = true;
-    if (musicStarted && music.play && music.paused === false) return;
-    musicStarted = true;
+    if (musicStartedKey === currentMusicKey && music.play && music.paused === false) return;
+    musicStartedKey = currentMusicKey;
     try {
       const res = music.play();
       if (res && typeof res.catch === 'function') {
         res.catch(() => {});
       }
     } catch (err) {
-      console.warn('Music playback blocked', err);
+      // jsdom does not implement HTMLMediaElement.play; ignore in tests.
     }
+  }
+
+  function swapToMainMusic() {
+    if (currentMusicKey === 'musicMain') return;
+    const introMusic = audio[currentMusicKey];
+    if (introMusic && introMusic.pause) {
+      introMusic.pause();
+    }
+    currentMusicKey = 'musicMain';
+    musicStartedKey = null;
+    ensureMusicPlaying();
+  }
+
+  function collapseBufferForRamp() {
+    if (!platforms.length) return;
+    const footX = player.x + player.w * 0.5;
+    const keeper =
+      currentPlatform ||
+      platforms.find((p) => footX >= p.x && footX <= p.x + p.width) ||
+      platforms[0];
+    platforms = keeper ? [keeper] : [];
+    platformClusterId = keeper ? keeper.clusterId : platformClusterId;
+    introClusterPlan = null;
+    rebuildPlatformBodies();
+  }
+
+  function rebuildRampStart() {
+    const baseY = clamp((currentPlatform && currentPlatform.surfaceY) || cameraBaselineY, 120, height - 60);
+    platforms.length = 0;
+    platformClusterId = 0;
+    introClusterPlan = null;
+    const anchorCluster = ++platformClusterId;
+    const anchor = createPlatformInstance(playerHomeX - getGroundBaseWidth() * 0.15, baseY, 0.9);
+    anchor.clusterId = anchorCluster;
+    platforms.push(anchor);
+    const gap = Math.max(220, getRandomInterval(220, 320));
+    spawnIslandCluster(anchor.x + anchor.width + gap, clamp(baseY + getRandomInterval(-40, 40), 120, height - 60));
+    ensurePlatformBuffer();
+    rebuildPlatformBodies();
+    placePlayerOnSafePlatform();
+  }
+
+  function seedRampCluster() {
+    if (!platforms.length) return;
+    const last = platforms[platforms.length - 1];
+    const [minGap, maxGap] = getClusterGapRange();
+    const gap = Math.max(120, getRandomInterval(minGap, maxGap));
+    const start = last.x + last.width + gap;
+    const baseY = clamp(last.surfaceY + getRandomInterval(-60, 60), 120, height - 60);
+    spawnIslandCluster(start, baseY);
+    rebuildPlatformBodies();
   }
 
   function resetGame() {
@@ -354,10 +642,34 @@
     dashReturnTimer = 0;
     platformBufferEnabled = true;
     currentPlatform = null;
+    runElapsedMs = 0;
+    gapMode = 'intro';
+    introState = {
+      jumpTarget: INTRO_JUMPS_RANGE[0],
+      jumpsPlaced: 0,
+      jumpCooldown: 0,
+      snowmanUnlocked: false,
+      introSnowmanPlaced: false,
+      firstStepX: null,
+      doubleStepX: null,
+      snowmanUnlockDistance: SNOWMAN_UNLOCK_DISTANCE,
+      gapUnlockDistance: GAP_INTRO_DISTANCE
+    };
+    introPlanQueue = [];
+    currentMusicKey = 'musicIntro';
+    musicStartedKey = null;
+    cameraBaselineY = Math.round(height * 0.68);
+    cameraY = 0;
+    cameraTargetY = 0;
     platforms = [];
     platformBodies = [];
     snowmen = [];
-    snowmanGapPx = calcSnowmanGap(width);
+    snowmanGapPx = Infinity;
+    snowmanHintShown = false;
+    snowmanDashSucceeded = false;
+    snowmanHintHideAt = 0;
+    platformClusterId = 0;
+    introClusterPlan = null;
     snowParticles.length = 0;
     sparkParticles.length = 0;
     deathTimerMs = 0;
@@ -382,6 +694,11 @@
     if (gestureInterpreter) {
       gestureInterpreter.setGrounded(true);
     }
+    ['musicIntro', 'musicMain'].forEach((k) => {
+      if (audio[k] && audio[k].pause) {
+        audio[k].pause();
+      }
+    });
     gameState.running = false;
     gameState.distance = 0;
     gameState.bonus = 0;
@@ -397,7 +714,7 @@
     gameState.ravineCount = 0;
     gameState.calmWindow = 0;
     animationClock = 0;
-    platformClusterId = 0;
+    resetSkyDecorations();
   }
 
   function startGame() {
@@ -450,6 +767,13 @@
   }
   
   function handlePlayerDeath(reason = 'collision-with-obstacle') {
+    if (suppressDeathsForTest) {
+      pendingStopReason = null;
+      return;
+    }
+    if (reason === 'hit-snowman' && !snowmanDashSucceeded) {
+      showSnowmanHint('Swipe to dash through snowmen');
+    }
     deathTimerMs = Math.max(deathTimerMs, DEATH_SCREEN_DURATION);
     deathOverlay.active = true;
     deathOverlay.visible = false;
@@ -475,6 +799,22 @@
     return min + Math.random() * (max - min);
   }
 
+  function getRandomInt(min, max) {
+    return Math.floor(getRandomInterval(min, max + 1));
+  }
+
+  function introSurfaceMin() {
+    return Math.max(INTRO_SURFACE_MIN_Y, height * INTRO_SURFACE_MIN_FRACTION);
+  }
+
+  function introSurfaceMax() {
+    return Math.min(height - INTRO_SURFACE_MAX_PADDING, height * INTRO_SURFACE_MAX_FRACTION);
+  }
+
+  function clampIntroSurface(y) {
+    return clamp(y, introSurfaceMin(), introSurfaceMax());
+  }
+
   function buildGroundMaskFromSprite() {
     if (!window.ReindeerGround || !spriteReady(extraSprites.ground)) return;
     const built = window.ReindeerGround.buildSegmentsFromImage(extraSprites.ground, GROUND_SURFACE_ROW);
@@ -483,34 +823,47 @@
     }
   }
 
-  function getGroundBaseWidth() {
+  function groundNaturalWidth() {
     if (spriteReady(extraSprites.ground)) return extraSprites.ground.naturalWidth;
     return 320;
   }
 
-  function getGroundBaseHeight() {
+  function groundNaturalHeight() {
     if (spriteReady(extraSprites.ground)) return extraSprites.ground.naturalHeight;
     return 140;
   }
 
+  function getGroundScale() {
+    return groundScale;
+  }
+
+  function getGroundBaseWidth() {
+    return groundNaturalWidth() * getGroundScale();
+  }
+
+  function getGroundBaseHeight() {
+    return groundNaturalHeight() * getGroundScale();
+  }
+
   function createPlatformInstance(x, surfaceY, scale = 1) {
-    const baseWidth = getGroundBaseWidth();
+    const baseWidth = groundNaturalWidth();
     const baseSegments = groundMaskSegments.length ? groundMaskSegments : [[0, baseWidth - 1]];
+    const effectiveScale = scale * getGroundScale();
     const spans = window.ReindeerGround
-      ? window.ReindeerGround.scaleSegments(baseSegments, scale, x)
-      : [[x, x + baseWidth * scale]];
+      ? window.ReindeerGround.scaleSegments(baseSegments, effectiveScale, x)
+      : [[x, x + baseWidth * effectiveScale]];
     return {
       x,
       surfaceY,
-      width: baseWidth * scale,
-      scale,
+      width: baseWidth * effectiveScale,
+      scale: effectiveScale,
       spans
     };
   }
 
   function createPlatformBody(plat) {
     if (!Physics) return null;
-    const thickness = Math.max(36, 52 * plat.scale);
+    const thickness = Math.max(28, 52 * plat.scale);
     const body = Physics.Bodies.rectangle(
       plat.x + plat.width / 2,
       plat.surfaceY + thickness / 2,
@@ -536,7 +889,7 @@
     return Math.max(screenW * snowmanMinGapScreens, screenW) + jitter;
   }
 
-  function spawnSnowmanAt(x) {
+  function spawnSnowmanAt(x, options = {}) {
     const drawW = snowmanMetrics.natural.w * snowmanMetrics.drawScale;
     const drawH = snowmanMetrics.natural.h * snowmanMetrics.drawScale;
     const surface = platformSurfaceAt(x + drawW * 0.5);
@@ -554,14 +907,23 @@
       w: drawW,
       h: drawH,
       hitbox,
-      alive: true
+      alive: true,
+      ignoreDelay: Boolean(options.ignoreDelay)
     };
     snowmen.push(snowman);
+    if (!snowmanHintShown && !snowmanDashSucceeded) {
+      showSnowmanHint('Swipe to dash through snowmen');
+    }
+    if (!introState.introSnowmanPlaced) {
+      introState.introSnowmanPlaced = true;
+    }
     return snowman;
   }
 
   function trySpawnSnowman() {
     if (snowmanGapPx > 0) return null;
+    if (gapMode === 'intro' && !introState.snowmanUnlocked) return null;
+    if (gapMode === 'intro' && runElapsedMs < INTRO_SNOWMAN_DELAY_MS) return null;
     const spawnX = width + getRandomInterval(40, 120);
     const placed = spawnSnowmanAt(spawnX);
     if (placed) {
@@ -582,19 +944,224 @@
     if (snowmanGapPx < 0) snowmanGapPx = 0;
   }
 
+  function registerIntroJump() {
+    introState.jumpsPlaced += 1;
+    introState.jumpCooldown = getRandomInt(1, 2);
+  }
+
+  function evaluateSnowmanUnlock() {
+    if (introState.snowmanUnlocked) return;
+    const distanceReady = distance >= introState.snowmanUnlockDistance;
+    const jumpsReady = introState.doubleStepX !== null;
+    if (distanceReady && jumpsReady) {
+      introState.snowmanUnlocked = true;
+      snowmanGapPx = 0;
+    }
+  }
+
+  function planNextIntroCluster(prefilledCount = 0, clusterIdOverride = null, options = {}) {
+    const opts = options || {};
+    const last = platforms[platforms.length - 1];
+    const offsetRange = opts.startXOffsetRange || [-8, 0];
+    const startBase =
+      typeof opts.startXBase === 'number' ? opts.startXBase : last ? last.x + last.width : width;
+    const baseSurface = clampIntroSurface(
+      typeof opts.baseSurfaceY === 'number' ? opts.baseSurfaceY : last ? last.surfaceY : cameraBaselineY
+    );
+    const startX = startBase + getRandomInterval(offsetRange[0], offsetRange[1]);
+    const sizeRange = opts.sizeRange || INTRO_CLUSTER_RANGE;
+    const size = getRandomInt(sizeRange[0], sizeRange[1]);
+    const forcedStepBase = clamp(
+      getRandomInt(Math.max(prefilledCount + 1, 2), Math.max(prefilledCount + 1, size)),
+      prefilledCount + 1,
+      size
+    );
+    const forcedStepAt = opts.disableForcedStep
+      ? Infinity
+      : opts.forcedStepAtRange
+        ? clamp(getRandomInt(opts.forcedStepAtRange[0], opts.forcedStepAtRange[1]), prefilledCount + 1, size)
+        : forcedStepBase;
+    const riseRange = opts.forcedRiseRange || INTRO_FORCED_STEP_RANGE;
+    const forcedRise = opts.disableForcedStep ? 0 : getRandomInterval(riseRange[0], riseRange[1]);
+    const targetHigh = clampIntroSurface(baseSurface - forcedRise);
+    introClusterPlan = {
+      clusterId: opts.clusterIdOverride || clusterIdOverride || ++platformClusterId,
+      targetSize: size,
+      placed: prefilledCount,
+      nextX: startX,
+      lastSurfaceY: baseSurface,
+      forcedStepAt,
+      forcedRise,
+      ensuredRise: Math.abs(baseSurface - targetHigh),
+      driftRange: opts.driftRange || [-32, 38]
+    };
+  }
+
+  function pullIntroPlanOptions(clusterIdOverride = null) {
+    if (!introPlanQueue.length) return { prefilledCount: 0, clusterIdOverride };
+    const opts = { ...introPlanQueue.shift() };
+    if (clusterIdOverride && !opts.clusterIdOverride) {
+      opts.clusterIdOverride = clusterIdOverride;
+    }
+    return opts;
+  }
+
+  function appendIntroPlatform(clusterIdOverride = null) {
+    if (!introClusterPlan || introClusterPlan.placed >= introClusterPlan.targetSize) {
+      const nextPlan = pullIntroPlanOptions(clusterIdOverride);
+      const prefilled = typeof nextPlan.prefilledCount === 'number' ? nextPlan.prefilledCount : 0;
+      planNextIntroCluster(prefilled, clusterIdOverride || nextPlan.clusterIdOverride || null, nextPlan || {});
+    }
+    const plan = introClusterPlan;
+    const nextIndex = plan.placed + 1;
+    let surface = plan.lastSurfaceY;
+    if (nextIndex === plan.forcedStepAt) {
+      const target = clampIntroSurface(plan.lastSurfaceY - plan.forcedRise);
+      plan.ensuredRise = Math.max(plan.ensuredRise, Math.abs(plan.lastSurfaceY - target));
+      surface = target;
+      registerIntroJump();
+      if (introState.firstStepX === null) {
+        introState.firstStepX = plan.nextX;
+      } else if (introState.doubleStepX === null) {
+        introState.doubleStepX = plan.nextX;
+      }
+    } else {
+      const [minDrift, maxDrift] = plan.driftRange || [-32, 38];
+      const drift = getRandomInterval(minDrift, maxDrift);
+      surface = clampIntroSurface(surface + drift);
+    }
+    const scale = clamp(0.85 + Math.random() * 0.25, 0.75, 1.15);
+    const plat = createPlatformInstance(plan.nextX, surface, scale);
+    plat.clusterId = clusterIdOverride || plan.clusterId;
+    platforms.push(plat);
+    plan.placed += 1;
+    plan.lastSurfaceY = surface;
+    plan.nextX = plat.x + plat.width + getRandomInterval(-16, -4);
+  }
+
+  function buildIntroRunway(anchorCluster, baseline) {
+    const anchor = platforms[platforms.length - 1];
+    if (!anchor) return;
+    introPlanQueue = [
+      {
+        prefilledCount: 1,
+        clusterIdOverride: anchorCluster,
+        sizeRange: [6, 7],
+        disableForcedStep: true,
+        driftRange: [-6, 6],
+        startXBase: anchor.x + anchor.width,
+        startXOffsetRange: [-10, -2]
+      },
+      {
+        prefilledCount: 0,
+        sizeRange: [5, 6],
+        forcedStepAtRange: [4, 5],
+        forcedRiseRange: INTRO_SINGLE_STEP_RISE,
+        startXBase: anchor.x + anchor.width + width * INTRO_RUNWAY_SCREENS,
+        startXOffsetRange: [-12, -2]
+      },
+      {
+        prefilledCount: 0,
+        sizeRange: [4, 5],
+        disableForcedStep: true,
+        driftRange: [-4, 4],
+        startXOffsetRange: [-10, -2],
+        baseSurfaceY: baseline
+      },
+      {
+        prefilledCount: 0,
+        sizeRange: [3, 5],
+        forcedStepAtRange: [2, 3],
+        forcedRiseRange: INTRO_DOUBLE_STEP_RISE,
+        startXOffsetRange: [-8, -2],
+        baseSurfaceY: baseline + 28
+      },
+      {
+        prefilledCount: 0,
+        sizeRange: [3, 4],
+        forcedStepAtRange: [2, 2],
+        forcedRiseRange: [160, 220],
+        startXBase: anchor.x + anchor.width + width * INTRO_EXTRA_STEP_SCREENS,
+        startXOffsetRange: [-8, -2],
+        baseSurfaceY: baseline + 46
+      },
+      {
+        prefilledCount: 0,
+        sizeRange: [3, 4],
+        forcedStepAtRange: [2, 2],
+        forcedRiseRange: [150, 200],
+        startXBase: anchor.x + anchor.width + width * (INTRO_EXTRA_STEP_SCREENS + 1.2),
+        startXOffsetRange: [-10, -2],
+        baseSurfaceY: baseline + 30
+      }
+    ];
+    introClusterPlan = null;
+    let last = anchor;
+    let guard = 0;
+    while ((last && last.x + last.width < width + getGroundBaseWidth() * 6) || introPlanQueue.length) {
+      appendIntroPlatform();
+      last = platforms[platforms.length - 1];
+      guard += 1;
+      if (guard > 112) break;
+    }
+  }
+
+  function setSinglePlatformForTest(surfaceY = cameraBaselineY, scale = 1) {
+    platformBufferEnabled = false;
+    platforms.length = 0;
+    platformClusterId = 1;
+    const plat = createPlatformInstance(playerHomeX - getGroundBaseWidth() * 0.15, surfaceY, scale);
+    plat.clusterId = platformClusterId;
+    platforms.push(plat);
+    rebuildPlatformBodies();
+    placePlayerOnSafePlatform();
+    cameraTargetY = cameraBaselineY - surfaceY;
+    cameraY = cameraTargetY;
+  }
+
+  function getClusterGapRange() {
+    if (gapMode === 'intro') return [-8, 0];
+    if (gapMode === 'ramp') {
+      const rampProgress = clamp((distance - GAP_INTRO_DISTANCE) / GAP_RAMP_DISTANCE, 0, 1);
+      const minGap = lerp(40, 180, rampProgress);
+      const maxGap = lerp(110, 420, rampProgress);
+      return [minGap, maxGap];
+    }
+    return [180, 420];
+  }
+
+  function updateGapMode() {
+    const prev = gapMode;
+    const introJumpsDone = introState.doubleStepX !== null;
+    const introPhase = distance < GAP_INTRO_DISTANCE || !introJumpsDone;
+    if (introPhase) {
+      gapMode = 'intro';
+    } else if (distance < GAP_INTRO_DISTANCE + GAP_RAMP_DISTANCE) {
+      gapMode = 'ramp';
+    } else {
+      gapMode = 'chaos';
+    }
+    if (prev === 'intro' && gapMode === 'ramp') {
+      collapseBufferForRamp();
+      rebuildRampStart();
+      seedRampCluster();
+      snowmanGapPx = 0;
+      trySpawnSnowman();
+    }
+  }
+
   function seedPlatforms() {
     const baseline = Math.round(height * 0.68);
     platforms.length = 0;
     snowmen.length = 0;
-    snowmanGapPx = calcSnowmanGap(width);
+    snowmanGapPx = introState.snowmanUnlocked ? calcSnowmanGap(width) : Infinity;
     platformBufferEnabled = true;
     // Anchor platform covering the spawn position to avoid immediate falls.
     const anchorCluster = ++platformClusterId;
     const anchor = createPlatformInstance(playerHomeX - getGroundBaseWidth() * 0.15, baseline, 0.9);
     anchor.clusterId = anchorCluster;
     platforms.push(anchor);
-    const firstClusterStart = anchor.x + anchor.width - 12;
-    spawnIslandCluster(firstClusterStart, baseline, anchorCluster);
+    buildIntroRunway(anchorCluster, baseline);
     ensurePlatformBuffer();
     rebuildPlatformBodies();
   }
@@ -612,22 +1179,56 @@
       player.grounded = true;
       currentPlatform = plat;
       if (gestureInterpreter) gestureInterpreter.setGrounded(true);
+      cameraTargetY = cameraBaselineY - plat.surfaceY;
+      cameraY = cameraTargetY;
     }
   }
 
   function ensurePlatformBuffer() {
     if (!platformBufferEnabled) return;
     const baseWidth = getGroundBaseWidth();
+    const bufferDist = gapMode === 'intro' ? baseWidth * 1.5 : baseWidth * 3.2;
+    const minClusters = gapMode === 'intro' ? 1 : 2;
     const needs = () => {
-      if (!platforms.length) return true;
+      const clusterCount = new Set(platforms.map((p) => p.clusterId)).size;
+      if (!platforms.length || clusterCount < minClusters) return true;
       const last = platforms[platforms.length - 1];
-      return last.x + last.width < width + baseWidth * 1.5;
+      return last.x + last.width < width + bufferDist;
     };
     while (needs()) {
       const last = platforms[platforms.length - 1];
-      const start = last ? last.x + last.width + getRandomInterval(240, 520) : width;
-      const baseY = last ? clamp(last.surfaceY + getRandomInterval(-80, 80), 120, height - 60) : Math.round(height * 0.68);
-      spawnIslandCluster(start, baseY);
+      if (gapMode === 'intro') {
+        appendIntroPlatform(last ? last.clusterId : null);
+      } else {
+        const [minGap, maxGap] = getClusterGapRange();
+        const gap = getRandomInterval(minGap, maxGap);
+        const start = last ? last.x + last.width + gap : width;
+        const baseY = last ? clamp(last.surfaceY + getRandomInterval(-80, 80), 120, height - 60) : Math.round(height * 0.68);
+        spawnIslandCluster(start, baseY);
+      }
+    }
+  }
+
+  function compressIntroGaps() {
+    if (gapMode !== 'intro' || platforms.length < 2) return;
+    const sorted = platforms.slice().sort((a, b) => a.x - b.x);
+    let shifted = false;
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const gap = curr.x - (prev.x + prev.width);
+      if (gap > 0) {
+        const newX = prev.x + prev.width + getRandomInterval(-8, -2);
+        const delta = curr.x - newX;
+        curr.x = newX;
+        curr.spans = curr.spans.map(([s, e]) => [s - delta, e - delta]);
+        shifted = true;
+      }
+    }
+    if (shifted) {
+      platforms.length = 0;
+      platforms.push(...sorted);
+      rebuildPlatformBodies();
     }
   }
 
@@ -641,6 +1242,7 @@
       }
     }
     ensurePlatformBuffer();
+    compressIntroGaps();
   }
 
   function platformSurfaceAt(x) {
@@ -661,7 +1263,8 @@
   function spawnIslandCluster(startX, baseSurfaceY, clusterIdOverride = null) {
     const minY = 120;
     const maxY = height - 60;
-    const pieces = Math.floor(getRandomInterval(1, 6));
+    const singleChance = 0.1;
+    const pieces = Math.random() < singleChance ? 1 : Math.floor(getRandomInterval(2, 6));
     const clusterId = clusterIdOverride || ++platformClusterId;
     let cursor = startX;
     let surface = clamp(baseSurfaceY, minY, maxY);
@@ -949,11 +1552,21 @@
     if (!running && deathTimerMs <= 0 && !pendingStopReason) {
       return;
     }
+    updateDeathOverlayVisibility();
     if (running) {
       distance += dt * 0.02;
+      runElapsedMs += dt;
     }
+    evaluateSnowmanUnlock();
+    if (runElapsedMs < INTRO_SNOWMAN_DELAY_MS) {
+      const keepers = snowmen.filter((s) => s.ignoreDelay);
+      snowmen.length = 0;
+      snowmen.push(...keepers);
+      snowmanGapPx = Math.max(snowmanGapPx, calcSnowmanGap(width));
+    }
+    updateGapMode();
     animationClock += dt;
-    parallaxPhase += dt * 0.0012;
+    skyPhase += dt * 0.001;
     dashTimer = Math.max(0, dashTimer - dt);
     dashCooldown = Math.max(0, dashCooldown - dt);
     dashInvulnTimer = Math.max(0, dashInvulnTimer - dt);
@@ -968,11 +1581,16 @@
     const travelSpeed = baseSpeed * (dashActive ? dashSpeedBoost : 1);
     const speedPxPerMs = travelSpeed / 1000;
 
+    updateStars(dt);
+    updateClouds(dt, speedPxPerMs);
     if (running) {
       movePlatforms(dt, speedPxPerMs);
       rebuildPlatformBodies();
       moveSnowmen(dt, speedPxPerMs);
       trySpawnSnowman();
+      if (distance >= GAP_INTRO_DISTANCE) {
+        swapToMainMusic();
+      }
     } else if (pendingStopReason) {
       // Keep scene static while showing death overlay
       moveSnowmen(0, 0);
@@ -1014,11 +1632,12 @@
       }
     }
 
-    if (landingPlatform) {
-      player.y = landingPlatform.top - player.h;
-      player.vy = 0;
+      if (landingPlatform) {
+        player.y = landingPlatform.top - player.h;
+        player.vy = 0;
       player.grounded = true;
       currentPlatform = landingPlatform.platform || currentPlatform;
+      cameraTargetY = cameraBaselineY - currentPlatform.surfaceY;
       doubleJumpAvailable = true;
       coyoteTimer = coyoteTimeMs;
       if (!wasGrounded && gestureInterpreter) gestureInterpreter.setGrounded(true);
@@ -1031,6 +1650,7 @@
         player.vy = 0;
         player.grounded = true;
         currentPlatform = surface.platform;
+        cameraTargetY = cameraBaselineY - surface.platform.surfaceY;
         doubleJumpAvailable = true;
         coyoteTimer = coyoteTimeMs;
         if (!wasGrounded && gestureInterpreter) gestureInterpreter.setGrounded(true);
@@ -1040,6 +1660,7 @@
         player.vy = 0;
         player.grounded = true;
         currentPlatform = surface.platform;
+        cameraTargetY = cameraBaselineY - surface.platform.surfaceY;
         doubleJumpAvailable = true;
         coyoteTimer = coyoteTimeMs;
       } else {
@@ -1058,6 +1679,9 @@
       coyoteTimer = Math.max(0, coyoteTimer - dt);
     }
 
+    const cameraFollowT = clamp(dt / 240, 0, 0.4);
+    cameraY = lerp(cameraY, cameraTargetY, cameraFollowT);
+
     if (running) {
       for (let i = snowmen.length - 1; i >= 0; i--) {
         const s = snowmen[i];
@@ -1071,6 +1695,8 @@
             snowmen.splice(i, 1);
             spawnSnowBurst(s.x + s.w * 0.5, s.y + s.h * 0.5, 42);
             bonusScore += snowmanBonus;
+            snowmanDashSucceeded = true;
+            hideSnowmanHint();
             playSound('coin');
             continue;
           }
@@ -1129,14 +1755,13 @@
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, width, height);
 
-    const sky = ctx.createLinearGradient(0, 0, 0, height);
-    sky.addColorStop(0, '#0f172a');
-    sky.addColorStop(0.6, '#1d4ed8');
-    sky.addColorStop(1, '#0f172a');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, width, height);
-
-    drawParallaxRidges();
+    drawSkyBackdrop();
+    ctx.save();
+    if (ctx.translate) {
+      ctx.translate(0, cameraY);
+    } else if (ctx.setTransform) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, cameraY * dpr);
+    }
     drawPlatformsLayer();
     drawSnowmen();
 
@@ -1159,22 +1784,26 @@
     }
 
     drawReindeerCharacter();
+    ctx.restore();
 
     ctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
     ctx.font = '13px "Press Start 2P", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
-    ctx.fillText(`${Math.floor(distance)} m`, 12, 20);
+    ctx.fillText(`${Math.floor(distance + bonusScore)} pts`, 12, 20);
 
     if (!running && deathOverlay.active && deathOverlay.visible) {
       drawDeathOverlay();
     }
+    drawSnowmanHint();
   }
 
   function drawPlatformsLayer() {
     const sprite = extraSprites.ground;
     const ready = spriteReady(sprite) || Boolean(groundCache.canvas);
+    const baseW = groundNaturalWidth();
+    const baseH = groundNaturalHeight();
     for (const plat of platforms) {
-      const drawW = ready ? getGroundBaseWidth() * plat.scale : plat.width;
-      const drawH = ready ? getGroundBaseHeight() * plat.scale : Math.max(64, 90 * plat.scale);
+      const drawW = ready ? baseW * plat.scale : plat.width;
+      const drawH = ready ? baseH * plat.scale : Math.max(64, 90 * plat.scale);
       const drawX = plat.x;
       const drawY = ready ? plat.surfaceY - GROUND_SURFACE_ROW * plat.scale : plat.surfaceY - drawH * 0.35;
       if (ready) {
@@ -1202,6 +1831,13 @@
         ctx.fillStyle = '#e0f2fe';
         ctx.fillRect(x, y, drawW, drawH);
       }
+    }
+  }
+
+  function drawSnowmanHint() {
+    if (!snowmanHintEl) return;
+    if (snowmanHintHideAt && performance.now() >= snowmanHintHideAt) {
+      hideSnowmanHint(true);
     }
   }
 
@@ -1312,7 +1948,7 @@
   function updateUI() {
     const scoreEl = el('reindeer-score');
     if (scoreEl) {
-      scoreEl.textContent = `${gameState.distance} m`;
+      scoreEl.textContent = `${gameState.distance + gameState.bonus} pts`;
     }
     const bonusEl = el('reindeer-bonus');
     if (bonusEl) {
@@ -1340,6 +1976,74 @@
     if (!immersiveHint) return;
     const needsLandscape = window.innerWidth < window.innerHeight;
     immersiveHint.setAttribute('data-visible', immersiveActive && needsLandscape ? '1' : '0');
+  }
+
+  function summarizeIntroClusters() {
+    if (!platforms.length && !running) {
+      seedPlatforms();
+      placePlayerOnSafePlatform();
+    }
+    const map = new Map();
+    platforms.forEach((p) => {
+      if (!map.has(p.clusterId)) {
+        map.set(p.clusterId, []);
+      }
+      map.get(p.clusterId).push(p);
+    });
+    const summaries = [];
+    map.forEach((list, clusterId) => {
+      const sorted = list.slice().sort((a, b) => a.x - b.x);
+      let biggestStep = 0;
+      for (let i = 1; i < sorted.length; i++) {
+        const step = sorted[i - 1].surfaceY - sorted[i].surfaceY;
+        if (step > biggestStep) biggestStep = step;
+      }
+      summaries.push({ clusterId, count: sorted.length, biggestStep });
+    });
+    return summaries.sort((a, b) => a.clusterId - b.clusterId);
+  }
+
+  function describeIntroStepsForTest(threshold = 20, maxSteps = 4) {
+    if (!platforms.length && !running) {
+      seedPlatforms();
+      placePlayerOnSafePlatform();
+    }
+    const sorted = platforms.slice().sort((a, b) => a.x - b.x);
+    const steps = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const rise = prev.surfaceY - curr.surfaceY;
+      if (rise > threshold) {
+        steps.push({
+          startX: curr.x,
+          fromY: prev.surfaceY,
+          toY: curr.surfaceY,
+          height: rise,
+          clusterId: curr.clusterId
+        });
+      }
+      if (steps.length >= maxSteps) break;
+    }
+    return steps;
+  }
+
+  function measureJumpArcForTest() {
+    const gravity = 0.0018;
+    const dt = 16;
+    const startY = player.y;
+    let vy = maxJumpVel;
+    let y = 0;
+    let minY = 0;
+    let elapsed = 0;
+    while (elapsed < 2000) {
+      vy += gravity * dt;
+      y += vy * dt;
+      if (y < minY) minY = y;
+      if (vy >= 0) break;
+      elapsed += dt;
+    }
+    return { rise: -minY, startY, peakY: startY + minY };
   }
 
   async function enterImmersiveStage(options = {}) {
@@ -1408,6 +2112,31 @@
     updateOrientationHint();
   }
 
+  function ensureSnowmanHint() {
+    snowmanHintEl = el('reindeer-snowman-hint');
+    if (!snowmanHintEl) return;
+    snowmanHintEl.setAttribute('aria-live', 'polite');
+    snowmanHintEl.setAttribute('role', 'status');
+    snowmanHintEl.style.opacity = '0';
+  }
+
+  function showSnowmanHint(text) {
+    if (!snowmanHintEl) return;
+    if (snowmanDashSucceeded) return;
+    snowmanHintShown = true;
+    snowmanHintEl.textContent = text;
+    snowmanHintEl.style.opacity = '1';
+    snowmanHintEl.setAttribute('data-visible', '1');
+    snowmanHintHideAt = performance.now() + 3200;
+  }
+
+  function hideSnowmanHint(force = false) {
+    if (!snowmanHintEl) return;
+    if (!force && performance.now() < snowmanHintHideAt) return;
+    snowmanHintEl.style.opacity = '0';
+    snowmanHintEl.removeAttribute('data-visible');
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initCanvas();
     setupInput();
@@ -1432,11 +2161,27 @@
     getPlatforms: () =>
       platforms.map((p) => ({ x: p.x, width: p.width, surfaceY: p.surfaceY, clusterId: p.clusterId })),
     getPlayer: () => ({ x: player.x, y: player.y, grounded: player.grounded }),
+    getCamera: () => ({ y: cameraY, target: cameraTargetY, baseline: cameraBaselineY }),
+    getIntroStatus: () => ({
+      gapMode,
+      runElapsedMs,
+      distance,
+      ...introState
+    }),
+    getIntroClusters: () => summarizeIntroClusters(),
+    describeIntroSteps: (threshold, maxSteps) => describeIntroStepsForTest(threshold, maxSteps),
+    measureJumpArcForTest: () => measureJumpArcForTest(),
+    getGroundMetrics: () => ({
+      naturalWidth: groundNaturalWidth(),
+      naturalHeight: groundNaturalHeight(),
+      scale: getGroundScale(),
+      baseWidth: getGroundBaseWidth()
+    }),
     triggerDash: () => triggerDash(),
     getSnowmen: () => snowmen.map((s) => ({ x: s.x, y: s.y, w: s.w, h: s.h })),
     spawnSnowmanForTest: (offset = 160) => {
       const x = player.x + player.w + offset;
-      const placed = spawnSnowmanAt(x);
+      const placed = spawnSnowmanAt(x, { ignoreDelay: true });
       if (placed) snowmanGapPx = calcSnowmanGap(width);
       return placed;
     },
@@ -1460,6 +2205,7 @@
       Object.assign(snowmanMetrics, metrics || {});
     },
     isDeathScreenActive: () => deathOverlay.active,
+    isDeathScreenVisible: () => deathOverlay.active && deathOverlay.visible,
     testSnowmanSpacing: (count = 3) => {
       const screenWidth = width;
       let cursor = 0;
@@ -1474,19 +2220,44 @@
     clearPlatforms: () => {
       platforms.length = 0;
       platformClusterId = 0;
+      introClusterPlan = null;
+      introPlanQueue = [];
       ensurePlatformBuffer();
     },
     dropAllPlatforms: () => {
       platforms.length = 0;
       platformBufferEnabled = false;
     },
+    setSinglePlatformForTest: (surfaceY, scale = 1) => setSinglePlatformForTest(surfaceY, scale),
     enablePlatformBuffer: () => {
       platformBufferEnabled = true;
       ensurePlatformBuffer();
     },
     start: () => startGame(),
     isImmersiveActive: () => immersiveActive,
-    stepForTest: (dt = 16) => updateScene(dt),
+    stepForTest: (dt = 16) => {
+      suppressDeathsForTest = true;
+      pendingStopReason = null;
+      deathOverlay.active = false;
+      deathOverlay.visible = false;
+      deathTimerMs = 0;
+      running = true;
+      gameState.running = true;
+      placePlayerOnSafePlatform();
+      if (dt <= 2000) {
+        updateScene(dt);
+        suppressDeathsForTest = false;
+        return;
+      }
+      let remaining = dt;
+      const slice = 32;
+      while (remaining > 0) {
+        const step = Math.min(slice, remaining);
+        updateScene(step);
+        remaining -= step;
+      }
+      suppressDeathsForTest = false;
+    },
     triggerDeathForTest: () => handlePlayerDeath('test-invoked')
   };
 })();
