@@ -44,9 +44,6 @@
                 {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
                 <a href="/fjerde-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
 
-                {% set _disabled = not game_enabled_for_user('glaedelig-jul') %}
-                <a href="/glaedelig-jul" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Glædelig Jul</a>
-
                 {% if is_admin_user() %}
                   <a id="admin-link" href="/admin" class="text-white hover:underline">Admin</a>
                 {% endif %}
@@ -81,9 +78,6 @@
 
         {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
         <a href="/fjerde-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
-
-        {% set _disabled = not game_enabled_for_user('glaedelig-jul') %}
-        <a href="/glaedelig-jul" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Glædelig Jul</a>
 
         {% if is_admin_user() %}
           <a id="admin-link" href="/admin" class="block px-3 py-2 rounded-md text-base font-medium text-white">Admin</a>

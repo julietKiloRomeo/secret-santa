@@ -111,7 +111,6 @@ def test_all_mini_games_disable_flag():
         ('anden-advent', '/anden-advent'),
         ('tredje-advent', '/tredje-advent'),
         ('fjerde-advent', '/fjerde-advent'),
-        ('glaedelig-jul', '/glaedelig-jul'),
     ]
     for game, path in mini_games:
         resp = client.post('/api/admin/set_game', data=json.dumps({'game': game, 'enabled': False}), content_type='application/json')

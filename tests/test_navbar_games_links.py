@@ -3,6 +3,7 @@ import json
 import datetime
 from pathlib import Path
 from werkzeug.security import generate_password_hash
+import re
 
 
 NAMES = [
@@ -21,7 +22,10 @@ NAMES = [
 
 def setup_module(module):
     year = datetime.datetime.now().year
-    env_path = Path(f".env.test.navbarlinks.{year}")
+    data_dir = Path(f".data.test.navbarlinks.{year}")
+    data_dir.mkdir(parents=True, exist_ok=True)
+    env_path = data_dir / ".env"
+    os.environ["DATA_DIR"] = str(data_dir)
     os.environ["ENV_FILE"] = str(env_path)
     os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
@@ -51,8 +55,13 @@ GAME_LINKS = [
     ("/anden-advent", "Anden Advent"),
     ("/tredje-advent", "Tredje Advent"),
     ("/fjerde-advent", "Fjerde Advent"),
-    ("/glaedelig-jul", "Glædelig Jul"),
 ]
+
+
+def _extract_mobile_menu(html: str) -> str:
+    match = re.search(r'<div id="mobile-menu"[^>]*>(.*?)</div>', html, re.DOTALL)
+    assert match, "Mobile menu container missing"
+    return match.group(1)
 
 
 def test_before_login_no_game_links():
@@ -83,6 +92,8 @@ def test_after_login_non_admin_shows_game_links_no_admin():
             assert label in html
         assert "id=\"admin-link\"" not in html
         assert ">Admin<" not in html
+        assert "Glædelig Jul" not in html
+        assert "/glaedelig-jul" not in html
 
 
 def test_after_login_admin_shows_game_links_and_admin():
@@ -100,4 +111,20 @@ def test_after_login_admin_shows_game_links_and_admin():
             assert label in html
         assert "id=\"admin-link\"" in html
         assert ">Admin<" in html
+        assert "Glædelig Jul" not in html
+        assert "/glaedelig-jul" not in html
 
+
+def test_mobile_menu_omits_merry_christmas_link_everywhere():
+    from app import app
+
+    client = app.test_client()
+    assert login_as(client, "emma", "quiet-forest-breeze").status_code == 200
+    resp = client.get("/")
+    html = resp.get_data(as_text=True)
+    assert resp.status_code == 200
+    mobile_menu = _extract_mobile_menu(html)
+    assert "/glaedelig-jul" not in mobile_menu
+    assert "Glædelig Jul" not in mobile_menu
+    assert "/glaedelig-jul" not in html
+    assert "Glædelig Jul" not in html

@@ -110,7 +110,6 @@ def init_games_db():
             "anden-advent",
             "tredje-advent",
             "fjerde-advent",
-            "glaedelig-jul",
         ]
         for g in default_games:
             cur.execute("INSERT OR IGNORE INTO games (game, enabled) VALUES (?, ?)", (g, 1))
@@ -154,12 +153,27 @@ def migrate_tredje_scores_to_fjerde():
         tredje_count = cur.fetchone()[0] or 0
         if tredje_count and fjerde_count == 0:
             cur.execute("UPDATE scores SET game = 'fjerde-advent' WHERE game = 'tredje-advent'")
-            con.commit()
+        con.commit()
     finally:
         con.close()
 
 
 migrate_tredje_scores_to_fjerde()
+
+
+def remove_glaedelig_jul_game():
+    """Clean up legacy Glædelig Jul rows now that the page is removed."""
+    con = sqlite3.connect(scores_db_path())
+    try:
+        cur = con.cursor()
+        cur.execute("DELETE FROM scores WHERE game = 'glaedelig-jul'")
+        cur.execute("DELETE FROM games WHERE game = 'glaedelig-jul'")
+        con.commit()
+    finally:
+        con.close()
+
+
+remove_glaedelig_jul_game()
 
 def is_game_enabled(game: str) -> bool:
     game = canonical_game_key(game)
@@ -315,11 +329,6 @@ def fjerde_advent():
     default_name = session.get('user', 'Nisse')
     return render_game_view('fjerde-advent', 'fjerde_advent.html', title='Fjerde Advent', default_name=default_name)
 
-@app.route('/glaedelig-jul')
-@login_required
-def glaedelig_jul():
-    return render_game_view('glaedelig-jul', 'glaedelig_jul.html', title='Glædelig Jul')
-
 
 @app.route('/high-scores')
 @login_required
@@ -329,7 +338,6 @@ def high_scores():
         ("anden-advent", "Anden Advent — Flappy Santa"),
         ("tredje-advent", "Tredje Advent — Jingle Bell Hero"),
         ("fjerde-advent", "Fjerde Advent — Reindeer Rush"),
-        ("glaedelig-jul", "Glædelig Jul"),
     ]
     return render_template('high_scores.html', games=games)
 

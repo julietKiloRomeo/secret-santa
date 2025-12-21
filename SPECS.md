@@ -60,7 +60,6 @@ Pages / Routes
 - `/anden-advent` — Flappy Santa mini-game. Same availability rules as above.
 - `/tredje-advent` — Hosts the Jingle Bell Hero React experience with rhythm controls and the shared overlay. If the game is disabled for non-admins it falls back to the standard Under Construction view.
 - `/fjerde-advent` — Hosts the Reindeer Rush endless runner and immersive canvas shell moved from Tredje Advent.
-- `/fjerde-advent`, `/glaedelig-jul` — pages exist and may show "Under Construction" until implemented or enabled.
 - `/admin` — Admin panel, only accessible to admin users after login.
 
 Database schema
@@ -78,7 +77,7 @@ Database schema
 - `games` table (`init_games_db()`):
   - `game TEXT PRIMARY KEY`
   - `enabled INTEGER NOT NULL DEFAULT 1`
-  - default rows created for `forste-advent`, `anden-advent`, `tredje-advent`, `fjerde-advent`, and `glaedelig-jul`
+  - default rows created for `forste-advent`, `anden-advent`, `tredje-advent`, and `fjerde-advent`
 
 Client behavior / Mini-games
 ----------------------------

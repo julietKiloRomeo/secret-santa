@@ -21,7 +21,10 @@ NAMES = [
 
 def setup_module(module):
     year = datetime.datetime.now().year
-    env_path = Path(f".env.test.navbar.{year}")
+    data_dir = Path(f".data.test.navbar.{year}")
+    data_dir.mkdir(parents=True, exist_ok=True)
+    env_path = data_dir / ".env"
+    os.environ["DATA_DIR"] = str(data_dir)
     os.environ["ENV_FILE"] = str(env_path)
     os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
@@ -74,7 +77,6 @@ def test_navbar_shows_admin_link_after_admin_login_on_all_pages():
         "/anden-advent",
         "/tredje-advent",
         "/fjerde-advent",
-        "/glaedelig-jul",
     ]
     for route in routes:
         r = client.get(route)
@@ -108,7 +110,6 @@ def test_advent_pages_exist_and_are_under_construction():
         "/anden-advent": "Anden Advent",
         "/tredje-advent": "Tredje Advent",
         "/fjerde-advent": "Fjerde Advent",
-        "/glaedelig-jul": "Glædelig Jul",
     }
     # Pages require login; unauthenticated access should be refused
     for route, title in pages.items():
@@ -136,3 +137,14 @@ def test_advent_pages_exist_and_are_under_construction():
             assert "reindeer-canvas" in html
         else:
             assert "Under Construction" in html or "Under construction" in html
+
+
+def test_glaedelig_jul_route_removed():
+    from app import app
+
+    client = app.test_client()
+    assert login_as(client, "emma", "quiet-forest-breeze").status_code == 200
+    r = client.get("/glaedelig-jul")
+    html = r.get_data(as_text=True)
+    assert r.status_code == 404
+    assert "Glædelig Jul" not in html
