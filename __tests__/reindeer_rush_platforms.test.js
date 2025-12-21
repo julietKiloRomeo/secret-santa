@@ -131,7 +131,7 @@ describe('Reindeer Rush platforms and snowmen', () => {
       expect(midStatus.snowmanUnlocked).toBe(false);
     }
 
-    debug.stepForTest(24000);
+    debug.stepForTest(36000);
     expect(debug.getSnowmen().length).toBeGreaterThanOrEqual(1);
     const finalStatus = debug.getIntroStatus ? debug.getIntroStatus() : null;
     if (finalStatus) {

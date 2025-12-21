@@ -14,8 +14,8 @@
   const dashInvulnMs = 240;
   let dashForwardNudge = 16;
   const dashReturnDurationMs = 520;
-  const snowmanMinGapScreens = 1.0;
-  const snowmanGapJitter = [120, 260];
+  const snowmanMinGapScreens = 1.5;
+  const snowmanGapJitter = [180, 780];
   const snowmanBonus = 120;
   const snowmanSize = { w: 259, h: 216 }; // sprite's native size for clean aspect
   const playerStandingHeight = 36;
