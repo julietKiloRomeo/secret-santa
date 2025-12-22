@@ -26,7 +26,7 @@ def test_high_scores_games_order_and_labels():
     match = re.search(r'const games = (\[.*?\]);', html, re.DOTALL)
     assert match, "games array not found in High Scores page"
     games = json.loads(match.group(1))
-    assert games[2][0] == "fjerde-advent"
-    assert "Fjerde" in games[2][1]
-    assert games[3][0] == "tredje-advent"
-    assert "Tredje" in games[3][1]
+    assert games[2][0] == "tredje-advent"
+    assert "Tredje" in games[2][1]
+    assert games[3][0] == "fjerde-advent"
+    assert "Fjerde" in games[3][1]

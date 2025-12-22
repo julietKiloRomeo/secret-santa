@@ -750,7 +750,7 @@
       try {
         highScoreFlowInFlight = true;
         await window.arcadeOverlay.handleHighScoreFlow({
-          gameId: 'tredje-advent',
+          gameId: 'fjerde-advent',
           score: totalScore,
           allowSkip: true,
           title: 'Reindeer Rush',

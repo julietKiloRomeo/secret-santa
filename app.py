@@ -336,8 +336,8 @@ def high_scores():
     games = [
         ("forste-advent", "Første Advent — Snake"),
         ("anden-advent", "Anden Advent — Flappy Santa"),
-        ("fjerde-advent", "Fjerde Advent — Reindeer Rush"),
         ("tredje-advent", "Tredje Advent — Jingle Bell Hero"),
+        ("fjerde-advent", "Fjerde Advent — Reindeer Rush"),
     ]
     return render_template('high_scores.html', games=games)
 
