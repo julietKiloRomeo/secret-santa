@@ -2,6 +2,7 @@ import random
 from itertools import chain
 import json
 import datetime
+import os
 import yaml
 
 from storage import match_file_path, ensure_match_file
@@ -23,7 +24,15 @@ class SecretSanta:
             return yaml.safe_load(f)
     def load_previous(self):
         with open("previous.yaml", "r") as f:
-            return yaml.safe_load(f)
+            previous = yaml.safe_load(f)
+        # Also exclude the last two years' actual draws, if we have them.
+        for year in (self.year - 1, self.year - 2):
+            path = ensure_match_file(year, data_dir=self.data_dir)
+            if os.path.exists(path):
+                with open(path) as f:
+                    for giver, receiver in json.load(f).items():
+                        previous.setdefault(giver, []).append(receiver)
+        return previous
     
     def get_eligible_names(self, gift_giver, already_taken=None):
         forbidden = (already_taken or []) + self.previous[gift_giver]
@@ -35,8 +44,7 @@ class SecretSanta:
     
         
     def draw(self):
-        for i in range(32):
-            print(f"Try #{i+1}...")
+        for _ in range(1000):
             try:
                 # a mapping of who gives to whom. Empty for now        
                 secret_santa_config = {}
@@ -54,16 +62,10 @@ class SecretSanta:
                 everyone_is_giving = set(secret_santa_config.keys()) == self.names
                 everyone_is_receiving = set(secret_santa_config.values()) == self.names
                 assert everyone_is_giving and everyone_is_receiving
-                # if we get to this line, we are good
-                print("Success!")
                 self.config = secret_santa_config
                 return
 
         raise Exception("No solution found!")
-
-    @property
-    def fname(self):
-        return f"secret-santa-{self.year}.json"
 
     @property
     def file_path(self):
