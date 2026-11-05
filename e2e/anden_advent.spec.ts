@@ -1,17 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
 async function loginAndVisitAnden(page: import('@playwright/test').Page) {
-  await page.goto('/');
-  await page.fill('#name', 'playwright');
-  await page.fill('#code', 'pw-test-123');
-  const [loginResp] = await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
-    page.click('button[type=submit]'),
-  ]);
-  const loginJson = await loginResp.json();
-  if (!loginJson || !loginJson.success) {
-    throw new Error('Login failed for Playwright test account: ' + JSON.stringify(loginJson));
-  }
+  await loginAsPlaywright(page);
 
   await page.goto('/anden-advent');
 }

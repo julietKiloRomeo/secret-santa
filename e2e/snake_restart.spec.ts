@@ -1,21 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
-async function login(page) {
-  await page.goto('/');
-  await page.fill('#name', 'playwright');
-  await page.fill('#code', 'pw-test-123');
-  const [loginResp] = await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
-    page.click('button[type=submit]'),
-  ]);
-  if (!loginResp.ok()) {
-    throw new Error(`Login failed with status ${loginResp.status()}`);
-  }
-}
 
 test.describe('Snake restart shortcuts', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page);
+    await loginAsPlaywright(page);
   });
 
   test('spacebar restarts after a stop', async ({ page }) => {

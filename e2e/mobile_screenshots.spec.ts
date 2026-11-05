@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
 test('mobile screenshots for games (iPhone-like viewport)', async ({ page }) => {
   // Emulate a typical mobile portrait viewport (iPhone 12-ish)
@@ -6,16 +7,7 @@ test('mobile screenshots for games (iPhone-like viewport)', async ({ page }) => 
 
   // Login first (use a test account added to .env). Use the real UI so the
   // session cookie is set correctly.
-  await page.goto('/');
-  await page.fill('#name', 'playwright');
-  await page.fill('#code', 'pw-test-123');
-  const [loginResp] = await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
-    page.click('button[type=submit]'),
-  ]);
-  if (!loginResp.ok()) {
-    throw new Error(`Login failed for Playwright test account: status ${loginResp.status()}`);
-  }
+  await loginAsPlaywright(page);
 
   // First: Snake
   await page.goto('/forste-advent');

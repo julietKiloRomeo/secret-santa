@@ -1,15 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
 test('snake does not leave sticky pixels after resize', async ({ page }) => {
   test.slow();
   // Login
-  await page.goto('/');
-  await page.fill('#name', 'playwright');
-  await page.fill('#code', 'pw-test-123');
-  await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
-    page.click('button[type=submit]'),
-  ]);
+  await loginAsPlaywright(page);
 
   const viewports = [
     { w: 360, h: 640 },
