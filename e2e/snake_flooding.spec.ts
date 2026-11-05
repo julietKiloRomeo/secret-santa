@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
 test.describe('Snake gift order and no flooding', () => {
   test('keeps gift order stable and no duplicate flooding', async ({ page }) => {
+    await loginAsPlaywright(page);
     await page.goto('/forste-advent');
 
     // Helper to eat a gift with a specific skin by placing it ahead

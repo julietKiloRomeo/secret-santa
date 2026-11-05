@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
 test.describe('Første Advent - Snake', () => {
   test('loads page with canvas and score and picks up a present', async ({ page }) => {
+    await loginAsPlaywright(page);
     await page.goto('/forste-advent');
     const canvas = page.locator('#snake-canvas');
     await expect(canvas).toBeVisible();

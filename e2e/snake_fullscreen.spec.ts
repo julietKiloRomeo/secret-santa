@@ -1,17 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { loginAsPlaywright } from './helpers/login';
 
-async function loginAsPlaywright(page) {
-  await page.goto('/');
-  await page.fill('#name', 'playwright');
-  await page.fill('#code', 'pw-test-123');
-  const [loginResp] = await Promise.all([
-    page.waitForResponse((r) => r.url().endsWith('/api/login') && r.request().method() === 'POST'),
-    page.click('button[type=submit]'),
-  ]);
-  if (!loginResp.ok()) {
-    throw new Error(`Login failed with status ${loginResp.status()}`);
-  }
-}
 
 test.describe('Snake fullscreen experience', () => {
   test.beforeEach(async ({ page }) => {
@@ -53,27 +42,10 @@ test.describe('Snake fullscreen experience', () => {
     const startY = box.y + box.height - 10;
     const endY = box.y + 10;
 
-    await page.dispatchEvent('#snake-canvas', 'pointerdown', {
-      pointerId: 11,
-      pointerType: 'touch',
-      clientX: centerX,
-      clientY: startY,
-      buttons: 1,
-    });
-    await page.dispatchEvent('#snake-canvas', 'pointermove', {
-      pointerId: 11,
-      pointerType: 'touch',
-      clientX: centerX,
-      clientY: endY,
-      buttons: 1,
-    });
-    await page.dispatchEvent('#snake-canvas', 'pointerup', {
-      pointerId: 11,
-      pointerType: 'touch',
-      clientX: centerX,
-      clientY: endY,
-      buttons: 0,
-    });
+    await page.mouse.move(centerX, startY);
+    await page.mouse.down();
+    await page.mouse.move(centerX, endY, { steps: 5 });
+    await page.mouse.up();
 
     const pending = await page.evaluate(() => {
       // @ts-ignore
