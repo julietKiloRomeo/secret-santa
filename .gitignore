@@ -49,3 +49,10 @@ junit.xml
 Thumbs.db
 .idea/
 .vscode/
+
+# Runtime data and local env files
+scores.sqlite3
+.env.*
+!.env.example
+.data.test.*/
+out/
