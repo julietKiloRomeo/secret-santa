@@ -1,6 +1,6 @@
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -141,7 +141,7 @@ def list_snapshots() -> list[str]:
 
 def create_snapshot() -> str:
     root = Path(snapshots_root())
-    stamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     target = root / stamp
     target.mkdir(parents=True, exist_ok=True)
     for src in snapshot_sources():
@@ -153,7 +153,8 @@ def create_snapshot() -> str:
 def restore_snapshot(name: str) -> str:
     root = Path(snapshots_root())
     source = root / name
-    if not source.is_dir():
+    # Only plain snapshot directory names; no path traversal out of snapshots/.
+    if Path(name).name != name or name in ('', '.', '..') or not source.is_dir():
         raise FileNotFoundError(f"Snapshot '{name}' does not exist")
     dest_root = Path(get_data_dir())
     for entry in source.iterdir():

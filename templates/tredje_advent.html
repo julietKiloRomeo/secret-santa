@@ -33,14 +33,14 @@
   </a>
 
   <script>
-    window.__jbhSongBase = "{{ url_for('static', filename='songs') }}";
+    window.__jbhSongBase = "/static/songs";
   </script>
   <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script>
     window.ReactDOMClient = window.ReactDOM;
   </script>
-  <script type="module" src="{{ url_for('static', filename='jingle_bell_hero_app.js') }}"></script>
-  <script src="{{ url_for('static', filename='arcade_overlay.js') }}"></script>
-  <script src="{{ url_for('static', filename='leaderboard_buttons.js') }}"></script>
+  <script type="module" src="/static/jingle_bell_hero_app.js"></script>
+  <script src="/static/arcade_overlay.js"></script>
+  <script src="/static/leaderboard_buttons.js"></script>
 {% endblock %}

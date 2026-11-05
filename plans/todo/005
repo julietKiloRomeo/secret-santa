@@ -5,43 +5,43 @@ Tests: 59 pass on Python 3.12; fail out of the box on 3.15 (pillow build).
 
 ## Must fix
 
-1. [ ] Worker drift (`app.py` globals SS/ASSIGNMENTS/logins, Dockerfile `-w 4`).
+1. [x] Worker drift (`app.py` globals SS/ASSIGNMENTS/logins, Dockerfile `-w 4`).
    Redraw / set_password only update one of 4 workers; startup draw can race.
    Fix: `gunicorn -w 1 --threads 8`.
-2. [ ] One-shot migrations run on every boot (`app.py` migrate_tredje_scores_to_fjerde,
+2. [x] One-shot migrations run on every boot (`app.py` migrate_tredje_scores_to_fjerde,
    migrate_reindeer_rush_alias, remove_glaedelig_jul_game). Resetting fjerde-advent
    then restarting moves all tredje-advent scores into it. Fix: delete them.
-3. [ ] No `.dockerignore`: `COPY .` ships `.env`, node_modules, scores.sqlite3 and
+3. [x] No `.dockerignore`: `COPY .` ships `.env`, node_modules, scores.sqlite3 and
    test leftovers (tests write `secret-santa-<year>.json = {"jimmy": "camilla"}` into
    repo root, which would block the real draw). Fix: add `.dockerignore`, make tests
    use tmp_path (test_admin_games.py, test_navbar_and_pages.py, test_navbar_games_links.py).
-4. [ ] `SECRET_KEY` falls back to `'dev-secret'` -> forgeable admin session.
+4. [x] `SECRET_KEY` falls back to `'dev-secret'` -> forgeable admin session.
    Fix: `os.environ['SECRET_KEY']`.
-5. [ ] `CORS(app, supports_credentials=True)` reflects any origin. Same-origin app.
+5. [x] `CORS(app, supports_credentials=True)` reflects any origin. Same-origin app.
    Fix: remove CORS and flask-cors.
-6. [ ] `POST /api/scores/<game>` needs no login, no name cap, any game key.
+6. [x] `POST /api/scores/<game>` needs no login, no name cap, any game key.
    Fix: login_required, `name[:20]`, known games only.
 
 ## Should fix
 
-7. [ ] Unused deps: jupyterlab, numpy, matplotlib, pillow; ruff is runtime.
+7. [x] Unused deps: jupyterlab, numpy, matplotlib, pillow; ruff is runtime.
    Fix: uv remove, ruff -> dev group, add `.python-version` = 3.12.
-8. [ ] Past draws not excluded: previous.yaml is hand-kept and lacks 2024/2025.
+8. [x] Past draws not excluded: previous.yaml is hand-kept and lacks 2024/2025.
    Fix: also exclude recipients from secret-santa-{year-1,year-2}.json.
-9. [ ] No test of draw rules (no self, no partner, no previous).
-10. [ ] Admin set duplicated 3x (`ADMIN_USERS`, admin_required, admin_page).
-11. [ ] init_scores_db/init_games_db run per request + retry branch in is_game_enabled.
+9. [x] No test of draw rules (no self, no partner, no previous).
+10. [x] Admin set duplicated 3x (`ADMIN_USERS`, admin_required, admin_page).
+11. [x] init_scores_db/init_games_db run per request + retry branch in is_game_enabled.
     Fix: init once at startup; tests set env before import.
-12. [ ] Tracked junk: node_modules (524 files), test-results/, out/, scores.sqlite3,
+12. [x] Tracked junk: node_modules (524 files), test-results/, out/, scores.sqlite3,
     .env.test.*. Fix: git rm --cached + .gitignore.
-13. [ ] Stale docs: plans/todo/002 + 004 (Reindeer Rush shipped), JingleBellHero_FIX_NOTES.md.
+13. [x] Stale docs: plans/todo/002 + 004 (Reindeer Rush shipped), JingleBellHero_FIX_NOTES.md.
 
 ## Nice to have
 
-14. [ ] Four copy-pasted game routes -> one route + dict.
-15. [ ] /api/login 500s on missing name / bad JSON.
-16. [ ] Snapshot restore accepts `../` names (admin only).
-17. [ ] datetime.utcnow deprecation; print() in SecretSanta.draw().
+14. [x] Four copy-pasted game routes -> one route + dict.
+15. [x] /api/login 500s on missing name / bad JSON.
+16. [x] Snapshot restore accepts `../` names (admin only).
+17. [x] datetime.utcnow deprecation; print() in SecretSanta.draw().
 
 ## Bigger
 

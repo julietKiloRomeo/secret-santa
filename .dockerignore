@@ -1,0 +1,15 @@
+.git
+.venv
+.env*
+node_modules
+out
+test-results
+__tests__
+e2e
+tests
+plans
+scores.sqlite3
+snapshots
+.data*
+secret-santa-*.json
+__pycache__

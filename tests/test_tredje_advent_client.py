@@ -1,12 +1,11 @@
-def test_tredje_advent_page_mounts_jingle_bell_hero_react_shell():
-    from app import app
+from conftest import login
 
-    client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['user'] = 'guest'
+
+def test_tredje_advent_page_mounts_jingle_bell_hero_react_shell(client):
+    login(client, 'emma')
     resp = client.get('/tredje-advent')
     assert resp.status_code == 200
-    html = resp.get_data(as_text=True)
+    html = resp.text
     assert 'id="jingle-bell-hero-root"' in html
     assert '/static/jingle_bell_hero_app.js' in html
     assert '__jbhSongBase' in html
@@ -15,42 +14,30 @@ def test_tredje_advent_page_mounts_jingle_bell_hero_react_shell():
     assert 'ReactDOMClient = window.ReactDOM' in html
 
 
-def test_tredje_advent_page_keeps_arcade_leaderboard_controls():
-    from app import app
-
-    client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['user'] = 'guest'
+def test_tredje_advent_page_keeps_arcade_leaderboard_controls(client):
+    login(client, 'emma')
     resp = client.get('/tredje-advent')
     assert resp.status_code == 200
-    html = resp.get_data(as_text=True)
+    html = resp.text
     assert 'data-arcade-leaderboard' not in html
 
 
-def test_tredje_advent_page_blocks_touch_callouts_and_selection():
-    from app import app
-
-    client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['user'] = 'guest'
+def test_tredje_advent_page_blocks_touch_callouts_and_selection(client):
+    login(client, 'emma')
     resp = client.get('/tredje-advent')
     assert resp.status_code == 200
-    html = resp.get_data(as_text=True)
+    html = resp.text
     compact = " ".join(html.split())
     assert '#jingle-bell-hero-root, #jingle-bell-hero-root * {' in compact
     assert '-webkit-touch-callout: none' in compact
     assert 'user-select: none' in compact
 
 
-def test_tredje_advent_back_link_is_offset_from_playfield_on_mobile():
-    from app import app
-
-    client = app.test_client()
-    with client.session_transaction() as sess:
-        sess['user'] = 'guest'
+def test_tredje_advent_back_link_is_offset_from_playfield_on_mobile(client):
+    login(client, 'emma')
     resp = client.get('/tredje-advent')
     assert resp.status_code == 200
-    html = resp.get_data(as_text=True)
+    html = resp.text
     compact = " ".join(html.split())
     assert 'href="/" class="fixed left-3 top-3' in compact
     assert 'sm:top-auto sm:bottom-4' in compact
