@@ -1,14 +1,14 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  testDir: 'e2e',
   webServer: {
-    command: 'uv run python app.py',
-    url: 'http://localhost:5000',
+    command: 'bash e2e/serve.sh',
+    url: 'http://localhost:5001/healthz',
     timeout: 120000,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
   },
   use: {
-    baseURL: 'http://localhost:5000',
+    baseURL: 'http://localhost:5001',
   },
 });
-
