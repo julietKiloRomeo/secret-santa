@@ -18,7 +18,7 @@ test('mobile screenshots for games (iPhone-like viewport)', async ({ page }) => 
 
   // Then: Flappy Santa
   await page.goto('/anden-advent');
-  const canvas = await page.waitForSelector('#santa-canvas', { state: 'visible' });
+  const canvas = await page.waitForSelector('#santa-canvas-wrap canvas', { state: 'visible' });
   await page.waitForTimeout(400);
   await page.screenshot({ path: 'out/anden_advent_mobile.png', fullPage: true });
   await canvas.screenshot({ path: 'out/anden_advent_reindeer_front.png' });

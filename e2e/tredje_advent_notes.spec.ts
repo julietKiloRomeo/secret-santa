@@ -1,45 +1,48 @@
 import { test, expect } from '@playwright/test';
 import { loginAsPlaywright } from './helpers/login';
 
+type Snap = {
+  state: string;
+  time: number;
+  score: number;
+  lives: number;
+  next: { lane: number; start: number } | null;
+} | null;
+const snap = (page) => page.evaluate(() => (window as any).__jbhDebug__.snapshot() as Snap);
 
-const demoSong = [
-  { time: 0, notes: [{ pitch: 'c4', lane: 2, tied: false }] },
-  { time: 1, notes: [{ pitch: 'd4', lane: 3, tied: true }] },
-  { time: 2.5, notes: [{ pitch: 'd4', lane: 3, tied: false }] },
-];
-
-test.describe('Tredje Advent notes render and scroll', () => {
+test.describe('Jingle Bell Hero', () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('**/static/songs/*.json', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(demoSong),
-      });
-    });
     await loginAsPlaywright(page);
+    await page.goto('/tredje-advent');
+    // Songs are loaded once the start prompt appears; key presses before that are ignored.
+    await expect(page.locator('canvas').first()).toBeVisible();
+    await page.waitForFunction(() => Boolean((window as any).__jbhDebug__));
+    await page.waitForTimeout(800);
   });
 
-  test('notes appear and move toward the hit line over time', async ({ page }) => {
-    await page.goto('/tredje-advent');
-    const startButton = page.getByRole('button', { name: /start/i });
-    await expect(startButton).toBeEnabled({ timeout: 5000 });
-    await startButton.click();
+  test('pressing a key starts the first level', async ({ page }) => {
+    await page.keyboard.press('d');
+    await expect.poll(async () => (await snap(page))?.state).toBe('playing');
+  });
 
-    const notes = page.locator('svg circle');
-    await expect.poll(async () => notes.count()).toBeGreaterThan(0);
+  test('pressing the right lane on time scores points', async ({ page }) => {
+    await page.keyboard.press('d');
+    await expect.poll(async () => (await snap(page))?.next).not.toBeNull();
+    const first = (await snap(page))!.next!;
+    // Wait for the note to reach the hit line, then press its lane key.
+    await expect
+      .poll(async () => (await snap(page))!.time, { timeout: 10000 })
+      .toBeGreaterThan(first.start - 0.05);
+    const keyFor = ['d', 'f', 'j', 'k'][first.lane - 1];
+    await page.keyboard.press(keyFor);
+    await expect.poll(async () => (await snap(page))!.score, { timeout: 2000 }).toBeGreaterThan(0);
+  });
 
-    const firstNote = notes.first();
-    const initialCy = await firstNote.evaluate((el) => parseFloat(el.getAttribute('cy') || '0'));
-    expect(initialCy).toBeLessThan(300); // starts above the hit zone
-
-    await page.waitForTimeout(2200); // allow the scroll loop to advance
-    const laterCy = await firstNote.evaluate((el) => parseFloat(el.getAttribute('cy') || '0'));
-    expect(laterCy).toBeGreaterThan(initialCy);
-    expect(Math.abs(laterCy - 500)).toBeLessThan(120); // near the hit zone (y=500)
-
-    // Sustained note should render a line element
-    const lines = page.locator('svg line');
-    await expect.poll(async () => lines.count()).toBeGreaterThan(0);
+  test('a press on an empty lane is a miss, not a score', async ({ page }) => {
+    await page.keyboard.press('d');
+    await expect.poll(async () => (await snap(page))?.state).toBe('playing');
+    await page.keyboard.press('k');
+    await expect.poll(async () => (await snap(page))?.lives).toBe(3);
+    expect((await snap(page))!.score).toBe(0);
   });
 });

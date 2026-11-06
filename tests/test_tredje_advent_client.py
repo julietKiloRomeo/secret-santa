@@ -1,25 +1,15 @@
 from conftest import login
 
 
-def test_tredje_advent_page_mounts_jingle_bell_hero_react_shell(client):
+def test_tredje_advent_page_mounts_phaser_jingle_bell_hero(client):
     login(client, 'emma')
     resp = client.get('/tredje-advent')
     assert resp.status_code == 200
     html = resp.text
     assert 'id="jingle-bell-hero-root"' in html
-    assert '/static/jingle_bell_hero_app.js' in html
-    assert '__jbhSongBase' in html
-    assert 'react.production.min.js' in html
-    assert 'react-dom.production.min.js' in html
-    assert 'ReactDOMClient = window.ReactDOM' in html
-
-
-def test_tredje_advent_page_keeps_arcade_leaderboard_controls(client):
-    login(client, 'emma')
-    resp = client.get('/tredje-advent')
-    assert resp.status_code == 200
-    html = resp.text
-    assert 'data-arcade-leaderboard' not in html
+    assert '/static/vendor/phaser-4.2.1.min.js' in html
+    assert '/static/jingle_bell_hero.js' in html
+    assert 'react' not in html.lower()
 
 
 def test_tredje_advent_page_blocks_touch_callouts_and_selection(client):
