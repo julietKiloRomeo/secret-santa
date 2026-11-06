@@ -3,7 +3,7 @@ from conftest import login
 
 def test_tredje_advent_page_mounts_phaser_jingle_bell_hero(client):
     login(client, 'emma')
-    resp = client.get('/tredje-advent')
+    resp = client.get('/advent-3')
     assert resp.status_code == 200
     html = resp.text
     assert 'id="jingle-bell-hero-root"' in html
@@ -14,7 +14,7 @@ def test_tredje_advent_page_mounts_phaser_jingle_bell_hero(client):
 
 def test_tredje_advent_page_blocks_touch_callouts_and_selection(client):
     login(client, 'emma')
-    resp = client.get('/tredje-advent')
+    resp = client.get('/advent-3')
     assert resp.status_code == 200
     html = resp.text
     compact = " ".join(html.split())
@@ -25,7 +25,7 @@ def test_tredje_advent_page_blocks_touch_callouts_and_selection(client):
 
 def test_tredje_advent_back_link_is_offset_from_playfield_on_mobile(client):
     login(client, 'emma')
-    resp = client.get('/tredje-advent')
+    resp = client.get('/advent-3')
     assert resp.status_code == 200
     html = resp.text
     compact = " ".join(html.split())

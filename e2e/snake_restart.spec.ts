@@ -8,7 +8,7 @@ test.describe('Snake restart shortcuts', () => {
   });
 
   test('spacebar restarts after a stop', async ({ page }) => {
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
 
     await page.evaluate(() => {
@@ -30,7 +30,7 @@ test.describe('Snake restart shortcuts', () => {
   });
 
   test('tapping the canvas restarts the game', async ({ page }) => {
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
 
     await page.evaluate(() => {

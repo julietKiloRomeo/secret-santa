@@ -28,10 +28,20 @@ from storage import (
 ADMINS = {"jimmy", "ditte"}
 # url name -> (title, game name, template)
 GAMES = {
-    "forste-advent": ("Første Advent", "Snake", "forste_advent.html"),
-    "anden-advent": ("Anden Advent", "Flappy Santa", "anden_advent.html"),
-    "tredje-advent": ("Tredje Advent", "Jingle Bell Hero", "tredje_advent.html"),
-    "fjerde-advent": ("Fjerde Advent", "Reindeer Rush", "fjerde_advent.html"),
+    "advent-1": ("Første Advent", "Snake", "forste_advent.html"),
+    "advent-2": ("Anden Advent", "Flappy Santa", "anden_advent.html"),
+    "advent-3": ("Tredje Advent", "Jingle Bell Hero", "tredje_advent.html"),
+    "advent-4": ("Fjerde Advent", "Reindeer Rush", "fjerde_advent.html"),
+    "advent-5": ("Femte Advent", "Pac-Santa", "femte_advent.html"),
+}
+# Games listed in the navbar and high-score page. Change to publish a different four.
+PUBLISHED = ["advent-1", "advent-2", "advent-3", "advent-4"]
+# Score rows written before the rename, keyed by the old route name.
+OLD_GAME_IDS = {
+    "forste-advent": "advent-1",
+    "anden-advent": "advent-2",
+    "tredje-advent": "advent-3",
+    "fjerde-advent": "advent-4",
 }
 MAX_NAME = 18
 
@@ -82,6 +92,18 @@ def init_db():
             "INSERT OR IGNORE INTO games (game, enabled) VALUES (?, 1)",
             [(g,) for g in GAMES],
         )
+        # Rename legacy rows once: copy old ids to new ones, then drop the old rows.
+        for old, new in OLD_GAME_IDS.items():
+            con.execute(
+                "UPDATE OR IGNORE scores SET game = ? WHERE game = ?", (new, old)
+            )
+            con.execute("DELETE FROM scores WHERE game = ?", (old,))
+            con.execute(
+                "INSERT INTO games (game, enabled) SELECT ?, enabled FROM games WHERE game = ?"
+                " ON CONFLICT(game) DO UPDATE SET enabled = excluded.enabled",
+                (new, old),
+            )
+            con.execute("DELETE FROM games WHERE game = ?", (old,))
 
 
 SS = load_draw()
@@ -145,6 +167,7 @@ def render(request: Request, template: str, **ctx):
             "session": request.session,
             "is_admin_user": lambda: admin,
             "game_enabled_for_user": lambda g: admin or is_game_enabled(g),
+            "published_games": [{"id": g, "title": GAMES[g][0]} for g in PUBLISHED],
             **ctx,
         },
     )
@@ -184,7 +207,7 @@ def lodtraekning(request: Request):
 def high_scores(request: Request):
     if not request.session.get("user"):
         return to_login()
-    games = [(g, f"{title} — {name}") for g, (title, name, _) in GAMES.items()]
+    games = [(g, f"{GAMES[g][0]} — {GAMES[g][1]}") for g in PUBLISHED]
     return render(request, "high_scores.html", games=games)
 
 

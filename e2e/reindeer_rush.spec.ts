@@ -7,12 +7,12 @@ const snap = (page) => page.evaluate(() => (window as any).__rrDebug__.snapshot(
 test.describe('Reindeer Rush', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPlaywright(page);
-    await page.route('**/api/scores/fjerde-advent', (route) =>
+    await page.route('**/api/scores/advent-4', (route) =>
       route.request().method() === 'GET'
-        ? route.fulfill({ json: { game: 'fjerde-advent', scores: [] } })
+        ? route.fulfill({ json: { game: 'advent-4', scores: [] } })
         : route.fulfill({ json: { success: true } }),
     );
-    await page.goto('/fjerde-advent');
+    await page.goto('/advent-4');
     await page.waitForFunction(() => Boolean((window as any).__rrDebug__));
   });
 

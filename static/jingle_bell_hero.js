@@ -129,7 +129,7 @@ class JingleScene extends Phaser.Scene {
   async finish() {
     const score = this.run.score;
     this.run = null;
-    await showScores(this, { gameId: 'tredje-advent', score, title: 'Jingle Bell Hero' });
+    await showScores(this, { gameId: 'advent-3', score, title: 'Jingle Bell Hero' });
     this.statusText.setText('Tryk for at starte');
   }
 

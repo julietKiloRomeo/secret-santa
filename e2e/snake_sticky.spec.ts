@@ -8,7 +8,7 @@ test('snake canvas does not leave sticky pixels after movement', async ({ page }
   // the login guard in the app). Use the same test account used by other
   // Playwright specs.
   await loginAsPlaywright(page);
-  await page.goto('/forste-advent');
+  await page.goto('/advent-1');
   await page.waitForSelector('#snake-canvas', { state: 'visible' });
   // allow JS resize/init to complete
   await page.waitForTimeout(200);

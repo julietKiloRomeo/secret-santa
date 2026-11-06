@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 from conftest import NAMES, login
 
-GAMES = ["forste-advent", "anden-advent", "tredje-advent", "fjerde-advent"]
+GAMES = ["advent-1", "advent-2", "advent-3", "advent-4", "advent-5"]
+PUBLISHED = ["advent-1", "advent-2", "advent-3", "advent-4"]
 
 
 def test_healthz(client):
@@ -65,13 +66,14 @@ def test_lodtraekning_shows_recipient(client, appmod):
 
 
 def test_navbar(client):
-    assert 'href="/forste-advent"' not in client.get("/").text
+    assert 'href="/advent-1"' not in client.get("/").text
     login(client, "emma")
     html = client.get("/").text
-    assert all(f'href="/{g}"' in html for g in GAMES)
+    assert all(f'href="/{g}"' in html for g in PUBLISHED)
+    assert 'href="/advent-5"' not in html
     assert 'id="admin-link"' not in html
     login(client, "jimmy")
-    for page in ["/", "/lodtraekning", "/high-scores", "/admin", "/forste-advent"]:
+    for page in ["/", "/lodtraekning", "/high-scores", "/admin", "/advent-1"]:
         assert 'id="admin-link"' in client.get(page).text, page
 
 
@@ -79,7 +81,7 @@ def test_high_scores_page_lists_games_in_order(client):
     login(client, "emma")
     html = client.get("/high-scores").text
     assert "hs-prev" in html and "hs-next" in html
-    positions = [html.index(f'"{g}"') for g in GAMES]
+    positions = [html.index(f'"{g}"') for g in PUBLISHED]
     assert positions == sorted(positions)
 
 
@@ -189,35 +191,31 @@ def test_scores_top10_sorted_and_reset(client):
     login(client, "emma")
     for i, score in enumerate([5, 3, 9, 1, 12, 7, 8, 2, 4, 6, 11, 10]):
         assert client.post(
-            "/api/scores/anden-advent", json={"name": f"p{i}", "score": score}
+            "/api/scores/advent-2", json={"name": f"p{i}", "score": score}
         ).json()["success"]
-    scores = client.get("/api/scores/anden-advent").json()["scores"]
+    scores = client.get("/api/scores/advent-2").json()["scores"]
     assert [s["score"] for s in scores] == [12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
-    assert client.get("/api/scores/forste-advent").json()["scores"] == []
+    assert client.get("/api/scores/advent-1").json()["scores"] == []
 
     login(client, "jimmy")
-    assert client.post("/api/admin/reset_scores", json={"game": "anden-advent"}).json()[
+    assert client.post("/api/admin/reset_scores", json={"game": "advent-2"}).json()[
         "success"
     ]
-    assert client.get("/api/scores/anden-advent").json()["scores"] == []
+    assert client.get("/api/scores/advent-2").json()["scores"] == []
 
 
 def test_score_post_requires_login(client):
     assert (
-        client.post(
-            "/api/scores/forste-advent", json={"name": "x", "score": 1}
-        ).status_code
+        client.post("/api/scores/advent-1", json={"name": "x", "score": 1}).status_code
         == 401
     )
 
 
 def test_score_name_defaults_and_is_capped(client):
     login(client, "emma")
-    client.post("/api/scores/forste-advent", json={"name": "  ", "score": 2})
-    client.post("/api/scores/forste-advent", json={"name": "x" * 500, "score": 1})
-    names = [
-        s["name"] for s in client.get("/api/scores/forste-advent").json()["scores"]
-    ]
+    client.post("/api/scores/advent-1", json={"name": "  ", "score": 2})
+    client.post("/api/scores/advent-1", json={"name": "x" * 500, "score": 1})
+    names = [s["name"] for s in client.get("/api/scores/advent-1").json()["scores"]]
     assert names == ["emma", "x" * 18]
 
 
@@ -226,7 +224,58 @@ def test_score_rejects_bad_values(client, score):
     login(client, "emma")
     assert (
         client.post(
-            "/api/scores/forste-advent", json={"name": "a", "score": score}
+            "/api/scores/advent-1", json={"name": "a", "score": score}
         ).status_code
         == 422
     )
+
+
+def test_advent_routes_are_numbered(client):
+    login(client, "jimmy")
+    for n in range(1, 6):
+        assert client.get(f"/advent-{n}").status_code == 200, n
+    assert client.get("/forste-advent").status_code == 404
+
+
+def test_legacy_score_rows_move_to_advent_ids_once(appmod, client):
+    import sqlite3
+
+    # Re-create the pre-rename state, then run the boot migration.
+    with sqlite3.connect(appmod.DB_PATH) as con:
+        con.execute("DELETE FROM scores")
+        con.execute("DELETE FROM games")
+        con.execute("INSERT INTO games (game, enabled) VALUES ('anden-advent', 0)")
+        con.execute(
+            "INSERT INTO scores (game, name, score, created_at) VALUES ('forste-advent', 'emma', 40, 'x')"
+        )
+        con.execute(
+            "INSERT INTO scores (game, name, score, created_at) VALUES ('fjerde-advent', 'emma', 90, 'x')"
+        )
+    appmod.init_db()
+    login(client, "emma")
+    assert client.get("/api/scores/advent-1").json()["scores"][0]["score"] == 40
+    assert client.get("/api/scores/advent-4").json()["scores"][0]["score"] == 90
+    with sqlite3.connect(appmod.DB_PATH) as con:
+        assert (
+            con.execute(
+                "SELECT COUNT(*) FROM scores WHERE game LIKE 'advent-%'"
+            ).fetchone()[0]
+            == 2
+        )
+        assert (
+            con.execute("SELECT enabled FROM games WHERE game = 'advent-2'").fetchone()[
+                0
+            ]
+            == 0
+        )
+        assert (
+            con.execute(
+                "SELECT COUNT(*) FROM games WHERE game LIKE 'anden%' OR game LIKE 'forste%'"
+            ).fetchone()[0]
+            == 0
+        )
+    # A second boot must not re-copy: reset advent-1, boot again, it stays empty.
+    login(client, "jimmy")
+    client.post("/api/admin/reset_scores", json={"game": "advent-1"})
+    appmod.init_db()
+    assert client.get("/api/scores/advent-1").json()["scores"] == []

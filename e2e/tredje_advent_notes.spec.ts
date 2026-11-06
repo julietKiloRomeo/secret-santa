@@ -13,7 +13,7 @@ const snap = (page) => page.evaluate(() => (window as any).__jbhDebug__.snapshot
 test.describe('Jingle Bell Hero', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPlaywright(page);
-    await page.goto('/tredje-advent');
+    await page.goto('/advent-3');
     // Songs are loaded once the start prompt appears; key presses before that are ignored.
     await expect(page.locator('canvas').first()).toBeVisible();
     await page.waitForFunction(() => Boolean((window as any).__jbhDebug__));

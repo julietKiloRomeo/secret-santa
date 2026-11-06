@@ -8,7 +8,7 @@ test.describe('Snake grid integrity', () => {
   });
 
   test('grid rows align with the visible canvas area', async ({ page }) => {
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
 
     const metrics = await page.evaluate(() => {
@@ -31,7 +31,7 @@ test.describe('Snake grid integrity', () => {
   });
 
   test('gifts never spawn on the snake or outside the grid', async ({ page }) => {
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
 
     const stats = await page.evaluate(() => {

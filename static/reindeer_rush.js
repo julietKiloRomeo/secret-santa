@@ -138,7 +138,7 @@ class ReindeerScene extends Phaser.Scene {
     this.hint.setText('Ouch!').setVisible(true);
     this.sound.play('death', { volume: 0.5 });
     await new Promise((r) => this.time.delayedCall(1200, r));
-    await showScores(this, { gameId: 'fjerde-advent', score: this.run.score, title: 'Reindeer Rush' });
+    await showScores(this, { gameId: 'advent-4', score: this.run.score, title: 'Reindeer Rush' });
     this.newRun();
   }
 

@@ -92,7 +92,7 @@ class FlappyScene extends Phaser.Scene {
     this.deathUntil = this.time.now + DEATH_PAUSE_MS;
     // Wait on the browser clock: showScores pauses this scene, which would also freeze its timers.
     await new Promise((resolve) => setTimeout(resolve, DEATH_PAUSE_MS));
-    await showScores(this, { gameId: 'anden-advent', score: this.run.score, title: 'Ny high score!' });
+    await showScores(this, { gameId: 'advent-2', score: this.run.score, title: 'Ny high score!' });
     this.newRun();
   }
 

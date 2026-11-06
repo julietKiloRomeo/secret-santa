@@ -8,7 +8,7 @@ test.describe('Snake fullscreen experience', () => {
   });
 
   test('renders fullscreen stage without legacy controls', async ({ page }) => {
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
 
     const hasFullscreenClass = await page.evaluate(() => document.body.classList.contains('arcade-fullscreen'));
@@ -29,7 +29,7 @@ test.describe('Snake fullscreen experience', () => {
   });
 
   test('swiping on canvas changes direction without scrolling', async ({ page }) => {
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     const canvas = page.locator('#snake-canvas');
     await canvas.waitFor({ state: 'visible' });
 

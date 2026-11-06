@@ -88,7 +88,7 @@ class SnakeScene extends Phaser.Scene {
     setStatus('Game Over! Tryk Space, pil eller tap for at prøve igen 🎅');
     beep(this, 220, 400, 'sawtooth', 0.03);
     this.busy = true;
-    await showScores(this, { gameId: 'forste-advent', score: this.s.score, title: 'Søde Børn' });
+    await showScores(this, { gameId: 'advent-1', score: this.s.score, title: 'Søde Børn' });
     this.busy = false;
   }
 

@@ -10,14 +10,14 @@ test('mobile screenshots for games (iPhone-like viewport)', async ({ page }) => 
   await loginAsPlaywright(page);
 
   // First: Snake
-  await page.goto('/forste-advent');
+  await page.goto('/advent-1');
   await page.waitForSelector('#snake-canvas', { state: 'visible' });
   // Give a moment for any JS resize to happen
   await page.waitForTimeout(250);
   await page.screenshot({ path: 'out/forste_advent_mobile.png', fullPage: true });
 
   // Then: Flappy Santa
-  await page.goto('/anden-advent');
+  await page.goto('/advent-2');
   const canvas = await page.waitForSelector('#santa-canvas-wrap canvas', { state: 'visible' });
   await page.waitForTimeout(400);
   await page.screenshot({ path: 'out/anden_advent_mobile.png', fullPage: true });

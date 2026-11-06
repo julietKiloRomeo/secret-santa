@@ -10,7 +10,7 @@ const snap = (page) => page.evaluate(() => (window as any).__andenDebug__.snapsh
 test.describe('Flappy Santa', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPlaywright(page);
-    await page.goto('/anden-advent');
+    await page.goto('/advent-2');
     await expect.poll(() => snap(page)).toMatchObject({ state: 'grace' });
   });
 
@@ -28,9 +28,9 @@ test.describe('Flappy Santa', () => {
   });
 
   test('a qualifying game over opens the score screen with a name prompt', async ({ page }) => {
-    await page.route('**/api/scores/anden-advent', (route) =>
+    await page.route('**/api/scores/advent-2', (route) =>
       route.request().method() === 'GET'
-        ? route.fulfill({ json: { game: 'anden-advent', scores: [] } })
+        ? route.fulfill({ json: { game: 'advent-2', scores: [] } })
         : route.fulfill({ json: { success: true } }),
     );
     // Fly into the floor: the run ends with score 0, which must not qualify.

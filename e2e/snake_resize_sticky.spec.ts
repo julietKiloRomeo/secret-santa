@@ -16,7 +16,7 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
 
   for (const v of viewports) {
     await page.setViewportSize({ width: v.w, height: v.h });
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
     await page.waitForTimeout(150);
 

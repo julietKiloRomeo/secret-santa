@@ -4,7 +4,7 @@ import { loginAsPlaywright } from './helpers/login';
 test.describe('Første Advent - Snake', () => {
   test('loads page with canvas and score and picks up a present', async ({ page }) => {
     await loginAsPlaywright(page);
-    await page.goto('/forste-advent');
+    await page.goto('/advent-1');
     const canvas = page.locator('#snake-canvas');
     await expect(canvas).toBeVisible();
     const score = page.locator('#score');

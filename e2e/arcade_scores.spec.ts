@@ -3,7 +3,7 @@ import { loginAsPlaywright } from './helpers/login';
 
 // Kill the snake against the top wall after eating `gifts` presents.
 async function dieWithScore(page, gifts: number) {
-  await page.goto('/forste-advent');
+  await page.goto('/advent-1');
   await page.waitForFunction(() => (window as any).__snakeDebug__);
   await page.evaluate((n) => {
     const d = (window as any).__snakeDebug__;
@@ -36,13 +36,13 @@ test('qualifying score asks for a name, saves it and closes on Enter', async ({ 
 
   await input.fill('Neo');
   const [post] = await Promise.all([
-    page.waitForRequest((r) => r.url().endsWith('/api/scores/forste-advent') && r.method() === 'POST'),
+    page.waitForRequest((r) => r.url().endsWith('/api/scores/advent-1') && r.method() === 'POST'),
     input.press('Enter'),
   ]);
   expect(post.postDataJSON()).toEqual({ name: 'Neo', score: 3 });
   await expect(input).toHaveCount(0);
   await expect.poll(() => scene(page)).toBe('list');
-  const top = await page.request.get('/api/scores/forste-advent');
+  const top = await page.request.get('/api/scores/advent-1');
   expect((await top.json()).scores[0]).toMatchObject({ name: 'Neo', score: 3 });
 
   await page.keyboard.press('Enter');

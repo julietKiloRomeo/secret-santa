@@ -29,20 +29,11 @@
                 <a href="/lodtraekning" class="text-white hover:underline">Lodtrækning</a>
                 <a href="/high-scores" class="text-white hover:underline">High Scores</a>
 
-                {# First Advent #}
-                {% set _disabled = not game_enabled_for_user('forste-advent') %}
-                <a href="/forste-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>
+                {% for g in published_games %}
+                {% set _disabled = not game_enabled_for_user(g.id) %}
+                <a href="/{{ g.id }}" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">{{ g.title }}</a>
+                {% endfor %}
 
-                {# Second Advent #}
-                {% set _disabled = not game_enabled_for_user('anden-advent') %}
-                <a href="/anden-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Anden Advent</a>
-
-                {# Third & Fourth and Glaedelig (still shown) #}
-                {% set _disabled = not game_enabled_for_user('tredje-advent') %}
-                <a href="/tredje-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Tredje Advent</a>
-
-                {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
-                <a href="/fjerde-advent" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
 
                 {% if is_admin_user() %}
                   <a id="admin-link" href="/admin" class="text-white hover:underline">Admin</a>
@@ -67,17 +58,11 @@
         <a href="/lodtraekning" class="block px-3 py-2 rounded-md text-base font-medium text-white">Lodtrækning</a>
         <a href="/high-scores" class="block px-3 py-2 rounded-md text-base font-medium text-white">High Scores</a>
 
-        {% set _disabled = not game_enabled_for_user('forste-advent') %}
-        <a href="/forste-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Første Advent</a>
+        {% for g in published_games %}
+        {% set _disabled = not game_enabled_for_user(g.id) %}
+        <a href="/{{ g.id }}" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">{{ g.title }}</a>
+        {% endfor %}
 
-        {% set _disabled = not game_enabled_for_user('anden-advent') %}
-        <a href="/anden-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Anden Advent</a>
-
-        {% set _disabled = not game_enabled_for_user('tredje-advent') %}
-        <a href="/tredje-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Tredje Advent</a>
-
-        {% set _disabled = not game_enabled_for_user('fjerde-advent') %}
-        <a href="/fjerde-advent" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">Fjerde Advent</a>
 
         {% if is_admin_user() %}
           <a id="admin-link" href="/admin" class="block px-3 py-2 rounded-md text-base font-medium text-white">Admin</a>
