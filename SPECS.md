@@ -8,8 +8,8 @@ Overview
 - Two small in-browser mini-games are available for advent pages:
   - `Første Advent` — Jule Snake (classic snake game)
 - `Anden Advent` — Flappy Santa (santa flapping through chimneys)
-- `Tredje Advent` — Jingle Bell Hero rhythm bells: match the falling notes with lane keys D/F/J/K across six tiers. Phaser scene in `static/jingle_bell_hero.js`, rules in `static/jingle_bell_rules.js`. Posts to `/api/scores/tredje-advent`.
-- `Fjerde Advent` — Reindeer Rush endless runner now lives at `/fjerde-advent` with the immersive canvas (`static/reindeer_rush.js`) and posts to `/api/scores/fjerde-advent`. Server/client coverage comes from `tests/test_fjerde_advent_client.py` and the Playwright spec (`e2e/reindeer_rush.spec.ts`).
+- `Tredje Advent` — Jingle Bell Hero rhythm bells: match the falling notes with lane keys D/F/J/K across six tiers. Phaser scene in `static/jingle_bell_hero.js`, rules in `static/jingle_bell_rules.js`. Posts to `/api/scores/advent-3`.
+- `Fjerde Advent` — Reindeer Rush endless runner now lives at `/advent-4` with the immersive canvas (`static/reindeer_rush.js`) and posts to `/api/scores/advent-4`. Server/client coverage comes from `tests/test_fjerde_advent_client.py` and the Playwright spec (`e2e/reindeer_rush.spec.ts`).
 - Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
 
 API Endpoints
@@ -56,10 +56,10 @@ Pages / Routes
 --------------
 
 - `/` — Index / roulette login page. After successful login it reveals the recipient.
-- `/forste-advent` — Snake mini-game. If the game is disabled for non-admins, shows an Under Construction page with title "Første Advent". Admins always see the game.
-- `/anden-advent` — Flappy Santa mini-game. Same availability rules as above.
-- `/tredje-advent` — Hosts the Jingle Bell Hero Phaser scene. If the game is disabled for non-admins it falls back to the standard Under Construction view.
-- `/fjerde-advent` — Hosts the Reindeer Rush endless runner (Phaser scene in `static/reindeer_rush.js`).
+- `/advent-1` — Snake mini-game. If the game is disabled for non-admins, shows an Under Construction page with title "Første Advent". Admins always see the game.
+- `/advent-2` — Flappy Santa mini-game. Same availability rules as above.
+- `/advent-3` — Hosts the Jingle Bell Hero Phaser scene. If the game is disabled for non-admins it falls back to the standard Under Construction view.
+- `/advent-4` — Hosts the Reindeer Rush endless runner (Phaser scene in `static/reindeer_rush.js`).
 - `/admin` — Admin panel, only accessible to admin users after login.
 
 Database schema
@@ -77,35 +77,35 @@ Database schema
 - `games` table (`init_games_db()`):
   - `game TEXT PRIMARY KEY`
   - `enabled INTEGER NOT NULL DEFAULT 1`
-  - default rows created for `forste-advent`, `anden-advent`, `tredje-advent`, and `fjerde-advent`
+  - default rows created for `advent-1`, `advent-2`, `advent-3`, and `advent-4`
 
 Client behavior / Mini-games
 ----------------------------
 
 All four games are Phaser 4 scenes (`static/vendor/phaser-4.2.1.min.js`). The rules live in pure modules that Jest tests; the views draw them and handle input. Every game ends with the shared score screen (`static/arcade_scene.js`): it shows the top 10, asks for a name if the score qualifies (max 18 characters, pre-filled with the player's name), and posts it. The game pauses while the screen is open.
 
-- Jule Snake (`/forste-advent`, `static/forste_advent.js`, rules `static/snake_core.js`):
+- Jule Snake (`/advent-1`, `static/forste_advent.js`, rules `static/snake_core.js`):
   - Arrow keys or swipe (24px threshold) steer. The grid is 20 columns.
   - Gifts come from a shuffle bag and become body skins in the order eaten.
-  - Space, Enter or an arrow key restart after game over. Scores post to `/api/scores/forste-advent`.
+  - Space, Enter or an arrow key restart after game over. Scores post to `/api/scores/advent-1`.
 
-- Flappy Santa (`/anden-advent`, `static/anden_advent.js`, rules `static/anden_core.js`):
+- Flappy Santa (`/advent-2`, `static/anden_advent.js`, rules `static/anden_core.js`):
   - Tap, click or Space flaps. Gravity, flap impulse and speed scale with the canvas width.
   - Chimneys have a gap that moves between spawns. Passing one scores a point.
   - Levels at 25 and 50 points: from level 2 the next gap is previewed one second before it spawns; from level 3 it is always shown.
-  - Hitbox is 72% of the reindeer size. Scores post to `/api/scores/anden-advent`.
+  - Hitbox is 72% of the reindeer size. Scores post to `/api/scores/advent-2`.
 
-- Jingle Bell Hero (`/tredje-advent`, `static/jingle_bell_hero.js`, rules `static/jingle_bell_rules.js`, audio and chart `static/jingle_bell_hero_core.js` / `static/jingle_bell_hero_chart.js`):
+- Jingle Bell Hero (`/advent-3`, `static/jingle_bell_hero.js`, rules `static/jingle_bell_rules.js`, audio and chart `static/jingle_bell_hero_core.js` / `static/jingle_bell_hero_chart.js`):
   - Notes scroll down four lanes to the hit line. Tap a lane key at the beat, or hold for sustained notes and release at the end.
   - Timing: PERFECT, GOOD and OK inside a 0.318s window; releases allow 1.2x that window.
   - Four misses in a row cost a life; three lives. The first two levels use only the first note of each event.
-  - Level order: partridge-1 twice, partridge-2 twice, partridge-3 twice, then endless speed-ups. Scores post to `/api/scores/tredje-advent`.
+  - Level order: partridge-1 twice, partridge-2 twice, partridge-3 twice, then endless speed-ups. Scores post to `/api/scores/advent-3`.
 
-- Reindeer Rush (`/fjerde-advent`, `static/reindeer_rush.js`, rules `static/reindeer_core.js`):
+- Reindeer Rush (`/advent-4`, `static/reindeer_rush.js`, rules `static/reindeer_core.js`):
   - Rudolph runs at a speed that grows with distance. Tap or Space jumps once more in the air (double jump); swipe down or Down ducks; swipe right or Right dashes.
   - Dashing gives brief invulnerability and smashes snowmen for 120 bonus points. Hitting a snowman otherwise ends the run, and so does falling off the screen.
   - Score is distance (1 point per 50px) plus snowman bonuses. Simulation is fixed-step (1/60s), so the outcome does not depend on frame rate.
-  - Scores post to `/api/scores/fjerde-advent`.
+  - Scores post to `/api/scores/advent-4`.
 
 
 Authentication & Admins
@@ -126,7 +126,7 @@ The following tests are present in `tests/` and were used to derive this spec (h
   - Verify login works for hashed passphrases and rejects incorrect passphrases.
 
 - `tests/test_scores_forste_advent.py`
-  - Verifies `/api/scores/forste-advent` initially empty, accepts many scores, and returns top 10 sorted by score.
+  - Verifies `/api/scores/advent-1` initially empty, accepts many scores, and returns top 10 sorted by score.
 
 - `tests/test_scores_upsert.py` and `tests/test_scores_upsert_anden_advent.py`
   - Verify POST upsert behavior: only one record per (game,name), higher submitted score upgrades stored score, lower submissions do not overwrite.

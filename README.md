@@ -40,8 +40,8 @@ The four advent games are Phaser 4 scenes (vendored in `static/vendor/`, no bund
 - `secret-santa-2024.json` — current year’s assignments.
 - `templates/index.html` — UI template.
 - `static/styles.css` — app styling.
-- `tredje-advent` — Jingle Bell Hero, a four-lane rhythm mini-game (`static/jingle_bell_hero.js`, rules in `static/jingle_bell_rules.js`). Scores post to `/api/scores/tredje-advent`.
-- `fjerde-advent` — Reindeer Rush endless runner (`static/reindeer_rush.js`, rules in `static/reindeer_core.js`). Scores post to `/api/scores/fjerde-advent`.
+- `advent-3` — Jingle Bell Hero, a four-lane rhythm mini-game (`static/jingle_bell_hero.js`, rules in `static/jingle_bell_rules.js`). Scores post to `/api/scores/advent-3`.
+- `advent-4` — Reindeer Rush endless runner (`static/reindeer_rush.js`, rules in `static/reindeer_core.js`). Scores post to `/api/scores/advent-4`.
 - `Dockerfile` — container build for production.
 - `pyproject.toml` — Python project config and dependencies.
 
