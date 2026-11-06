@@ -19,8 +19,8 @@ Playwright (E2E)
 -----------------
 - Install / ensure playwright browsers are available: `npx playwright install` (only needed once).
 - Run the e2e suite: `npx playwright test` or `npm run test:e2e` (package.json contains `test:e2e`).
-- Playwright's `playwright.config.ts` is configured to start the web server automatically using: `uv run python app.py`. Ensure port 5000 is free or start the server yourself and set `reuseExistingServer: true` in the config or run Playwright with the server already running.
-- Prefer logging in through the real UI in Playwright tests (fill the login form and click submit) instead of using `page.evaluate` fetches. This ensures cookies are set properly and avoids HTML debug pages from leaking into `JSON.parse` attempts when the server errors.
+- `playwright.config.ts` starts the server with `e2e/serve.sh` on port 5001 (a fresh data folder and the `playwright` / `pw-test-123` login). Port 5000 is not used by the tests.
+- Log in with `loginAsPlaywright(page)` from `e2e/helpers/login.ts`. It posts to `/api/login`, which sets the session cookie.
 - If a Playwright test needs a stable user, provide a test account in `.env` and ensure a matching assignment exists in `secret-santa-<year>.json` (tests assume ASSIGNMENTS[name] exists). Otherwise the server may raise KeyError and return an HTML debug page which breaks response.json() calls.
 
 Mobile testing notes
@@ -34,11 +34,13 @@ Debugging tips
 - For flaky UI timing, prefer `page.waitForResponse` (to observe the exact API reply) or `page.waitForSelector` on UI elements that the client updates after a successful action.
 - Use debug JS hooks when appropriate (e.g. `window.__snakeDebug__` exists in the Snake game to place gifts and step the game). These help keep tests deterministic.
 
-- Anden Advent test hooks: The Flappy-Santa page exposes a small optional helper on `window.__ANDEN_TEST__` used by Playwright tests. Available helpers include `getLeadY()`, `getScore()`, `stepPhysics(ms)`, and `getTrail(n)`.
+- Game test hooks are small read-only snapshots: `window.__andenDebug__.snapshot()`, `window.__jbhDebug__.snapshot()`, `window.__rrDebug__.snapshot()`. Snake exposes `window.__snakeDebug__` for placing gifts and stepping the game.
+- Phaser draws to canvas, so specs assert on the snapshots and on the visible DOM (the score screen input and `window.__arcadeScores__.state`), not on pixels.
 
 Quick commands
 --------------
-- Run unit tests: `uv run pytest -q`
+- Run Python tests: `uv run pytest -q`
+- Run game rules tests: `npx jest`
 - Run Playwright e2e (single test): `npx playwright test e2e/mobile_screenshots.spec.ts`
 - Open Playwright in interactive mode (headed): `npx playwright test --headed --debug` or `npx playwright show-report`
 

@@ -45,7 +45,7 @@ Tests: 59 pass on Python 3.12; fail out of the box on 3.15 (pillow build).
 
 ## Bigger
 
-18. [ ] Common game engine for the 4 mini-games (snake, flappy santa,
+18. [x] Common game engine for the 4 mini-games (snake, flappy santa,
     jingle bell hero, reindeer rush). Today: hand-rolled canvas, matter.js,
     vendored React runtime, ~6k lines of JS. Pick one engine, port all 4,
     share leaderboard/overlay. Full app rewrite is allowed (small app, redeploy this year).

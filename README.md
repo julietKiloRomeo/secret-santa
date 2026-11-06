@@ -4,22 +4,22 @@ A lightweight Secret Santa web app that lets participants securely log in with t
 
 ## Overview
 
-- Backend: Flask server exposing a simple login API and a Jinja template UI (`app.py`).
+- Backend: FastAPI server exposing a login API, score API, admin API and Jinja templates (`app.py`).
 - Assignment logic: `secret_santa.py` generates valid assignments using `couples.yaml` and `previous.yaml`, then saves to `secret-santa-<year>.json`.
 - Frontend: `templates/index.html` + `static/styles.css` provides a festive login and reveal screen.
 
 See `SPECS.md` for a full, test-driven specification of the app surface (APIs, pages, mini-games, and admin behavior).
 - Data: Current year’s assignments in `secret-santa-2024.json`. Couples and previous pairings are YAML files.
 
-### Arcade overlay & high scores
+### Mini-games & high scores
 
-Mini-games share a neon arcade overlay for high scores. When a run ends:
+The four advent games are Phaser 4 scenes (vendored in `static/vendor/`, no bundler). Each game keeps its rules in a pure module with Jest tests, and its view draws the state and handles input:
 
-- The overlay fetches the latest top 10 via `/api/scores/<game>`.
-- If the player qualifies, their earned rank appears inline in the leaderboard with a blinking cursor so they can type their name directly where it will land. Lower ranks shift down while the new slot is empty.
-- After saving, the overlay stays open and refreshes so the player immediately sees the updated list with their score in place.
-- While the overlay is waiting for a name it cannot be dismissed accidentally (ESC, taps, or hideOverlay calls are ignored); once the list is just informational it can be closed with Enter, Space, or by tapping anywhere outside the panel.
-- If the score is below the cutoff, the overlay simply shows the existing top 10 without prompting for input.
+- `static/snake_core.js`, `static/anden_core.js`, `static/jingle_bell_rules.js`, `static/reindeer_core.js` — rules, no rendering.
+- `static/forste_advent.js`, `static/anden_advent.js`, `static/jingle_bell_hero.js`, `static/reindeer_rush.js` — Phaser scenes.
+- `static/arcade_scene.js` — the shared score screen. Loads the top 10 from `/api/scores/<game>`, asks for a name when the score qualifies (max 18 characters), and posts it.
+- `static/arcade_scores.js` — score API calls and the top-10 rule.
+
 
 ## How It Works
 
@@ -33,15 +33,15 @@ Mini-games share a neon arcade overlay for high scores. When a run ends:
 
 ## Repo Layout
 
-- `app.py` — Flask app and API.
+- `app.py` — FastAPI app and API.
 - `secret_santa.py` — pairing generator and persistence helpers.
 - `couples.yaml` — couples list used to avoid spouse draws.
 - `previous.yaml` — historical receivers to avoid repeats.
 - `secret-santa-2024.json` — current year’s assignments.
 - `templates/index.html` — UI template.
 - `static/styles.css` — app styling.
-- `tredje-advent` — Jingle Bell Hero, a four-lane rhythm mini-game served via a React module (`static/jingle_bell_hero_app.js`) and import maps. Scores post to `/api/scores/tredje-advent` and share the overlay controls used by the other games.
-- `fjerde-advent` — Reindeer Rush endless runner housed at `/fjerde-advent`, retaining the immersive canvas client (`static/reindeer_rush.js`) and leaderboard integration at `/api/scores/fjerde-advent`.
+- `tredje-advent` — Jingle Bell Hero, a four-lane rhythm mini-game (`static/jingle_bell_hero.js`, rules in `static/jingle_bell_rules.js`). Scores post to `/api/scores/tredje-advent`.
+- `fjerde-advent` — Reindeer Rush endless runner (`static/reindeer_rush.js`, rules in `static/reindeer_core.js`). Scores post to `/api/scores/fjerde-advent`.
 - `Dockerfile` — container build for production.
 - `pyproject.toml` — Python project config and dependencies.
 
@@ -101,24 +101,16 @@ LOGIN_ditte=pbkdf2:sha256:260000$<salt>$<hash>
 If you need to add or update deps, use `uv add` (not `pip`):
 
 ```
-uv add Flask flask-cors
+uv add fastapi uvicorn
 ```
 
 ### Run the app (dev)
-
-- Simple dev run using the built-in Flask dev server:
 
 ```
 uv run python app.py
 ```
 
-- Or via Flask CLI (explicit app module):
-
-```
-uv run flask --app app.py run --debug --host 0.0.0.0 --port 5000
-```
-
-The app listens on `http://localhost:5000` and serves the UI at `/`.
+The app listens on `http://localhost:5000` and serves the UI at `/`. It runs under uvicorn with the `app:app` target.
 
 ### Generate/refresh assignments
 
@@ -139,6 +131,9 @@ uv run python -c "from secret_santa import SecretSanta; ss=SecretSanta(2024); ss
 ```
 uv run pytest
 ```
+
+- JavaScript rules tests (Jest): `npx jest`
+- Browser tests (Playwright, starts its own server on port 5001 via `e2e/serve.sh`): `npx playwright test`
 
 All public expectations are mirrored in `SPECS.md` which is kept in sync with the test-suite.
 
@@ -172,10 +167,10 @@ docker run --rm -p 5000:5000 \
 
 ### Alternative production run (without Docker)
 
-Use a production WSGI server if you prefer a direct host deployment. Example with `gunicorn` (add it via `uv add gunicorn`):
+Run uvicorn directly for a host deployment:
 
 ```
-uv run gunicorn -w 2 -b 0.0.0.0:5000 app:app
+uv run uvicorn app:app --host 0.0.0.0 --port 5000 --proxy-headers
 ```
 
 ### Deploying on Render
@@ -190,7 +185,7 @@ Render automatically detects the `Dockerfile`, so no extra build scripts are req
    - `ENV_FILE` if you keep credentials in a non-default path.
    - `DATA_DIR` to point writable files (env, scores, matches) at a persistent directory like `/var/data`.
    - Any `LOGIN_*`, `DRAW_LOCKED`, `SCORES_DB`, etc., values you need.
-5. Expose port `5000` (Render auto-detects from the `EXPOSE 5000` directive). The app command is already defined in the Dockerfile: `uv run gunicorn -w 4 -b 0.0.0.0:5000 app:app`.
+5. Expose port `5000` (Render auto-detects from the `EXPOSE 5000` directive). The Dockerfile starts uvicorn on port 5000.
 6. (Optional) Add a persistent disk and mount it at `/app` if you want SQLite files (`scores.sqlite3`, `secret-santa-<year>.json`) to survive deploys. Otherwise, keep those files in git or move to a managed database.
 
 Trigger a deploy by pushing a new commit; Render will rebuild the container and restart the service with the new image.
@@ -206,8 +201,8 @@ Trigger a deploy by pushing a new commit; Render will rebuild the container and 
 
 ## Notes
 
-- The project currently uses Flask for simplicity; if migrating to FastAPI, keep most logic in Python services and reuse the pairing logic from `secret_santa.py`.
-- Frontend is server-rendered; if adding a React UI, use Jest + React Testing Library for components and Playwright for E2E as per project conventions.
+- The app is FastAPI. Keep logic in Python where it is not UX-critical; game loops live in the browser for responsiveness.
+- Games are Phaser 4 scenes. Rules live in pure modules (Jest), views in Phaser scenes (Playwright).
 
 ## Admin Usage
 

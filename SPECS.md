@@ -4,11 +4,11 @@ This document summarizes the current behavior and public surface of the Secret S
 
 Overview
 --------
-- The application is a lightweight Flask web app serving a small number of pages and JSON APIs.
+- The application is a lightweight FastAPI web app serving a small number of pages and JSON APIs.
 - Two small in-browser mini-games are available for advent pages:
   - `Første Advent` — Jule Snake (classic snake game)
 - `Anden Advent` — Flappy Santa (santa flapping through chimneys)
-- `Tredje Advent` — Jingle Bell Hero rhythm bells: match the falling notes with lane buttons D/F/J/K across six tiers. The React client (`static/jingle_bell_hero_app.js`) is loaded via import maps at `/tredje-advent` and posts to `/api/scores/tredje-advent`. Tests cover the API (`tests/test_tredje_advent_scores.py`, `tests/test_tredje_advent_integration.py`), HTML shell (`tests/test_tredje_advent_client.py`), and component logic (`__tests__/JingleBellHero.test.jsx`).
+- `Tredje Advent` — Jingle Bell Hero rhythm bells: match the falling notes with lane keys D/F/J/K across six tiers. Phaser scene in `static/jingle_bell_hero.js`, rules in `static/jingle_bell_rules.js`. Posts to `/api/scores/tredje-advent`.
 - `Fjerde Advent` — Reindeer Rush endless runner now lives at `/fjerde-advent` with the immersive canvas (`static/reindeer_rush.js`) and posts to `/api/scores/fjerde-advent`. Server/client coverage comes from `tests/test_fjerde_advent_client.py` and the Playwright spec (`e2e/reindeer_rush.spec.ts`).
 - Scores are stored in a SQLite database and surfaced through HTTP APIs. Admin users can manage games and reset high scores.
 
@@ -58,8 +58,8 @@ Pages / Routes
 - `/` — Index / roulette login page. After successful login it reveals the recipient.
 - `/forste-advent` — Snake mini-game. If the game is disabled for non-admins, shows an Under Construction page with title "Første Advent". Admins always see the game.
 - `/anden-advent` — Flappy Santa mini-game. Same availability rules as above.
-- `/tredje-advent` — Hosts the Jingle Bell Hero React experience with rhythm controls and the shared overlay. If the game is disabled for non-admins it falls back to the standard Under Construction view.
-- `/fjerde-advent` — Hosts the Reindeer Rush endless runner and immersive canvas shell moved from Tredje Advent.
+- `/tredje-advent` — Hosts the Jingle Bell Hero Phaser scene. If the game is disabled for non-admins it falls back to the standard Under Construction view.
+- `/fjerde-advent` — Hosts the Reindeer Rush endless runner (Phaser scene in `static/reindeer_rush.js`).
 - `/admin` — Admin panel, only accessible to admin users after login.
 
 Database schema
@@ -82,23 +82,31 @@ Database schema
 Client behavior / Mini-games
 ----------------------------
 
-- Jule Snake (`/forste-advent`, `static/forste_advent.js`):
-  - Classic snake movement with arrow keys.
-  - On touch devices swiping in a direction also controls the snake; a decorative on-screen D-pad is present but does not obscure gameplay.
-  - Presents a high-score overlay titled "Søde Børn" when the game ends and the score qualifies.
-  - The overlay inserts an empty row at the player’s earned rank (lower entries shift down) and embeds the blinking cursor/input in that slot so the new name is typed directly into place; after saving, the panel remains open and shows the refreshed top 10 with the submitted score.
-  - While a qualifying entry is pending the overlay cannot be dismissed accidentally (ESC, taps, or external hide calls are ignored); once the name is saved or the panel is read-only it can be closed via Enter, Space, or by tapping outside the panel.
-  - High score submission uses `/api/scores/forste-advent` and respects the upsert semantics.
+All four games are Phaser 4 scenes (`static/vendor/phaser-4.2.1.min.js`). The rules live in pure modules that Jest tests; the views draw them and handle input. Every game ends with the shared score screen (`static/arcade_scene.js`): it shows the top 10, asks for a name if the score qualifies (max 18 characters, pre-filled with the player's name), and posts it. The game pauses while the screen is open.
 
-- Flappy Santa (`/anden-advent`, `static/anden_advent.js`):
-  - Santa is represented by `static/santa.gif`, riding a sleigh pulled by two stylized reindeer.
-  - Jump (flap) uses spacebar or mouse click. Flap height is tuned for playability and gravity is moderate.
-  - Background includes parallax layers:
-    - far clouds (slow), near clouds (faster), and silhouettes (trees/houses) at horizon.
-  - Speed slowly increases as score grows.
-  - Audio: The game attempts to detect a user-provided audio file in `static/` (e.g. `sleigh_bell.mp3`, `jingle.mp3`, etc.) and will use it for the flap jingle; otherwise a synthesized jingle is played.
-  - On game over the same inline high-score overlay flow appears and submits to `/api/scores/anden-advent`, keeping the leaderboard visible after the score is saved and enforcing the same dismissal rules (no exiting before saving, Enter/Space/tap to close afterwards).
-  - Tuning: `static/anden_config.js` exposes additional tuning keys for sprite and hitbox sizing: `reindeerSpriteScale`, `santaSpriteScale`, and `reindeerHitBoxScale`.
+- Jule Snake (`/forste-advent`, `static/forste_advent.js`, rules `static/snake_core.js`):
+  - Arrow keys or swipe (24px threshold) steer. The grid is 20 columns.
+  - Gifts come from a shuffle bag and become body skins in the order eaten.
+  - Space, Enter or an arrow key restart after game over. Scores post to `/api/scores/forste-advent`.
+
+- Flappy Santa (`/anden-advent`, `static/anden_advent.js`, rules `static/anden_core.js`):
+  - Tap, click or Space flaps. Gravity, flap impulse and speed scale with the canvas width.
+  - Chimneys have a gap that moves between spawns. Passing one scores a point.
+  - Levels at 25 and 50 points: from level 2 the next gap is previewed one second before it spawns; from level 3 it is always shown.
+  - Hitbox is 72% of the reindeer size. Scores post to `/api/scores/anden-advent`.
+
+- Jingle Bell Hero (`/tredje-advent`, `static/jingle_bell_hero.js`, rules `static/jingle_bell_rules.js`, audio and chart `static/jingle_bell_hero_core.js` / `static/jingle_bell_hero_chart.js`):
+  - Notes scroll down four lanes to the hit line. Tap a lane key at the beat, or hold for sustained notes and release at the end.
+  - Timing: PERFECT, GOOD and OK inside a 0.318s window; releases allow 1.2x that window.
+  - Four misses in a row cost a life; three lives. The first two levels use only the first note of each event.
+  - Level order: partridge-1 twice, partridge-2 twice, partridge-3 twice, then endless speed-ups. Scores post to `/api/scores/tredje-advent`.
+
+- Reindeer Rush (`/fjerde-advent`, `static/reindeer_rush.js`, rules `static/reindeer_core.js`):
+  - Rudolph runs at a speed that grows with distance. Tap or Space jumps once more in the air (double jump); swipe down or Down ducks; swipe right or Right dashes.
+  - Dashing gives brief invulnerability and smashes snowmen for 120 bonus points. Hitting a snowman otherwise ends the run, and so does falling off the screen.
+  - Score is distance (1 point per 50px) plus snowman bonuses. Simulation is fixed-step (1/60s), so the outcome does not depend on frame rate.
+  - Scores post to `/api/scores/fjerde-advent`.
+
 
 Authentication & Admins
 -----------------------
@@ -137,7 +145,7 @@ Developer notes
 
 - Run the test-suite: `uv run pytest`.
 - The app uses `uv` for virtualenv management; prefer `uv run` for all Python commands.
-- The server is configured to run under `gunicorn` inside the provided `Dockerfile` for production usage.
+- The server runs under uvicorn inside the provided `Dockerfile` for production usage.
 
 If a behavior in this document becomes out-of-sync with tests in the repository, update SPECS.md by re-generating the appropriate summaries from tests and commit the change.
 
@@ -145,9 +153,9 @@ Testing learnings
 -----------------
 Practical notes from recent mobile UI work have been collected in `TESTING.md`. Highlights:
 
-- Use `uv run pytest` for Python tests and `npx playwright test` for E2E; Playwright can auto-start the dev server via the `webServer` setting in `playwright.config.ts` (it runs `uv run python app.py`).
-- Prefer UI interactions in Playwright tests (fill form + submit) rather than `page.evaluate` fetch calls because server-side errors may return HTML debug pages which break JSON parsing.
+- Use `uv run pytest` for Python tests, `npx jest` for the game rules and `npx playwright test` for E2E. Playwright starts its own server on port 5001 via `e2e/serve.sh`, with a throwaway data folder and a known test login.
+- Playwright specs log in through `e2e/helpers/login.ts` (API call), not the login form, to avoid navigation races.
 - Ensure test accounts exist both in the `.env` used by tests and in the `secret-santa-<year>.json` assignments — missing mappings can raise server KeyErrors seen as HTML debug responses.
-- Keep DOM IDs and debug hooks stable (e.g., `snake-canvas`, `santa-canvas`, `window.__snakeDebug__`) so tests remain robust.
+- Keep the debug hooks the Playwright specs rely on stable: `window.__snakeDebug__`, `window.__andenDebug__`, `window.__jbhDebug__`, `window.__rrDebug__`, `window.__arcadeScores__`.
 
 See `TESTING.md` for the full checklist and commands.
