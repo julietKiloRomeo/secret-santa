@@ -203,6 +203,27 @@ def lodtraekning(request: Request):
     )
 
 
+# One-line promise shown on the games hub, per published game.
+GAME_BLURBS = {
+    "advent-1": "Styr nissen gennem snefyldte ruter og saml gaverne.",
+    "advent-2": "Flyv gennem skorstenene med sleden. Ét tryk, ét hop.",
+    "advent-3": "Ram tonerne i takt med klokkeklangen.",
+    "advent-4": "Løb, hop og dash med Rudolf over sne og snemænd.",
+    "advent-5": "Labyrint med småkager, slik og en sur julemand.",
+}
+
+
+@app.get("/spil")
+def spil(request: Request):
+    if not request.session.get("user"):
+        return to_login()
+    cards = [
+        {"id": g, "title": GAMES[g][0], "name": GAMES[g][1], "blurb": GAME_BLURBS[g]}
+        for g in PUBLISHED
+    ]
+    return render(request, "spil.html", cards=cards)
+
+
 @app.get("/high-scores")
 def high_scores(request: Request):
     if not request.session.get("user"):

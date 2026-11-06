@@ -1,78 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#06201a" />
   <title>{% block title %}Secret Santa{% endblock %}</title>
-  <!-- Tailwind CDN for quick integration (suitable for development) -->
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="/static/manifest.json" />
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/app.css" />
   <style>
-    /* Small custom overrides that are easier to keep here than inlined HTML */
-    #locked-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: .75rem 1.25rem; border-radius: .5rem; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: opacity .4s ease; }
-    body { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/api/placeholder/1920/1080'); background-size: cover; }
+    #locked-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); z-index: 2000; transition: opacity .4s ease; }
   </style>
 </head>
-<body class="text-white min-h-screen {% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
-  <nav class="bg-red-800 bg-opacity-95 fixed w-full top-0 z-50 shadow">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-14">
-        <div class="flex items-center">
-          <a href="/" class="text-white font-bold text-lg">🎄 Secret Santa</a>
-        </div>
-        <div class="flex items-center">
-          <div class="hidden md:block">
-            <div class="ml-4 flex items-baseline space-x-4">
-              {% if session.get('user') %}
-                {# Lodtrækning (gift-drawing) - quick access to your recipient #}
-                <a href="/lodtraekning" class="text-white hover:underline">Lodtrækning</a>
-                <a href="/high-scores" class="text-white hover:underline">High Scores</a>
-
-                {% for g in published_games %}
-                {% set _disabled = not game_enabled_for_user(g.id) %}
-                <a href="/{{ g.id }}" class="{{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white hover:underline" data-disabled="{{ '1' if _disabled else '0' }}">{{ g.title }}</a>
-                {% endfor %}
-
-
-                {% if is_admin_user() %}
-                  <a id="admin-link" href="/admin" class="text-white hover:underline">Admin</a>
-                {% endif %}
-              {% endif %}
-            </div>
-          </div>
-
-          <!-- Mobile menu button -->
-          <button id="nav-toggle" aria-label="Open main menu" class="ml-2 inline-flex items-center justify-center p-2 rounded-md text-white md:hidden" aria-controls="mobile-menu" aria-expanded="false">
-            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mobile menu, toggle with JS -->
-    <div id="mobile-menu" role="navigation" class="md:hidden hidden px-2 pt-2 pb-3 space-y-1">
+<body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+  <nav class="fixed inset-x-0 top-0 z-50 border-b border-gold-500/30 bg-pine-950/90 backdrop-blur">
+    <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+      <a href="/" class="font-display text-xl text-gold-300">🎄 Secret Santa</a>
       {% if session.get('user') %}
-        <a href="/lodtraekning" class="block px-3 py-2 rounded-md text-base font-medium text-white">Lodtrækning</a>
-        <a href="/high-scores" class="block px-3 py-2 rounded-md text-base font-medium text-white">High Scores</a>
-
-        {% for g in published_games %}
-        {% set _disabled = not game_enabled_for_user(g.id) %}
-        <a href="/{{ g.id }}" class="block px-3 py-2 rounded-md text-base font-medium {{ 'opacity-60 filter grayscale' if _disabled else '' }} text-white" data-disabled="{{ '1' if _disabled else '0' }}">{{ g.title }}</a>
-        {% endfor %}
-
-
-        {% if is_admin_user() %}
-          <a id="admin-link" href="/admin" class="block px-3 py-2 rounded-md text-base font-medium text-white">Admin</a>
-        {% endif %}
+      <div class="hidden items-center gap-5 text-sm md:flex">
+        <a href="/lodtraekning" class="hover:text-gold-300">Lodtrækning</a>
+        <a href="/spil" class="hover:text-gold-300">Spil</a>
+        <a href="/high-scores" class="hover:text-gold-300">High Scores</a>
+        {% if is_admin_user() %}<a id="admin-link" href="/admin" class="hover:text-gold-300">Admin</a>{% endif %}
+      </div>
+      <button id="nav-toggle" aria-label="Åbn menu" aria-controls="mobile-menu" aria-expanded="false" class="p-2 text-2xl md:hidden">☰</button>
       {% endif %}
     </div>
+    {% if session.get('user') %}
+    <div id="mobile-menu" class="hidden border-t border-gold-500/20 bg-pine-950 px-4 py-3 md:hidden">
+      <a href="/lodtraekning" class="block py-2">Lodtrækning</a>
+      <a href="/spil" class="block py-2">Spil</a>
+      <a href="/high-scores" class="block py-2">High Scores</a>
+      {% if is_admin_user() %}<a id="admin-link" href="/admin" class="block py-2">Admin</a>{% endif %}
+    </div>
+    {% endif %}
   </nav>
 
-  <main class="pt-16 px-4">
-    <div class="max-w-3xl mx-auto">
+  <main class="px-4 pb-24 pt-20">
+    <div class="mx-auto max-w-3xl">
       {% block content %}{% endblock %}
     </div>
   </main>

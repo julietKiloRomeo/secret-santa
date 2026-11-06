@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-body text-snow-50 bg-pine-950 min-h-screen;
+    background-image:
+      radial-gradient(1200px 600px at 50% -10%, rgba(249, 201, 74, 0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(177, 42, 58, 0.25), transparent 60%),
+      linear-gradient(180deg, #0b2e26 0%, #06201a 100%);
+    background-attachment: fixed;
+  }
+  h1, h2 { @apply font-display text-gold-300; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-semibold
+      shadow-lg transition active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60;
+  }
+  .btn-primary { @apply btn bg-cranberry-600 text-snow-50 hover:bg-cranberry-500; }
+  .btn-gold { @apply btn bg-gold-400 text-pine-950 hover:bg-gold-300; }
+  .xmas-card {
+    @apply rounded-3xl border border-gold-500/30 bg-pine-900/80 p-6 shadow-2xl backdrop-blur;
+  }
+  .field {
+    @apply block w-full rounded-2xl border border-gold-500/40 bg-snow-50 px-4 py-3 text-pine-950
+      placeholder-pine-700/60 shadow-inner focus:outline-none focus:ring-4 focus:ring-gold-300/50;
+  }
+}

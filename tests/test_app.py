@@ -69,8 +69,7 @@ def test_navbar(client):
     assert 'href="/advent-1"' not in client.get("/").text
     login(client, "emma")
     html = client.get("/").text
-    assert all(f'href="/{g}"' in html for g in PUBLISHED)
-    assert 'href="/advent-5"' not in html
+    assert 'href="/spil"' in html
     assert 'id="admin-link"' not in html
     login(client, "jimmy")
     for page in ["/", "/lodtraekning", "/high-scores", "/admin", "/advent-1"]:
@@ -279,3 +278,19 @@ def test_legacy_score_rows_move_to_advent_ids_once(appmod, client):
     client.post("/api/admin/reset_scores", json={"game": "advent-1"})
     appmod.init_db()
     assert client.get("/api/scores/advent-1").json()["scores"] == []
+
+
+def test_spil_hub_lists_published_games_with_danish_titles(client):
+    login(client, "emma")
+    resp = client.get("/spil")
+    assert resp.status_code == 200
+    html = resp.text
+    for g in PUBLISHED:
+        assert f'href="/{g}"' in html, g
+    assert 'href="/advent-5"' not in html
+    assert "Første Advent" in html and "Snake" in html
+
+
+def test_spil_hub_requires_login(client):
+    resp = client.get("/spil", follow_redirects=False)
+    assert resp.status_code == 302
