@@ -1,35 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Fjerde Advent{% endblock %}
-{% block body_attrs %}data-immersive-stage="reindeer-rush" data-immersive-active="0"{% endblock %}
 {% block content %}
-  <style>
-    .reindeer-snowman-hint {
-      position: absolute;
-      left: 50%;
-      bottom: 12%;
-      transform: translateX(-50%);
-      padding: 10px 14px;
-      background: rgba(15, 23, 42, 0.82);
-      color: #f8fafc;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 9999px;
-      border: 1px solid rgba(248, 250, 252, 0.2);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-      transition: opacity 240ms ease;
-      pointer-events: none;
-      z-index: 5;
-    }
-  </style>
-  <div class="max-w-4xl mx-auto p-6 space-y-6" aria-live="polite">
+  <div class="max-w-4xl mx-auto p-6 space-y-6">
     <section class="rounded-2xl bg-white/90 p-5 text-gray-900 shadow-xl space-y-2 text-center">
       <p class="text-sm text-gray-600">Player: <strong>{{ default_name|default('Nisse') }}</strong></p>
-      <p class="text-lg font-semibold">Run score: <span id="reindeer-score">0 pts</span></p>
-      <p class="font-semibold">Total score: <span id="reindeer-total-score">0 pts</span></p>
-      <p class="text-sm text-gray-600">Bonus: <span id="reindeer-bonus">0 pts</span></p>
-      <p class="text-sm text-gray-600">Tap/Space to start running · Swipe down to slide · Swipe right to dash</p>
-      <p class="text-xs text-gray-500">Speed: <strong id="reindeer-speed">0</strong> px/s · Obstacles: <strong id="reindeer-obstacles">0</strong> · Next item: <strong id="reindeer-next-item">—</strong></p>
+      <p class="text-sm text-gray-600">Tap eller mellemrum for at hoppe · Swipe ned eller pil ned for at ducke · Swipe højre eller pil højre for at dashe</p>
     </section>
+    <div id="reindeer-canvas" class="mx-auto w-full max-w-[1400px] aspect-[16/9] rounded-2xl overflow-hidden bg-[#0d093a] shadow-xl"></div>
     <section id="reindeer-pwa-cta" class="rounded-2xl bg-blue-900/70 p-4 text-sm text-white shadow-lg flex flex-col gap-2 items-center" hidden>
       <p class="font-semibold text-center">Install Reindeer Rush for full-screen play</p>
       <button
@@ -45,16 +22,6 @@
       </p>
     </section>
   </div>
-
-  <div id="reindeer-immersive-stage" class="reindeer-immersive-stage" aria-hidden="true">
-    <div class="reindeer-immersive-backdrop"></div>
-    <div class="reindeer-immersive-frame" role="application" aria-label="Reindeer Rush full-screen canvas">
-      <div id="reindeer-canvas" class="reindeer-immersive-canvas" role="presentation">Tap or press space to start running</div>
-      <div id="reindeer-snowman-hint" class="reindeer-snowman-hint">Swipe to dash through snowmen</div>
-    </div>
-    <p id="reindeer-immersive-hint" class="reindeer-immersive-hint">Rotate for landscape play</p>
-    <button type="button" id="reindeer-exit-immersive" class="reindeer-immersive-exit" aria-label="Exit Reindeer Rush landscape mode">Exit scenic view</button>
-  </div>
   <a
     href="/"
     class="fixed left-4 bottom-4 z-50 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur border border-white/20 hover:bg-white/25"
@@ -62,13 +29,9 @@
     ← Til forsiden
   </a>
 
-  <script>window.__defaultPlayerName__ = "{{ default_name|default('Nisse') }}";</script>
-  <script src="/static/arcade_overlay.js"></script>
-  <script src="/static/leaderboard_buttons.js"></script>
-  <script src="/static/matter.min.js"></script>
-  <script src="/static/reindeer_gestures.js"></script>
-  <script src="/static/reindeer_ground.js"></script>
-  <script src="/static/reindeer_rush.js"></script>
+  <script>window.__defaultPlayerName__ = {{ default_name|default('Nisse')|tojson }};</script>
+  <script src="/static/vendor/phaser-4.2.1.min.js"></script>
+  <script type="module" src="/static/reindeer_rush.js"></script>
   <script>
     (function () {
       const cta = document.getElementById('reindeer-pwa-cta');
@@ -79,18 +42,11 @@
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
       let deferredPrompt = null;
 
-      function showCTA() {
-        cta.hidden = false;
-        if (!deferredPrompt && installBtn) {
-          installBtn.hidden = true;
-        }
-      }
-
       window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
         deferredPrompt = event;
         if (installBtn) installBtn.hidden = false;
-        showCTA();
+        cta.hidden = false;
       });
 
       if (installBtn) {
@@ -107,7 +63,7 @@
 
       if (isiOS && !isStandalone) {
         if (iosHint) iosHint.hidden = false;
-        showCTA();
+        cta.hidden = false;
       }
     })();
   </script>
