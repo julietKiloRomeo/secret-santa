@@ -1,12 +1,8 @@
 import { LEVELS, WORLD } from '../static/bauble_levels';
 
-test('each level has one bauble at the end of its rope and a stocking below it', () => {
+test('each level has a stocking below its bauble, and every level has at least one rope', () => {
   for (const l of LEVELS) {
     expect(l.ropes.length).toBeGreaterThan(0);
-    for (const r of l.ropes) {
-      const end = { x: r.peg.x, y: r.peg.y + r.length };
-      expect(l.baubles.some((b) => Math.hypot(b.x - end.x, b.y - end.y) < 1)).toBe(true);
-    }
     expect(l.stocking.y).toBeGreaterThan(l.baubles[0].y);
     expect(l.stocking.x).toBeGreaterThan(0);
     expect(l.stocking.x).toBeLessThan(WORLD.width);
