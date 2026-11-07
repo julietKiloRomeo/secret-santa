@@ -203,6 +203,21 @@ def lodtraekning(request: Request):
     )
 
 
+# Full-screen shell settings per game: stage/canvas ids, HUD title, hint line and Phaser script.
+GAME_SHELL = {
+    "advent-1": {"stage_id": "snake-stage", "canvas_wrap_id": "snake-wrap", "game_title": "Jule Snake",
+                 "game_hint": "Swipe eller piletaster for at styre", "game_script": "forste_advent.js"},
+    "advent-2": {"stage_id": "santa-stage", "canvas_wrap_id": "santa-canvas-wrap", "game_title": "Flappy Santa",
+                 "game_hint": "Tryk eller mellemrum for at flyve", "game_script": "anden_advent.js"},
+    "advent-3": {"stage_id": "bell-stage", "canvas_wrap_id": "jingle-bell-hero-root", "game_title": "Jingle Bell Hero",
+                 "game_hint": "D F J K eller tryk på linjerne", "game_script": "jingle_bell_hero.js"},
+    "advent-4": {"stage_id": "reindeer-stage", "canvas_wrap_id": "reindeer-canvas", "game_title": "Reindeer Rush",
+                 "game_hint": "Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe",
+                 "game_script": "reindeer_rush.js"},
+    "advent-5": {"stage_id": "pac-stage", "canvas_wrap_id": "pac-santa-canvas-wrap", "game_title": "Pac-Santa",
+                 "game_hint": "Swipe eller piletaster for at styre", "game_script": "pac_santa.js"},
+}
+
 # One-line promise shown on the games hub, per published game.
 GAME_BLURBS = {
     "advent-1": "Styr nissen gennem snefyldte ruter og saml gaverne.",
@@ -251,7 +266,8 @@ def game_page(request: Request, game: str = Depends(known_game)):
     title, _, template = GAMES[game]
     if user not in ADMINS and not is_game_enabled(game):
         return render(request, "under_construction.html", title=title)
-    return render(request, template, title=title, game=game, default_name=user)
+    shell = GAME_SHELL.get(game, {})
+    return render(request, template, title=title, game=game, default_name=user, **shell)
 
 
 # --- api -------------------------------------------------------------------

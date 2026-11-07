@@ -28,4 +28,48 @@
     @apply block w-full rounded-2xl border border-gold-500/40 bg-snow-50 px-4 py-3 text-pine-950
       placeholder-pine-700/60 shadow-inner focus:outline-none focus:ring-4 focus:ring-gold-300/50;
   }
+
+  /* Full-screen game shell: no page scroll, canvas fills the viewport. */
+  body.arcade-fullscreen {
+    @apply overflow-hidden;
+    height: 100dvh;
+  }
+  body.arcade-fullscreen nav {
+    @apply hidden;
+  }
+  body.arcade-fullscreen main {
+    @apply p-0;
+  }
+  body.arcade-fullscreen main > div {
+    @apply max-w-none p-0;
+  }
+  .game-stage {
+    @apply fixed inset-0 flex flex-col bg-pine-950 overflow-hidden;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .game-canvas {
+    @apply relative flex-1 min-h-0 w-full overflow-hidden;
+  }
+  .game-canvas canvas {
+    @apply absolute inset-0 m-auto max-h-full max-w-full;
+  }
+  .game-hud {
+    @apply pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-3;
+  }
+  .game-back {
+    @apply pointer-events-auto rounded-full bg-pine-950/80 px-4 py-2 text-sm font-semibold text-snow-50
+      shadow-lg backdrop-blur border border-gold-500/40 hover:border-gold-300;
+  }
+  .game-title {
+    @apply font-display text-lg text-gold-300 drop-shadow;
+  }
+  .game-score {
+    @apply pointer-events-none font-semibold text-snow-50 drop-shadow;
+  }
+  .game-status {
+    @apply pointer-events-none absolute inset-x-0 top-16 text-center text-sm text-snow-100/80;
+  }
+  .game-hint {
+    @apply pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-snow-100/70;
+  }
 }
