@@ -33,6 +33,7 @@ class BaubleScene extends Phaser.Scene {
     this.matter.world.setBounds(0, 0, WORLD.width, WORLD.height);
     this.matter.world.engine.gravity.y = 1;
     this.level = LEVELS[i];
+    this.walls = (this.level.walls ?? []).map((w) => this.matter.add.rectangle(w.x, w.y, w.w, w.h, { isStatic: true, angle: w.angle }));
     this.ropes = this.level.ropes.map((r) => this.makeRope(r));
     this.baubles = this.level.baubles.map((b) => this.matter.add.circle(b.x, b.y, BAUBLE_R, { restitution: 0.2, friction: 0.05 }));
     // The stocking is a bowl: a solid floor and two side walls around a catch area, with a sensor
@@ -126,6 +127,11 @@ class BaubleScene extends Phaser.Scene {
     g.clear();
     const s = this.level.stocking;
     g.fillStyle(COLORS.stocking, 1).fillRect(s.x - s.w / 2, s.y - s.h / 2, s.w, s.h);
+    g.fillStyle(COLORS.stocking, 1);
+    for (const w of this.walls) {
+      const v = w.vertices;
+      g.fillPoints(v, true);
+    }
     for (const rope of this.ropes) {
       g.lineStyle(3, COLORS.rope, 1);
       for (let k = 0; k + 1 < rope.links.length; k++) {
