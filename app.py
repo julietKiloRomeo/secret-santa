@@ -33,6 +33,11 @@ GAMES = {
     "advent-3": ("Tredje Advent", "Jingle Bell Hero", "tredje_advent.html"),
     "advent-4": ("Fjerde Advent", "Reindeer Rush", "fjerde_advent.html"),
     "advent-5": ("Femte Advent", "Pac-Santa", "femte_advent.html"),
+    "advent-6": ("Sjette Advent", "Nissen & Kuglen", "bauble.html"),
+    "advent-7": ("Syvende Advent", "Snøkugle-kast", "under_construction.html"),
+    "advent-8": ("Ottende Advent", "Pakkepuslespil", "under_construction.html"),
+    "advent-9": ("Niende Advent", "Julebag", "under_construction.html"),
+    "advent-10": ("Tiende Advent", "Nisse-hop", "under_construction.html"),
 }
 # Games listed in the navbar and high-score page. Change to publish a different four.
 PUBLISHED = ["advent-1", "advent-2", "advent-3", "advent-4"]
@@ -214,6 +219,9 @@ GAME_SHELL = {
     "advent-4": {"stage_id": "reindeer-stage", "canvas_wrap_id": "reindeer-canvas", "game_title": "Reindeer Rush",
                  "game_hint": "Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe",
                  "game_script": "reindeer_rush.js"},
+    "advent-6": {"stage_id": "bauble-stage", "canvas_wrap_id": "bauble-wrap", "game_title": "Nissen & Kuglen",
+                 "game_hint": "Træk, fjern eller drej klodserne, så kuglen falder i stjernen",
+                 "game_script": "bauble.js"},
     "advent-5": {"stage_id": "pac-stage", "canvas_wrap_id": "pac-santa-canvas-wrap", "game_title": "Pac-Santa",
                  "game_hint": "Swipe eller piletaster for at styre", "game_script": "pac_santa.js"},
 }
@@ -225,6 +233,11 @@ GAME_BLURBS = {
     "advent-3": "Ram tonerne i takt med klokkeklangen.",
     "advent-4": "Løb, hop og dash med Rudolf over sne og snemænd.",
     "advent-5": "Labyrint med småkager, slik og en sur julemand.",
+    "advent-6": "Få kuglen ned i stjernen med så få træk som muligt.",
+    "advent-7": "Kast snebolde mod de bevægelige mål.",
+    "advent-8": "Skub og drej indpakningerne, så gaverne passer.",
+    "advent-9": "Hæng pynten på træet, før tiden løber ud.",
+    "advent-10": "Hop op gennem nisselandet fra platform til platform.",
 }
 
 
@@ -233,8 +246,8 @@ def spil(request: Request):
     if not request.session.get("user"):
         return to_login()
     cards = [
-        {"id": g, "title": GAMES[g][0], "name": GAMES[g][1], "blurb": GAME_BLURBS[g]}
-        for g in PUBLISHED
+        {"id": g, "title": GAMES[g][0], "name": GAMES[g][1], "blurb": GAME_BLURBS[g], "published": g in PUBLISHED}
+        for g in GAMES
     ]
     return render(request, "spil.html", cards=cards)
 

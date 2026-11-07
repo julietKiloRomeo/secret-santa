@@ -13,7 +13,7 @@
       <span class="text-sm uppercase tracking-widest text-gold-300/80">{{ c.title }}</span>
       <span class="font-display text-3xl text-snow-50 group-hover:text-gold-300">{{ c.name }}</span>
       <span class="text-snow-100/80">{{ c.blurb }}</span>
-      {% if _disabled %}<span class="mt-2 text-xs text-snow-100/60">Kommer snart</span>{% endif %}
+      {% if _disabled or not c.published %}<span class="mt-2 text-xs text-snow-100/60">Kommer snart</span>{% endif %}
     </a>
     {% endfor %}
   </div>

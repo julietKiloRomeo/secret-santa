@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 from conftest import NAMES, login
 
-GAMES = ["advent-1", "advent-2", "advent-3", "advent-4", "advent-5"]
+GAMES = [f"advent-{n}" for n in range(1, 11)]
+# Candidates with no game built yet render a placeholder for everyone, admins included.
+BUILT = ["advent-1", "advent-2", "advent-3", "advent-4", "advent-5", "advent-6"]
 PUBLISHED = ["advent-1", "advent-2", "advent-3", "advent-4"]
 
 
@@ -136,7 +138,7 @@ def test_draw_locked(client, monkeypatch):
 
 def test_admin_game_toggle(client):
     login(client, "jimmy")
-    for game in GAMES:
+    for game in BUILT:
         assert (
             client.post(
                 "/api/admin/set_game", json={"game": game, "enabled": False}
@@ -287,10 +289,18 @@ def test_spil_hub_lists_published_games_with_danish_titles(client):
     html = resp.text
     for g in PUBLISHED:
         assert f'href="/{g}"' in html, g
-    assert 'href="/advent-5"' not in html
+    assert "Kommer snart" in html
     assert "Første Advent" in html and "Snake" in html
 
 
 def test_spil_hub_requires_login(client):
     resp = client.get("/spil", follow_redirects=False)
     assert resp.status_code == 302
+
+
+def test_spil_hub_lists_every_candidate_with_launchers(client):
+    login(client, "emma")
+    html = client.get("/spil").text
+    for g in GAMES:
+        assert f'href="/{g}"' in html, g
+    assert "Kommer snart" in html
