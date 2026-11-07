@@ -55,4 +55,31 @@ export const LEVELS = [
     stocking: { x: 320, y: 820, w: 120, h: 80 },
     solution: [{ from: { x: 380, y: 190 }, to: { x: 540, y: 190 } }],
   },
+  {
+    name: 'Modsat',
+    // Mirror of level 3: the ledge slopes down to the left and the bowl is on that side.
+    ropes: [{ peg: { x: 400, y: 100 }, length: 260, segments: 11 }],
+    baubles: [{ x: 400, y: 360 }],
+    walls: [{ x: 360, y: 520, w: 300, h: 22, angle: -0.3 }],
+    stocking: { x: 160, y: 820, w: 120, h: 80 },
+    solution: [{ from: { x: 320, y: 220 }, to: { x: 480, y: 220 } }],
+  },
+  {
+    name: 'Snor',
+    // A rope on the left drops the bauble onto a long ledge that rolls it right, into the bowl.
+    ropes: [{ peg: { x: 120, y: 120 }, length: 280, segments: 11 }],
+    baubles: [{ x: 120, y: 400 }],
+    walls: [{ x: 230, y: 580, w: 340, h: 22, angle: 0.45 }],
+    stocking: { x: 440, y: 820, w: 120, h: 80 },
+    solution: [{ from: { x: 60, y: 240 }, to: { x: 180, y: 240 } }],
+  },
+  {
+    name: 'Bakke',
+    // The bauble hangs clear above a steep ledge. Cut the rope and it rolls off the ledge's low end into the bowl.
+    ropes: [{ peg: { x: 150, y: 100 }, length: 240, segments: 12 }],
+    baubles: [{ x: 150, y: 340 }],
+    walls: [{ x: 250, y: 500, w: 260, h: 22, angle: 0.4 }],
+    stocking: { x: 400, y: 820, w: 120, h: 80 },
+    solution: [{ from: { x: 90, y: 220 }, to: { x: 210, y: 220 } }],
+  },
 ];
