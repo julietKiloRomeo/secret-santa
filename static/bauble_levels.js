@@ -6,8 +6,8 @@ export const LEVELS = [
   {
     name: 'Første fald',
     bauble: { x: 220, y: 120 },
-    star: { x: 420, y: 760, r: 34 },
-    pieces: [{ kind: 'block', x: 220, y: 330, w: 260, h: 24, angle: 0, movable: true, removable: true }],
+    star: { x: 220, y: 780, r: 34 },
+    pieces: [{ kind: 'block', x: 220, y: 330, w: 160, h: 24, angle: 0, movable: true, removable: true }],
   },
   {
     name: 'Rampen',

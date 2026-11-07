@@ -38,3 +38,13 @@ test('the first level has no fixed pieces in the way: the player can solve it by
   const removable = LEVELS[0].pieces.filter((p) => p.removable);
   expect(removable.length).toBeGreaterThanOrEqual(1);
 });
+
+test('level 1 is solved by removing its one block: the bauble drops straight onto the star', () => {
+  const l = LEVELS[0];
+  // Straight drop: the star must sit below the bauble within its own radius horizontally.
+  expect(Math.abs(l.star.x - l.bauble.x)).toBeLessThanOrEqual(l.star.r);
+  expect(l.star.y).toBeGreaterThan(l.bauble.y);
+  // The block must be on that drop line, so removing it is the solution.
+  const blocks = l.pieces.filter((p) => p.removable);
+  expect(blocks.some((p) => Math.abs(p.x - l.bauble.x) <= p.w / 2)).toBe(true);
+});
