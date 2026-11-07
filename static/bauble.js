@@ -19,7 +19,7 @@ class BaubleScene extends Phaser.Scene {
     this.input.on('pointermove', (p) => this.onMove(p));
     this.input.on('pointerup', () => this.onUp());
     this.loadLevel(0);
-    window.__baubleDebug__ = { snapshot: () => this.snapshot(), jump: (i) => { this.run.index = i; this.run.moves = 0; this.loadLevel(i); } };
+    window.__baubleDebug__ = { snapshot: () => this.snapshot() };
   }
 
   loadLevel(i) {
