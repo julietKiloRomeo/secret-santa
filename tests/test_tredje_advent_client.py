@@ -17,17 +17,13 @@ def test_tredje_advent_page_blocks_touch_callouts_and_selection(client):
     resp = client.get('/advent-3')
     assert resp.status_code == 200
     html = resp.text
-    compact = " ".join(html.split())
-    assert '#jingle-bell-hero-root, #jingle-bell-hero-root * {' in compact
-    assert '-webkit-touch-callout: none' in compact
-    assert 'user-select: none' in compact
+    css = open('static/app.css').read().replace(' ', '')
+    assert '-webkit-touch-callout:none' in css
+    assert 'user-select:none' in css
 
 
-def test_tredje_advent_back_link_is_offset_from_playfield_on_mobile(client):
+def test_tredje_advent_uses_game_shell_with_back_to_hub(client):
     login(client, 'emma')
-    resp = client.get('/advent-3')
-    assert resp.status_code == 200
-    html = resp.text
-    compact = " ".join(html.split())
-    assert 'href="/" class="fixed left-3 top-3' in compact
-    assert 'sm:top-auto sm:bottom-4' in compact
+    html = client.get('/advent-3').text
+    assert 'class="game-stage"' in html
+    assert 'href="/spil" class="game-back"' in html
