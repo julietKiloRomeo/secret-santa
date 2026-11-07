@@ -19,10 +19,12 @@ class BaubleScene extends Phaser.Scene {
     this.input.on('pointermove', (p) => this.onMove(p));
     this.input.on('pointerup', () => this.onUp());
     this.loadLevel(0);
-    window.__baubleDebug__ = { snapshot: () => this.snapshot() };
+    window.__baubleDebug__ = { snapshot: () => this.snapshot(), jump: (i) => { this.run.index = i; this.run.moves = 0; this.loadLevel(i); } };
   }
 
   loadLevel(i) {
+    // Clear the previous level's bodies, otherwise leftovers (and an old bauble) stay in the world.
+    for (const b of this.matter.world.getAllBodies()) if (!this.isWall(b)) this.matter.world.remove(b);
     this.matter.world.setBounds(0, 0, WORLD.width, WORLD.height);
     this.matter.world.engine.gravity.y = 1;
     this.level = LEVELS[i];
@@ -31,6 +33,10 @@ class BaubleScene extends Phaser.Scene {
     this.state = 'playing';
     this.drag = null;
     this.draw();
+  }
+
+  isWall(b) {
+    return b.isStatic && (b.position.y === -32 || b.position.y === 932 || b.position.x === -32 || b.position.x === 672);
   }
 
   makePiece(p) {
