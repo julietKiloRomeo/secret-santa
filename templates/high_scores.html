@@ -1,28 +1,25 @@
 {% extends 'base.html' %}
 {% block title %}High Scores{% endblock %}
 {% block content %}
-  <div class="max-w-4xl mx-auto p-4 sm:p-6 text-white">
-    <div class="bg-slate-900/80 rounded-2xl shadow-xl p-6 sm:p-8 border border-white/10">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div>
-          <h1 class="text-2xl font-bold">High Scores</h1>
-          <p class="text-sm text-white/70">Swipe or use Prev/Next to browse games. Tap a score to celebrate!</p>
-        </div>
-        <div class="flex gap-2">
-          <button id="hs-prev" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10">Prev</button>
-          <button id="hs-next" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10">Next</button>
-        </div>
+  <section class="xmas-card">
+    <header class="text-center">
+      <p class="text-sm uppercase tracking-widest text-gold-300/80">Julens rekorder</p>
+      <h1 class="mt-1 text-4xl">High Scores</h1>
+      <p class="mt-2 text-snow-100/80">Top 10 for hvert spil. Brug pilene for at skifte spil.</p>
+    </header>
+
+    <nav class="mt-6 flex items-center justify-between gap-2">
+      <button id="hs-prev" aria-label="Forrige spil" class="btn-gold h-11 w-11 !px-0 text-xl">‹</button>
+      <div class="text-center">
+        <div id="hs-game-label" class="font-display text-2xl text-gold-300">Henter…</div>
+        <button id="hs-home" class="mt-1 text-xs text-snow-100/70 underline hover:text-gold-300">Tilbage til spil</button>
       </div>
-      <div class="flex items-center justify-between bg-slate-800/80 rounded-lg px-4 py-3 border border-white/10">
-        <div class="text-lg font-semibold" id="hs-game-label">Loading…</div>
-        <button id="hs-home" class="text-sm text-yellow-300 hover:text-yellow-200 underline">Back to menu</button>
-      </div>
-      <div class="mt-4">
-        <ol id="hs-list" class="space-y-2 text-sm"></ol>
-      </div>
-      <div id="hs-status" class="mt-3 text-sm text-red-200 hidden"></div>
-    </div>
-  </div>
+      <button id="hs-next" aria-label="Næste spil" class="btn-gold h-11 w-11 !px-0 text-xl">›</button>
+    </nav>
+
+    <ol id="hs-list" class="mt-6 space-y-2"></ol>
+    <div id="hs-status" class="mt-4 hidden rounded-2xl border border-cranberry-500/60 bg-cranberry-700/40 p-3 text-sm"></div>
+  </section>
   <script>
     (function () {
       const games = {{ games|tojson }};
@@ -38,23 +35,23 @@
         listEl.innerHTML = '';
         if (!scores || !scores.length) {
           const li = document.createElement('li');
-          li.textContent = 'Ingen scores endnu.';
+          li.className = 'text-snow-100/70'; li.textContent = 'Ingen scores endnu. Bliv den første!';
           listEl.appendChild(li);
           return;
         }
         scores.slice(0, 10).forEach((entry, i) => {
           const li = document.createElement('li');
-          li.className = 'flex items-center justify-between bg-slate-800/60 px-3 py-2 rounded-lg border border-white/5';
+          li.className = 'flex items-center justify-between rounded-2xl border border-gold-500/20 bg-pine-950/60 px-4 py-3';
           const left = document.createElement('div');
           left.className = 'flex items-center gap-2';
           const rank = document.createElement('span');
-          rank.className = 'font-bold text-yellow-300';
+          rank.className = 'w-7 font-display text-xl text-gold-300';
           rank.textContent = i + 1;
           const name = document.createElement('span');
           name.textContent = entry.name;
           left.append(rank, name);
           const pts = document.createElement('span');
-          pts.className = 'font-mono text-sm';
+          pts.className = 'font-mono text-lg text-snow-50';
           pts.textContent = entry.score;
           li.append(left, pts);
           listEl.appendChild(li);
@@ -65,7 +62,7 @@
         const [gameId, label] = games[idx] || games[0];
         labelEl.textContent = label || gameId;
         statusEl.classList.add('hidden');
-        listEl.innerHTML = '<li class="text-sm text-white/70">Henter scores…</li>';
+        listEl.innerHTML = '<li class="text-sm text-snow-100/70">Henter scores…</li>';
         try {
           const resp = await fetch(`/api/scores/${gameId}`);
           if (!resp.ok) throw new Error(`Status ${resp.status}`);
@@ -94,7 +91,7 @@
         loadScores();
       });
       homeBtn?.addEventListener('click', () => {
-        window.location.href = '/';
+        window.location.href = '/spil';
       });
 
       loadScores();
