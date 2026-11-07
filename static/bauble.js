@@ -1,6 +1,6 @@
 // Nissen & Kuglen view: Matter physics inside Phaser. Rules live in bauble_core.js, levels in bauble_levels.js.
 import { LEVELS, WORLD } from './bauble_levels.js';
-import { createRun, addMove, finishLevel, isDone, totalScore, reachedStar, fellOff } from './bauble_core.js';
+import { createRun, finishLevel, isDone, totalScore, reachedStar, fellOff } from './bauble_core.js';
 import { showScores } from './arcade_scene.js';
 
 const COLORS = { bauble: 0xffd23f, star: 0xfff3b0, block: 0xb02a3a, ramp: 0x1a5a4c, rope: 0xe8d9b0 };
@@ -31,6 +31,7 @@ class BaubleScene extends Phaser.Scene {
     this.pieces = this.level.pieces.map((p) => this.makePiece(p));
     this.bauble = this.matter.add.circle(this.level.bauble.x, this.level.bauble.y, 18, { restitution: 0.2, friction: 0.05 });
     this.state = 'playing';
+    this.levelStart = this.time.now;
     this.drag = null;
     this.draw();
   }
@@ -55,7 +56,6 @@ class BaubleScene extends Phaser.Scene {
     if (hit.def.removable && !this.drag) {
       this.matter.world.remove(hit.body);
       hit.body = null;
-      addMove(this.run);
       this.draw();
       return;
     }
@@ -71,7 +71,6 @@ class BaubleScene extends Phaser.Scene {
 
   onUp() {
     if (!this.drag) return;
-    if (this.drag.moved) addMove(this.run);
     this.drag = null;
   }
 
@@ -90,14 +89,13 @@ class BaubleScene extends Phaser.Scene {
 
   finish(won) {
     this.state = 'over';
-    if (won) finishLevel(this.run);
+    if (won) finishLevel(this.run, (this.time.now - this.levelStart) / 1000);
     this.draw();
     setTimeout(() => this.next(won), 900);
   }
 
   async next(won) {
     if (!won) {
-      this.run.moves = 0; // a fall is a retry: the level's moves start again
       return this.loadLevel(this.run.index);
     }
     if (!isDone(this.run)) return this.loadLevel(this.run.index);
@@ -120,13 +118,12 @@ class BaubleScene extends Phaser.Scene {
     }
     const b = this.bauble.position;
     g.fillStyle(COLORS.bauble, 1).fillCircle(b.x, b.y, 18);
-    this.hud.setText(`Bane ${this.run.index + 1}/${LEVELS.length}  ·  Træk ${this.run.moves}`);
+    this.hud.setText(`Bane ${this.run.index + 1}/${LEVELS.length}`);
   }
 
   snapshot() {
     return {
       level: this.run.index,
-      moves: this.run.moves,
       state: this.state,
       bauble: { x: this.bauble.position.x, y: this.bauble.position.y },
       scores: this.run.scores,
