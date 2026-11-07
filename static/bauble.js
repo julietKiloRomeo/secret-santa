@@ -1,9 +1,12 @@
-// Nissen & Kuglen view: Matter physics inside Phaser. Rules live in bauble_core.js, levels in bauble_levels.js.
+// Nissen & Kuglen view: rope-cutting in Matter physics inside Phaser.
+// Rules live in bauble_core.js, levels in bauble_levels.js.
 import { LEVELS, WORLD } from './bauble_levels.js';
-import { createRun, finishLevel, isDone, totalScore, reachedStar, fellOff } from './bauble_core.js';
+import { createRun, finishLevel, isDone, totalScore, fellOff, segmentsCross } from './bauble_core.js';
 import { showScores } from './arcade_scene.js';
 
-const COLORS = { bauble: 0xffd23f, star: 0xfff3b0, block: 0xb02a3a, ramp: 0x1a5a4c, rope: 0xe8d9b0 };
+const COLORS = { bauble: 0xffd23f, stocking: 0xb02a3a, rope: 0xe8d9b0, peg: 0xd4a017 };
+const BAUBLE_R = 18;
+const LINK = 6;
 
 class BaubleScene extends Phaser.Scene {
   constructor() {
@@ -15,109 +18,125 @@ class BaubleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#06201a');
     this.g = this.add.graphics();
     this.hud = this.add.text(12, 12, '', { fontFamily: 'monospace', fontSize: '18px', color: '#fff3b0' }).setDepth(10);
-    this.input.on('pointerdown', (p) => this.onDown(p));
-    this.input.on('pointermove', (p) => this.onMove(p));
-    this.input.on('pointerup', () => this.onUp());
+    this.swipe = null;
+    this.input.on('pointerdown', (p) => (this.swipe = { a: { x: p.x, y: p.y }, b: { x: p.x, y: p.y } }));
+    this.input.on('pointermove', (p) => this.swipe && this.onSwipe(p));
+    this.input.on('pointerup', () => (this.swipe = null));
     this.loadLevel(0);
     window.__baubleDebug__ = { snapshot: () => this.snapshot() };
   }
 
   loadLevel(i) {
-    // Clear the previous level's bodies, otherwise leftovers (and an old bauble) stay in the world.
+    // Clear the previous level's bodies, otherwise leftovers stay in the world.
     for (const b of this.matter.world.getAllBodies()) if (!this.isWall(b)) this.matter.world.remove(b);
+    for (const c of this.matter.world.getAllConstraints()) this.matter.world.remove(c);
     this.matter.world.setBounds(0, 0, WORLD.width, WORLD.height);
     this.matter.world.engine.gravity.y = 1;
     this.level = LEVELS[i];
-    this.pieces = this.level.pieces.map((p) => this.makePiece(p));
-    this.bauble = this.matter.add.circle(this.level.bauble.x, this.level.bauble.y, 18, { restitution: 0.2, friction: 0.05 });
+    this.ropes = this.level.ropes.map((r) => this.makeRope(r));
+    this.baubles = this.level.baubles.map((b) => this.matter.add.circle(b.x, b.y, BAUBLE_R, { restitution: 0.2, friction: 0.05 }));
+    // The stocking is a bowl: a solid floor and two side walls around a catch area, with a sensor
+    // above it. The bauble counts as landed only once it is inside the bowl and nearly at rest.
+    const st = this.level.stocking;
+    const t = 10;
+    this.matter.add.rectangle(st.x, st.y + st.h / 2, st.w, t, { isStatic: true });
+    this.matter.add.rectangle(st.x - st.w / 2, st.y, t, st.h, { isStatic: true });
+    this.matter.add.rectangle(st.x + st.w / 2, st.y, t, st.h, { isStatic: true });
+    this.catch = { x: st.x, y: st.y - st.h / 2, w: st.w, h: st.h };
+    this.landed = false;
     this.state = 'playing';
     this.levelStart = this.time.now;
-    this.drag = null;
     this.draw();
+  }
+
+  // A rope is a chain of links from a peg to the bauble. Each link keeps a constraint so a cut can drop it.
+  makeRope(r) {
+    const seg = r.length / r.segments;
+    const anchor = this.matter.add.circle(r.peg.x, r.peg.y, 4, { isStatic: true });
+    const links = [];
+    for (let k = 0; k < r.segments; k++) {
+      links.push(this.matter.add.rectangle(r.peg.x, r.peg.y + (k + 1) * seg, LINK, seg, { frictionAir: 0.02 }));
+    }
+    const cs = [this.matter.add.constraint(anchor, links[0], 0, 1, { length: 0 })];
+    for (let k = 0; k + 1 < links.length; k++) {
+      cs.push(this.matter.add.constraint(links[k], links[k + 1], 0, 1, { length: 0 }));
+    }
+    return { peg: r.peg, links, constraints: cs, cut: false };
   }
 
   isWall(b) {
     return b.isStatic && (b.position.y === -32 || b.position.y === 932 || b.position.x === -32 || b.position.x === 672);
   }
 
-  makePiece(p) {
-    // Pieces stay put until the player moves them; only the bauble is free-falling.
-    const opts = { isStatic: true, angle: p.angle || 0, friction: 0.4 };
-    const body = p.kind === 'rope'
-      ? this.matter.add.rectangle(p.x, p.y, p.length, 8, opts)
-      : this.matter.add.rectangle(p.x, p.y, p.w, p.h, opts);
-    return { def: p, body };
-  }
-
-  onDown(p) {
+  onSwipe(p) {
+    this.swipe.b = { x: p.x, y: p.y };
     if (this.state !== 'playing') return;
-    const hit = this.pieces.find((pc) => pc.body && this.containsPoint(pc.body, p));
-    if (!hit) return;
-    if (hit.def.removable && !this.drag) {
-      this.matter.world.remove(hit.body);
-      hit.body = null;
-      this.draw();
-      return;
+    for (const rope of this.ropes) {
+      if (rope.cut) continue;
+      for (let k = 0; k + 1 < rope.links.length; k++) {
+        const a = rope.links[k].position;
+        const b = rope.links[k + 1].position;
+        if (segmentsCross(this.swipe, { a, b })) {
+          this.cutRope(rope, k);
+          return;
+        }
+      }
     }
-    if (hit.def.movable) this.drag = { piece: hit, dx: p.x - hit.body.position.x, dy: p.y - hit.body.position.y };
   }
 
-  onMove(p) {
-    if (!this.drag) return;
-    const b = this.drag.piece.body;
-    this.matter.body.setPosition(b, { x: p.x - this.drag.dx, y: p.y - this.drag.dy });
-    this.drag.moved = true;
-  }
-
-  onUp() {
-    if (!this.drag) return;
-    this.drag = null;
-  }
-
-  containsPoint(body, p) {
-    const { min, max } = body.bounds;
-    return p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y;
+  cutRope(rope, k) {
+    rope.cut = true;
+    const c = rope.constraints[k];
+    if (c) this.matter.world.remove(c);
+    this.cutStart = this.cutStart ?? this.time.now;
+    this.draw();
   }
 
   update() {
     if (this.state !== 'playing') return;
-    const pos = this.bauble.position;
-    if (reachedStar(pos, { ...this.level.star })) return this.finish(true);
-    if (fellOff(pos, WORLD.height)) return this.finish(false);
+    const c = this.catch;
+    for (const bauble of this.baubles) {
+      const p = bauble.position;
+      const inside = Math.abs(p.x - c.x) <= c.w / 2 && p.y > c.y && p.y <= c.y + c.h;
+      const rest = Math.abs(bauble.velocity.y) < 0.3 && Math.abs(bauble.velocity.x) < 0.3;
+      if (inside && rest) return this.finish(true);
+      if (fellOff(bauble.position, WORLD.height)) return this.finish(false);
+    }
     this.draw();
   }
 
   finish(won) {
     this.state = 'over';
-    if (won) finishLevel(this.run, (this.time.now - this.levelStart) / 1000);
+    if (won) finishLevel(this.run, (this.time.now - (this.cutStart ?? this.levelStart)) / 1000);
     this.draw();
     setTimeout(() => this.next(won), 900);
   }
 
   async next(won) {
-    if (!won) {
-      return this.loadLevel(this.run.index);
-    }
-    if (!isDone(this.run)) return this.loadLevel(this.run.index);
+    this.cutStart = null;
+    if (!won || !isDone(this.run)) return this.loadLevel(this.run.index);
     await showScores(this, { gameId: 'advent-6', score: totalScore(this.run), title: 'Nissen & Kuglen' });
     this.run = createRun(LEVELS.length);
+    this.cutStart = null;
     this.loadLevel(0);
   }
 
   draw() {
     const g = this.g;
     g.clear();
-    const s = this.level.star;
-    g.fillStyle(COLORS.star, 1).fillCircle(s.x, s.y, s.r);
-    for (const pc of this.pieces) {
-      if (!pc.body) continue;
-      const { x, y } = pc.body.position;
-      g.fillStyle(COLORS[pc.def.kind] ?? COLORS.block, 1);
-      if (pc.def.kind === 'rope') g.fillRect(x - pc.def.length / 2, y - 4, pc.def.length, 8);
-      else g.fillRect(x - pc.def.w / 2, y - pc.def.h / 2, pc.def.w, pc.def.h);
+    const s = this.level.stocking;
+    g.fillStyle(COLORS.stocking, 1).fillRect(s.x - s.w / 2, s.y - s.h / 2, s.w, s.h);
+    for (const rope of this.ropes) {
+      g.lineStyle(3, COLORS.rope, 1);
+      for (let k = 0; k + 1 < rope.links.length; k++) {
+        if (rope.cut && k === 0) continue;
+        const a = rope.links[k].position;
+        const b = rope.links[k + 1].position;
+        g.lineBetween(a.x, a.y, b.x, b.y);
+      }
+      g.fillStyle(COLORS.peg, 1).fillCircle(rope.peg.x, rope.peg.y, 5);
     }
-    const b = this.bauble.position;
-    g.fillStyle(COLORS.bauble, 1).fillCircle(b.x, b.y, 18);
+    for (const b of this.baubles) g.fillStyle(COLORS.bauble, 1).fillCircle(b.position.x, b.position.y, BAUBLE_R);
     this.hud.setText(`Bane ${this.run.index + 1}/${LEVELS.length}`);
   }
 
@@ -125,7 +144,7 @@ class BaubleScene extends Phaser.Scene {
     return {
       level: this.run.index,
       state: this.state,
-      bauble: { x: this.bauble.position.x, y: this.bauble.position.y },
+      baubles: this.baubles.map((b) => ({ x: b.position.x, y: b.position.y })),
       scores: this.run.scores,
     };
   }
