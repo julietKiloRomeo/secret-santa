@@ -54,7 +54,11 @@ class ReindeerScene extends Phaser.Scene {
         state: this.run.state,
         score: this.run.score,
         y: this.run.y,
+        grounded: this.run.grounded,
+        speed: this.run.speed,
+        platforms: this.run.platforms.map((p) => ({ x: p.x, y: p.y, w: p.w })),
         snowmen: this.run.snowmen.length,
+        snowmanX: this.run.snowmen.map((s) => s.x),
       }),
     };
     this.newRun();
@@ -138,7 +142,8 @@ class ReindeerScene extends Phaser.Scene {
       img.setPosition(p.x, p.y);
     });
     this.placeAll(this.snowmanImgs, () => 'snowman', r.snowmen, (img, s) => {
-      img.setPosition(s.x, r.groundY).setOrigin(0, 1).setDisplaySize(s.w * 1.8, s.h * 1.8);
+      // Drawn at exactly its collision box, so the visible snowman is the one that hits.
+      img.setPosition(s.x, r.groundY).setOrigin(0, 1).setDisplaySize(s.w, s.h);
     });
 
     // Reindeer frame by state. The drawn height matches the hitbox so what you see is what collides.
