@@ -4,7 +4,7 @@ import { LEVELS, WORLD } from './bauble_levels.js';
 import { createRun, finishLevel, isDone, totalScore, fellOff, segmentsCross } from './bauble_core.js';
 import { showScores } from './arcade_scene.js';
 
-const COLORS = { bauble: 0xffd23f, stocking: 0xb02a3a, rope: 0xe8d9b0, peg: 0xd4a017 };
+const COLORS = { rope: 0xf5e6a8 };
 const BAUBLE_R = 18;
 const LINK = 6;
 
@@ -13,10 +13,15 @@ class BaubleScene extends Phaser.Scene {
     super('bauble');
   }
 
+  preload() {
+    for (const n of ['rope', 'bauble-gold', 'peg', 'stocking', 'gingerbread']) this.load.image(n, `/static/sprites/${n}.png`);
+  }
+
   create() {
     this.run = createRun(LEVELS.length);
     this.cameras.main.setBackgroundColor('#06201a');
     this.g = this.add.graphics();
+    this.art = this.add.group();
     this.hud = this.add.text(12, 12, '', { fontFamily: 'monospace', fontSize: '18px', color: '#fff3b0' }).setDepth(10);
     this.swipe = null;
     this.input.on('pointerdown', (p) => (this.swipe = { a: { x: p.x, y: p.y }, b: { x: p.x, y: p.y } }));
@@ -33,7 +38,7 @@ class BaubleScene extends Phaser.Scene {
     this.matter.world.setBounds(0, 0, WORLD.width, WORLD.height);
     this.matter.world.engine.gravity.y = 1;
     this.level = LEVELS[i];
-    this.walls = (this.level.walls ?? []).map((w) => this.matter.add.rectangle(w.x, w.y, w.w, w.h, { isStatic: true, angle: w.angle }));
+    this.walls = (this.level.walls ?? []).map((w) => ({ ...w, body: this.matter.add.rectangle(w.x, w.y, w.w, w.h, { isStatic: true, angle: w.angle }) }));
     this.ropes = this.level.ropes.map((r) => this.makeRope(r));
     this.baubles = this.level.baubles.map((b) => this.matter.add.circle(b.x, b.y, BAUBLE_R, { restitution: 0.2, friction: 0.05 }));
     // The stocking is a bowl: a solid floor and two side walls around a catch area, with a sensor
@@ -125,24 +130,24 @@ class BaubleScene extends Phaser.Scene {
   draw() {
     const g = this.g;
     g.clear();
+    this.art.clear(true, true);
     const s = this.level.stocking;
-    g.fillStyle(COLORS.stocking, 1).fillRect(s.x - s.w / 2, s.y - s.h / 2, s.w, s.h);
-    g.fillStyle(COLORS.stocking, 1);
+    this.art.add(this.add.image(s.x, s.y, 'stocking').setDisplaySize(s.w, s.w * 1.4));
     for (const w of this.walls) {
-      const v = w.vertices;
-      g.fillPoints(v, true);
+      this.art.add(this.add.image(w.body.position.x, w.body.position.y, 'gingerbread').setDisplaySize(w.w, w.h).setRotation(w.angle));
     }
     for (const rope of this.ropes) {
-      g.lineStyle(3, COLORS.rope, 1);
       for (let k = 0; k + 1 < rope.links.length; k++) {
         if (rope.cut && k === 0) continue;
         const a = rope.links[k].position;
         const b = rope.links[k + 1].position;
-        g.lineBetween(a.x, a.y, b.x, b.y);
+        g.lineStyle(5, COLORS.rope, 1).lineBetween(a.x, a.y, b.x, b.y);
       }
-      g.fillStyle(COLORS.peg, 1).fillCircle(rope.peg.x, rope.peg.y, 5);
+      this.art.add(this.add.image(rope.peg.x, rope.peg.y, 'peg').setDisplaySize(24, 24));
     }
-    for (const b of this.baubles) g.fillStyle(COLORS.bauble, 1).fillCircle(b.position.x, b.position.y, BAUBLE_R);
+    for (const b of this.baubles) {
+      this.art.add(this.add.image(b.position.x, b.position.y, 'bauble-gold').setDisplaySize(BAUBLE_R * 2.6, BAUBLE_R * 2.6));
+    }
     this.hud.setText(`Bane ${this.run.index + 1}/${LEVELS.length}`);
   }
 
@@ -151,6 +156,7 @@ class BaubleScene extends Phaser.Scene {
       level: this.run.index,
       state: this.state,
       baubles: this.baubles.map((b) => ({ x: b.position.x, y: b.position.y })),
+      links: this.ropes.map((r) => r.links.map((l) => ({ x: Math.round(l.position.x), y: Math.round(l.position.y) }))),
       scores: this.run.scores,
     };
   }
