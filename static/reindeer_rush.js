@@ -5,7 +5,7 @@ import { showScores } from './arcade_scene.js';
 const W = 640;
 const H = 260;
 const SWIPE_PX = 24; // same swipe threshold as Snake
-const SPRITE = { run: 'rr/run.png', jump: 'rr/jump.png', slide: 'rr/slide.png', snowman: 'rr/snowman.png', islandA: 'rr/island-a.png', islandB: 'rr/island-b.png' };
+const SPRITE = { run: 'rr/run.png', jump: 'rr/jump.png', slide: 'rr/slide.png', snowman: 'rr/snowman.png', tile: 'rr/tile.png' };
 
 class ReindeerScene extends Phaser.Scene {
   preload() {
@@ -132,11 +132,10 @@ class ReindeerScene extends Phaser.Scene {
     const r = this.run;
     this.label.setText(`Score ${r.score}`);
     this.drawSky();
-    this.placeAll(this.platformImgs, (i) => (i % 2 ? 'islandB' : 'islandA'), r.platforms, (img, p) => {
-      // Each island is drawn to the platform's width, with its top surface on the platform's y.
-      const scale = p.w / img.width;
-      img.setOrigin(0, 0).setScale(scale).setDepth(3);
-      img.setPosition(p.x, p.y - img.displayHeight * 0.18);
+    // Each platform is a solid ice tile stretched to its width. Its top edge is the platform's y.
+    this.placeAll(this.platformImgs, () => 'tile', r.platforms, (img, p) => {
+      img.setOrigin(0, 0).setDisplaySize(p.w, 40 * r.scale).setDepth(3);
+      img.setPosition(p.x, p.y);
     });
     this.placeAll(this.snowmanImgs, () => 'snowman', r.snowmen, (img, s) => {
       img.setPosition(s.x, r.groundY).setOrigin(0, 1).setDisplaySize(s.w * 1.8, s.h * 1.8);
