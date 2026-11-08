@@ -25,11 +25,15 @@ class ScoresScene extends Phaser.Scene {
     window.__arcadeScores__ = this; // test hook
     const { width: W, height: H } = this.scale;
     this.u = Math.min(W, H) / 20; // layout unit
+    // Lighter scrim so the game stays readable behind the scores, plus a panel for the list.
     this.add
-      .rectangle(0, 0, W, H, 0x020617, 0.85)
+      .rectangle(0, 0, W, H, 0x020617, 0.55)
       .setOrigin(0)
       .setInteractive()
       .on('pointerdown', () => this.state === 'list' && this.close());
+    this.add
+      .rectangle(W / 2, H * 0.52, W * 0.86, H * 0.76, 0x0b1020, 0.96)
+      .setStrokeStyle(2, 0xfbbf24, 0.6);
     this.add
       .text(W / 2, this.u * 1.5, title, { fontFamily: FONT, fontSize: this.u * 1.2, color: '#fde68a' })
       .setOrigin(0.5);
@@ -89,6 +93,8 @@ class ScoresScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5);
     const el = input.node;
+    // Phaser wraps the field in its own absolute DIV; that wrapper must sit above the canvas.
+    el.parentElement.style.zIndex = '10';
     el.maxLength = MAX_NAME;
     el.className = 'arcade-input';
     el.value = window.__defaultPlayerName__ || '';
