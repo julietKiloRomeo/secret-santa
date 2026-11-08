@@ -1,4 +1,4 @@
-import { createRun, tick, jump, dash, STEP, REINDEER_X, jumpHeight, speedFor } from '../static/reindeer_core';
+import { createRun, tick, jump, duck, dash, STEP, REINDEER_X, jumpHeight, speedFor } from '../static/reindeer_core';
 
 const W = 640;
 const H = 260;
@@ -73,4 +73,25 @@ test('a snowman is a real obstacle: running into one without a dash ends the run
   run(r, 0.05);
   expect(r.state).toBe('dead');
   expect(r.deathReason).toBe('snowman');
+});
+
+test('a ducked reindeer passes under a low snowman that a standing one hits', () => {
+  // Design: a snowman is a low obstacle (40 design px) so ducking is a real answer.
+  // Both runs are on the ground when the snowman arrives, so the only difference is the duck.
+  const standing = createRun({ width: W, height: H, rand: () => 0.5 });
+  jump(standing);
+  for (let i = 0; i < 0.9 / STEP && standing.state === 'running'; i++) tick(standing, STEP);
+  expect(standing.grounded).toBe(true);
+  standing.snowmen.push({ x: REINDEER_X, w: 40 * standing.scale, h: 40 * standing.scale, alive: true });
+  for (let i = 0; i < 0.1 / STEP; i++) tick(standing, STEP);
+  expect(standing.state).toBe('dead');
+
+  const ducked = createRun({ width: W, height: H, rand: () => 0.5 });
+  jump(ducked);
+  for (let i = 0; i < 0.9 / STEP && ducked.state === 'running'; i++) tick(ducked, STEP);
+  expect(ducked.grounded).toBe(true);
+  duck(ducked);
+  ducked.snowmen.push({ x: REINDEER_X, w: 40 * ducked.scale, h: 40 * ducked.scale, alive: true });
+  for (let i = 0; i < 0.1 / STEP; i++) tick(ducked, STEP);
+  expect(ducked.state).toBe('running');
 });
