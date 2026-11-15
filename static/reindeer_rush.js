@@ -73,7 +73,7 @@ class ReindeerScene extends Phaser.Scene {
   }
 
   newRun() {
-    this.run = createRun({ width: W, height: H });
+    this.run = createRun({ width: W, height: H, scale: 1 }); // physics stay at design size; the taller world only shows more sky
     this.busy = false;
     this.accum = 0;
     this.hint.setVisible(true);

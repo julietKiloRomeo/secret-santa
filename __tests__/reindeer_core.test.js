@@ -95,3 +95,14 @@ test('a ducked reindeer passes under a low snowman that a standing one hits', ()
   for (let i = 0; i < 0.1 / STEP; i++) tick(ducked, STEP);
   expect(ducked.state).toBe('running');
 });
+
+test('a taller world keeps the design physics scale when scale is passed explicitly', () => {
+  const r = createRun({ width: 640, height: 400, scale: 1, rand: () => 0.5 });
+  expect(r.scale).toBe(1);
+  expect(r.maxGap).toBe(150);
+});
+
+test('without an explicit scale the physics scale follows the world height', () => {
+  const r = createRun({ width: 640, height: 520, rand: () => 0.5 });
+  expect(r.scale).toBe(2);
+});

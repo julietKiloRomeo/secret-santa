@@ -28,8 +28,7 @@ export const jumpHeight = (held) => (held ? -JUMP_HOLD : -JUMP_TAP);
 // Speed grows with distance and is capped; dashing multiplies it.
 export const speedFor = (distance) => 440 + Math.min(620, distance * 0.15);
 
-export function createRun({ width, height, rand = Math.random }) {
-  const scale = height / 260; // design height is 260px
+export function createRun({ width, height, scale = height / 260, rand = Math.random }) {
   const groundY = height * 0.7;
   const run = {
     width,
