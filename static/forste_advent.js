@@ -6,6 +6,9 @@ const COLS = 20;
 const CELL = 30; // logical px; Scale.FIT stretches the 600x600 board to the page
 const SPEED_MS = 150;
 const COLORS = { bg: 0x000022, grid: 0x111144, snake: 0x2c8a2c, edge: 0x1e5e1e };
+// Gift emoji from snake_core.js mapped to pixel-art sprites in static/sprites/snake/.
+const SKIN_SPRITE = { '🎁': 'gift-red', '🍬': 'candy', '🧦': 'sock', '🍪': 'cookie', '🧸': 'gift-blue', '🍫': 'gift-green' };
+const SPRITE_FILES = { ...Object.fromEntries(Object.values(SKIN_SPRITE).map((k) => [k, k])), head: 'head' };
 const KEY_DIR = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 const RESTART_KEYS = new Set(['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -16,6 +19,10 @@ const setStatus = (t) => {
 };
 
 class SnakeScene extends Phaser.Scene {
+  preload() {
+    for (const key of Object.keys(SPRITE_FILES)) this.load.image(key, `/static/sprites/snake/${SPRITE_FILES[key]}.png`);
+  }
+
   create() {
     const g = this.add.graphics();
     g.fillStyle(COLORS.bg)
@@ -25,7 +32,7 @@ class SnakeScene extends Phaser.Scene {
       g.lineBetween(i * CELL, 0, i * CELL, COLS * CELL).lineBetween(0, i * CELL, COLS * CELL, i * CELL);
     }
     this.body = this.add.graphics();
-    this.emoji = []; // reusable Text objects for gift + skins
+    this.marks = []; // reusable sprite objects for the gift and the body skins
     this.input.keyboard.on('keydown', (e) => this.onKey(e));
     this.input.on('pointerdown', (p) => {
       if (!this.running() && !this.busy) this.restart();
@@ -101,13 +108,14 @@ class SnakeScene extends Phaser.Scene {
     });
     const marks = [gift, ...skins.slice(0, body.length - 1).map((skin, i) => ({ ...body[i + 1], skin }))];
     marks.forEach((m, i) => {
-      this.emoji[i] ??= this.add.text(0, 0, '', { fontSize: `${CELL - 6}px` }).setOrigin(0.5);
-      this.emoji[i]
-        .setText(m.skin)
+      this.marks[i] ??= this.add.image(0, 0, 'gift-red');
+      this.marks[i]
+        .setTexture(SKIN_SPRITE[m.skin] ?? 'gift-red')
         .setPosition(m.x * CELL + CELL / 2, m.y * CELL + CELL / 2)
+        .setDisplaySize(CELL - 4, CELL - 4)
         .setVisible(true);
     });
-    this.emoji.slice(marks.length).forEach((t) => t.setVisible(false));
+    this.marks.slice(marks.length).forEach((t) => t.setVisible(false));
   }
 }
 
