@@ -47,3 +47,29 @@ test('swipe needs 24px and picks the dominant axis', () => {
   expect(swipeDir(30, 5)).toBe('right');
   expect(swipeDir(-5, -40)).toBe('up');
 });
+
+test('moving into the cell the tail is leaving is allowed, not a self-collision', () => {
+  // A 2x2 loop: head at (5,5) moving down into (5,6), with the tail at (5,6) moving away this tick.
+  const s = createSnake(20, 20, Math.random);
+  s.body = [
+    { x: 5, y: 5 },
+    { x: 4, y: 5 },
+    { x: 4, y: 6 },
+    { x: 5, y: 6 },
+  ];
+  s.dir = 'down';
+  s.pending = 'down';
+  s.gift = { x: 0, y: 0, skin: '🍪' };
+  expect(step(s, Math.random)).toBe('moved');
+  expect(s.alive).toBe(true);
+});
+
+test('two quick turns cannot reverse the snake into its own neck', () => {
+  // Moving right; queue up, then left before the next tick. Left is the reverse of right, so it must be ignored.
+  const s = createSnake(20, 20, Math.random);
+  turn(s, 'up');
+  turn(s, 'left');
+  step(s, Math.random);
+  expect(s.alive).toBe(true);
+  expect(s.dir).not.toBe('left');
+});

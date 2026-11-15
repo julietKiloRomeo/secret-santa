@@ -57,12 +57,15 @@ export function step(s, rand) {
   if (OPPOSITE[s.pending] !== s.dir) s.dir = s.pending;
   const [dx, dy] = DELTA[s.dir];
   const head = { x: s.body[0].x + dx, y: s.body[0].y + dy };
+  // The tail moves away this tick, so its cell is free unless the snake grows (then it stays put).
+  const eating = s.gift && head.x === s.gift.x && head.y === s.gift.y;
+  const solid = eating ? s.body : s.body.slice(0, -1);
   const hit =
     head.x < 0 ||
     head.x >= s.cols ||
     head.y < 0 ||
     head.y >= s.rows ||
-    s.body.some((p) => p.x === head.x && p.y === head.y);
+    solid.some((p) => p.x === head.x && p.y === head.y);
   if (hit) {
     s.alive = false;
     return 'dead';
