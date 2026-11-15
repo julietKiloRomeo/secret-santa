@@ -3,11 +3,12 @@ import { createRun, tick, jump, duck, unduck, dash, STEP, REINDEER_X } from './r
 import { showScores } from './arcade_scene.js';
 import { worldFor } from './world_fit.js';
 
-const H = 260; // design height; the width adapts to the screen (see world_fit.js)
+const DESIGN_H = 260; // design height the rules are tuned for; the world fills the screen (see world_fit.js)
 // Desktop keeps the 640-wide level; a phone may use a narrower world so the height fills the screen.
 const MIN_W = window.innerWidth < 700 ? 200 : 640;
-const world = worldFor(window.innerWidth, window.innerHeight, H, MIN_W);
+const world = worldFor(window.innerWidth, window.innerHeight, DESIGN_H, MIN_W);
 const W = world.width;
+const H = world.height;
 const SWIPE_PX = 24; // same swipe threshold as Snake
 const SPRITE = { run: 'rudolph/run-1.png', jump: 'rudolph/jump-1.png', slide: 'rudolph/slide.png', snowman: 'rr/snowman.png', tile: 'rr/tile.png' };
 const RUN_FRAMES = ['rudolph/run-1.png', 'rudolph/run-2.png', 'rudolph/run-3.png', 'rudolph/run-4.png', 'rudolph/run-5.png', 'rudolph/run-6.png'];
