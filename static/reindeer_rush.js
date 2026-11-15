@@ -5,11 +5,14 @@ import { showScores } from './arcade_scene.js';
 const W = 640;
 const H = 260;
 const SWIPE_PX = 24; // same swipe threshold as Snake
-const SPRITE = { run: 'rr/run.png', jump: 'rr/jump.png', slide: 'rr/slide.png', snowman: 'rr/snowman.png', tile: 'rr/tile.png' };
+const SPRITE = { run: 'rudolph/run-1.png', jump: 'rudolph/jump-1.png', slide: 'rudolph/slide.png', snowman: 'rr/snowman.png', tile: 'rr/tile.png' };
+const RUN_FRAMES = ['rudolph/run-1.png', 'rudolph/run-2.png', 'rudolph/run-3.png', 'rudolph/run-4.png', 'rudolph/run-5.png', 'rudolph/run-6.png'];
+const RUN_FRAME_MS = 80; // time per run frame, so the legs cycle at a readable pace
 
 class ReindeerScene extends Phaser.Scene {
   preload() {
     for (const [key, file] of Object.entries(SPRITE)) this.load.image(key, `/static/sprites/${file}`);
+    RUN_FRAMES.forEach((file, i) => this.load.image(`run-${i}`, `/static/sprites/${file}`));
     this.load.image('snowball', '/static/sprites/rr/snowball.png');
     this.load.image('star', '/static/sprites/rr/star.png');
     this.load.audio('jump', '/static/jump.mp3');
@@ -23,7 +26,7 @@ class ReindeerScene extends Phaser.Scene {
     this.snowGfx = this.add.graphics().setDepth(1);
     this.platformImgs = [];
     this.snowmanImgs = [];
-    this.reindeer = this.add.image(REINDEER_X, 0, 'run').setOrigin(0.5, 1).setDepth(4);
+    this.reindeer = this.add.image(REINDEER_X, 0, 'run-0').setOrigin(0.5, 1).setDepth(4);
     this.label = this.add.text(12, 10, '', { fontFamily: 'monospace', fontSize: '16px', color: '#fff3b0' }).setDepth(9);
     this.hint = this.add
       .text(W / 2, H * 0.3, 'Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe', {
@@ -165,10 +168,16 @@ class ReindeerScene extends Phaser.Scene {
   }
 
   frameFor(r) {
-    if (r.state === 'ready') return 'run';
+    if (r.state === 'ready') return this.runFrame();
     if (!r.grounded) return 'jump';
     if (r.ducking) return 'slide';
-    return 'run';
+    return this.runFrame();
+  }
+
+  // Cycle the six Rudolph run frames by time, so the legs animate while running.
+  runFrame() {
+    const i = Math.floor(this.time.now / RUN_FRAME_MS) % RUN_FRAMES.length;
+    return `run-${i}`;
   }
 
   // Show one image per item from a pool, hiding unused ones. Pool entries are created on demand.
