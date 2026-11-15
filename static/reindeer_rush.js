@@ -32,7 +32,7 @@ class ReindeerScene extends Phaser.Scene {
     this.platformImgs = [];
     this.snowmanImgs = [];
     this.reindeer = this.add.image(REINDEER_X, 0, 'run-0').setOrigin(0.5, 1).setDepth(4);
-    this.label = this.add.text(12, 10, '', { fontFamily: 'monospace', fontSize: '16px', color: '#fff3b0' }).setDepth(9);
+    this.label = this.add.text(12, 56, '', { fontFamily: 'monospace', fontSize: '16px', color: '#fff3b0' }).setDepth(9);
     this.hint = this.add
       .text(W / 2, H * 0.3, 'Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe', {
         fontFamily: 'monospace',
