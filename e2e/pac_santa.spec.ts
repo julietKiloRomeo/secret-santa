@@ -8,6 +8,7 @@ test.describe('Pac-Santa', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsPlaywright(page);
     await page.goto('/advent-5');
+    await page.waitForFunction(() => Boolean((window as any).__pacDebug__));
     await expect.poll(() => snap(page)).toMatchObject({ status: 'playing' });
   });
 
