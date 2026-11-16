@@ -1,8 +1,9 @@
 // Første Advent: Jule Snake on Phaser. Rules live in snake_core.js.
 import { createSnake, step, turn, swipeDir, placeGift, nextSkin } from './snake_core.js';
 import { showScores } from './arcade_scene.js';
+import { boardFor } from './snake_board.js';
 
-const COLS = 20;
+const { cols: COLS, rows: ROWS } = boardFor(window.innerWidth, window.innerHeight);
 const CELL = 30; // logical px; Scale.FIT stretches the 600x600 board to the page
 const SPEED_MS = 150;
 const COLORS = { bg: 0x000022, grid: 0x111144, snake: 0x2c8a2c, edge: 0x1e5e1e };
@@ -26,10 +27,11 @@ class SnakeScene extends Phaser.Scene {
   create() {
     const g = this.add.graphics();
     g.fillStyle(COLORS.bg)
-      .fillRect(0, 0, COLS * CELL, COLS * CELL)
+      .fillRect(0, 0, COLS * CELL, ROWS * CELL)
       .lineStyle(1, COLORS.grid);
-    for (let i = 0; i <= COLS; i += 1) {
-      g.lineBetween(i * CELL, 0, i * CELL, COLS * CELL).lineBetween(0, i * CELL, COLS * CELL, i * CELL);
+    for (let i = 0; i <= COLS; i += 1) g.lineBetween(i * CELL, 0, i * CELL, ROWS * CELL);
+    for (let i = 0; i <= ROWS; i += 1) {
+      g.lineBetween(0, i * CELL, COLS * CELL, i * CELL);
     }
     this.body = this.add.graphics();
     this.marks = []; // reusable sprite objects for the gift and the body skins
@@ -71,7 +73,7 @@ class SnakeScene extends Phaser.Scene {
   }
 
   restart() {
-    this.s = createSnake(COLS, COLS, Math.random);
+    this.s = createSnake(COLS, ROWS, Math.random);
     this.timer.paused = false;
     scoreEl.textContent = 'Score: 0';
     setStatus('Klar! Tap eller brug piletasterne.');
@@ -150,7 +152,7 @@ function exposeDebug(scene) {
     setNextGiftSkin: (k) => {
       scene.s.forcedSkin = k;
     },
-    getGrid: () => ({ cols: COLS, rows: COLS, cell: CELL }),
+    getGrid: () => ({ cols: COLS, rows: ROWS, cell: CELL }),
     rerollGift: () => {
       placeGift(scene.s, Math.random);
       scene.draw();
@@ -171,7 +173,7 @@ new Phaser.Game({
   canvas: document.getElementById('snake-canvas'),
   parent: document.getElementById('snake-canvas').parentElement,
   width: COLS * CELL,
-  height: COLS * CELL,
+  height: ROWS * CELL,
   backgroundColor: '#000022',
   dom: { createContainer: true },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
