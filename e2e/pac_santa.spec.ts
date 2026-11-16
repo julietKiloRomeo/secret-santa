@@ -26,8 +26,9 @@ test.describe('Pac-Santa', () => {
   });
 
   test('running out of lives opens the score screen with a name prompt', async ({ page }) => {
-    // Let ghosts catch Santa by standing still until the run ends.
-    await expect.poll(async () => (await snap(page))?.status, { timeout: 30000 }).toBe('over');
+    // Put a ghost on Santa with one life left, so the next tick ends the run (ghosts are too slow to catch a standing Santa on a big maze).
+    await page.evaluate(() => (window as any).__pacDebug__.endRunNow());
+    await expect.poll(async () => (await snap(page))?.status, { timeout: 15000 }).toBe('over');
     await expect(page.locator('input.arcade-input')).toBeVisible({ timeout: 8000 });
   });
 });
