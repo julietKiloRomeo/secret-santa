@@ -93,3 +93,12 @@ test('a tunnel on the top edge wraps Santa to the bottom edge', () => {
   tick(g);
   expect(g.santa.y).toBe(h - 1);
 });
+
+test('createGame uses a maze passed in, so the view can play a generated maze', () => {
+  const rows = ['#####', '#S G#', '#...#', '#####'];
+  const g = createGame(rows);
+  expect(g.maze).toHaveLength(4);
+  expect(g.maze[0]).toHaveLength(5);
+  expect(g.santa).toEqual({ x: 1, y: 1, dir: 'left', next: null });
+  expect(g.ghosts).toHaveLength(1);
+});

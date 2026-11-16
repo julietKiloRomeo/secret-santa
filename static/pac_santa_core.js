@@ -35,8 +35,8 @@ export const MAX_LIVES = 3;
 
 export const RELEASE_TICKS = 40; // ghost i leaves the pen after i * RELEASE_TICKS
 
-export function createGame() {
-  const maze = MAZE.map((row) => row.split(''));
+export function createGame(rows = MAZE) {
+  const maze = rows.map((row) => row.split(''));
   let santa = null;
   const ghosts = [];
   maze.forEach((row, y) =>
