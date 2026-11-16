@@ -26,8 +26,10 @@ test.describe('Snake grid integrity', () => {
       };
     });
 
-    expect(metrics.rows).toBe(metrics.cols);
-    expect(metrics.rows).toBeGreaterThanOrEqual(10);
+    // The board follows the orientation: wide on landscape, tall on portrait.
+    const landscape = page.viewportSize()!.width >= page.viewportSize()!.height;
+    expect(metrics.cols >= metrics.rows).toBe(landscape);
+    expect(Math.min(metrics.rows, metrics.cols)).toBeGreaterThanOrEqual(10);
     expect(metrics.boardHeight).toBeLessThanOrEqual((metrics.canvasHeight || 0) + 2);
   });
 
