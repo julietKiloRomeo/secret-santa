@@ -10,6 +10,7 @@ test.describe('Snake grid integrity', () => {
   test('grid rows align with the visible canvas area', async ({ page }) => {
     await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
+    await page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
     const metrics = await page.evaluate(() => {
       const canvas = document.getElementById('snake-canvas');
@@ -33,6 +34,7 @@ test.describe('Snake grid integrity', () => {
   test('gifts never spawn on the snake or outside the grid', async ({ page }) => {
     await page.goto('/advent-1');
     await page.waitForSelector('#snake-canvas', { state: 'visible' });
+    await page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
     const stats = await page.evaluate(() => {
       // @ts-ignore debug accessor is injected by the game script

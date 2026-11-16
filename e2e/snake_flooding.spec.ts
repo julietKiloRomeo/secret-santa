@@ -5,6 +5,7 @@ test.describe('Snake gift order and no flooding', () => {
   test('keeps gift order stable and no duplicate flooding', async ({ page }) => {
     await loginAsPlaywright(page);
     await page.goto('/advent-1');
+    await page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
     // Helper to eat a gift with a specific skin by placing it ahead
     async function eatGiftWithSkin(skin: string) {
