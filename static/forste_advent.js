@@ -14,6 +14,7 @@ import {
 import { showScores } from './arcade_scene.js';
 import { boardFor } from './snake_board.js';
 import { FEEL } from './snake_feel.js';
+import { sharpen } from './text_resolution.js';
 import {
   placeFloor,
   tickFloor,
@@ -168,6 +169,7 @@ class SnakeScene extends Phaser.Scene {
   advance() {
     const r = step(this.s, Math.random);
     if (r === 'dead') return this.gameOver();
+    if (r === 'absorbed') return this.holdForDirection(); // shield stopped a wall: pick a way out
     tickFloor(this.s, Math.random); // a waiting powerup counts down one tick
     if (r === 'ate') {
       placeFloor(this.s, Math.random); // refill the floor: gift or powerup
@@ -213,35 +215,33 @@ class SnakeScene extends Phaser.Scene {
     const H = this.scale.height;
     const box = this.add.container(W / 2, H / 2).setDepth(20);
     const panel = this.add.rectangle(0, 0, W * 0.8, H * 0.5, 0x0b1020, 0.96).setStrokeStyle(2, 0xfbbf24, 0.9);
-    const title = this.add
-      .text(0, -H * 0.19, c.name, { fontFamily: 'Georgia, serif', fontSize: '20px', color: '#fde68a' })
-      .setOrigin(0.5);
-    const flavor = this.add
-      .text(0, -H * 0.05, c.flavor, {
-        fontFamily: 'Georgia, serif',
-        fontSize: '14px',
-        color: '#cbd5e1',
-        fontStyle: 'italic',
-        align: 'center',
-        wordWrap: { width: W * 0.7 },
-      })
-      .setOrigin(0.5);
-    const effect = this.add
-      .text(0, H * 0.08, c.effect, {
-        fontFamily: 'ui-monospace, Menlo, monospace',
-        fontSize: '13px',
-        color: '#f8fafc',
-        align: 'center',
-        wordWrap: { width: W * 0.7 },
-      })
-      .setOrigin(0.5);
-    const hint = this.add
-      .text(0, H * 0.2, '[ tap or press a key ]', {
-        fontFamily: 'ui-monospace, Menlo, monospace',
-        fontSize: '12px',
-        color: '#fbbf24',
-      })
-      .setOrigin(0.5);
+    const txt = (y, str, style) => sharpen(this, this.add.text(0, y, str, style).setOrigin(0.5));
+    const title = txt(-H * 0.19, c.name, {
+      fontFamily: 'Georgia, serif',
+      fontSize: '20px',
+      color: '#fde68a',
+    });
+    const flavor = txt(-H * 0.05, c.flavor, {
+      fontFamily: 'Georgia, serif',
+      fontSize: '14px',
+      color: '#cbd5e1',
+      fontStyle: 'italic',
+      align: 'center',
+      wordWrap: { width: W * 0.7 },
+    });
+    const effect = txt(H * 0.08, c.effect, {
+      fontFamily: 'ui-monospace, Menlo, monospace',
+      fontSize: '13px',
+      color: '#f8fafc',
+      align: 'center',
+      wordWrap: { width: W * 0.7 },
+    });
+    const hint = txt(H * 0.2, '[ tap or press a key ]', {
+      fontFamily: 'ui-monospace, Menlo, monospace',
+      fontSize: '12px',
+      color: '#fbbf24',
+    });
+    this.textResolutionSample = title.style.resolution;
     box.add([panel, title, flavor, effect, hint]);
     this.card = box;
     this.cardOpen = true;
@@ -263,6 +263,14 @@ class SnakeScene extends Phaser.Scene {
   }
 
   // In the waiting state only a direction (key or swipe) resumes the game.
+  // A shield stopped the snake at a wall. Pause and wait for a direction, like after a loot card.
+  holdForDirection() {
+    this.waiting = true;
+    this.paused = true;
+    beep(this, 330, 160, 'triangle', 0.03);
+    setStatus('Good luck. Press a direction to start again');
+  }
+
   startFromWait(dir) {
     this.waiting = false;
     this.paused = false;
@@ -413,6 +421,7 @@ function exposeDebug(scene) {
       scene.drawFrame(1);
     },
     getEffects: () => activeEffects(scene.s),
+    getTextResolution: () => scene.textResolutionSample ?? 1,
     getCard: () =>
       scene.cardOpen ? { open: true, name: cardFor(scene.lastCardKind)?.name } : { open: false },
     getPowerup: () => (scene.s.powerup ? { ...scene.s.powerup } : null),
@@ -426,7 +435,7 @@ function exposeDebug(scene) {
     getDirection: () => scene.s.dir,
     getQueue: () => [...scene.s.queue],
     tickOnce: () => {
-      if (!scene.s.alive) return;
+      if (!scene.s.alive || scene.waiting) return; // a wait must hold, as in the real loop
       scene.prev = scene.s.body.map((p) => ({ ...p }));
       scene.advance();
       scene.drawFrame(1);
@@ -445,6 +454,8 @@ function exposeDebug(scene) {
     },
     isRunning: () => scene.running(),
     isWaiting: () => Boolean(scene.waiting),
+    isAlive: () => scene.s.alive,
+    grantEffect: (kind) => eatPowerup(scene.s, kind),
     debugStop: (msg = 'Pause') => {
       scene.paused = true;
       setStatus(msg);

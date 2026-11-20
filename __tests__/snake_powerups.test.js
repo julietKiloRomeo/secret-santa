@@ -90,7 +90,7 @@ test('shield absorbs one wall hit and is used up', () => {
     { x: 1, y: 10 },
   ];
   s.dir = 'left';
-  expect(step(s, () => 0.5)).toBe('moved');
+  expect(step(s, () => 0.5)).toBe('absorbed');
   expect(s.alive).toBe(true);
   expect(s.effects.shield).toBe(0);
   expect(step(s, () => 0.5)).toBe('dead');
@@ -256,4 +256,22 @@ test('the first pickup of each kind asks for a card; later pickups do not', asyn
   markCardSeen(seen, 'shield');
   expect(needsCard(seen, 'shield')).toBe(false);
   expect(needsCard(seen, 'ghost')).toBe(true);
+});
+
+test('a shield absorbing a wall hit does not move the snake and reports it, so the game can wait', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.gift = null;
+  s.powerup = null;
+  s.skins = [];
+  s.body = [
+    { x: 0, y: 10 },
+    { x: 1, y: 10 },
+    { x: 2, y: 10 },
+  ];
+  s.dir = 'left';
+  s.effects = { shield: 1, ghost: 0 };
+  expect(step(s, () => 0.5)).toBe('absorbed');
+  expect(s.alive).toBe(true);
+  expect(s.effects.shield).toBe(0);
+  expect(s.body[0]).toEqual({ x: 0, y: 10 });
 });

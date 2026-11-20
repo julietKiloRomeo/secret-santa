@@ -94,7 +94,8 @@ export function step(s, rand) {
     // A shield absorbs the hit. A wall hit stops the snake where it is; a self hit moves the
     // head into the body so the next move is free to leave the loop.
     s.effects.shield -= 1;
-    if (wall) return 'moved';
+    // A wall absorbed by a shield stops the snake in place; the view then waits for a direction.
+    if (wall) return 'absorbed';
   }
   s.body.unshift(head);
   if (s.powerup && head.x === s.powerup.x && head.y === s.powerup.y) {
