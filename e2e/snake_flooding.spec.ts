@@ -15,6 +15,15 @@ test.describe('Snake gift order and no flooding', () => {
 
     // Helper to eat a gift with a specific skin by placing it ahead
     async function eatGiftWithSkin(skin: string) {
+      // A first-time achievement card can open after a gift: dismiss it, as a player would.
+      if (await page.evaluate(() => (window as any).__snakeDebug__?.getCard?.().open)) {
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Space');
+      }
+      // The game may wait for a direction after a card: a direction starts it again.
+      if (await page.evaluate(() => (window as any).__snakeDebug__?.isWaiting?.())) {
+        await page.keyboard.press('ArrowRight');
+      }
       await page.evaluate((skinArg) => {
         // @ts-ignore
         window.__snakeDebug__?.setNextGiftSkin?.(skinArg);
