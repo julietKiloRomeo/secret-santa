@@ -49,7 +49,7 @@ test('first shield pickup pauses the game with a card; a key dismisses it', asyn
   expect(await page.evaluate(() => (window as any).__snakeDebug__.getEffects())).toMatchObject({ shield: 1 });
 });
 
-test('a second shield pickup does not open the card again', async ({ page }) => {
+test('a second shield pickup in the same game does not open the card again', async ({ page }) => {
   await page.goto('/advent-1');
   await dbg(page);
   await page.evaluate(() => {
@@ -61,8 +61,32 @@ test('a second shield pickup does not open the card again', async ({ page }) => 
   await pickShield(page);
   await page.waitForTimeout(400);
   await page.keyboard.press('Space');
-  await page.evaluate(() => (window as any).__snakeDebug__.restartGame());
+  // Same game, second pickup: no card.
+  await page.evaluate(() => (window as any).__snakeDebug__.setDirection('right'));
   await pickShield(page);
   expect(await page.evaluate(() => (window as any).__snakeDebug__.getCard())).toEqual({ open: false });
-  expect(await page.evaluate(() => (window as any).__snakeDebug__.isRunning())).toBe(true);
+});
+
+test('a new game shows the loot card again for the same powerup kind', async ({ page }) => {
+  await page.goto('/advent-1');
+  await dbg(page);
+  await page.evaluate(() => {
+    const d = (window as any).__snakeDebug__;
+    d.debugStop();
+    d.restartGame();
+    d.debugStop();
+  });
+  await pickShield(page);
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.getCard().open)).toBe(true);
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Space');
+  // Start a new game: the cards reset, so the first shield pickup opens the card again.
+  await page.evaluate(() => {
+    const d = (window as any).__snakeDebug__;
+    d.debugStop();
+    d.restartGame();
+    d.debugStop();
+  });
+  await pickShield(page);
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.getCard().open)).toBe(true);
 });

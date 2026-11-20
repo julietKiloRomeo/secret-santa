@@ -11,6 +11,8 @@ import {
   GHOST_TICKS,
   expirePowerup,
   tickFloor,
+  needsCard,
+  markCardSeen,
 } from '../static/snake_powerups';
 
 const rng = (seq) => {
@@ -274,4 +276,13 @@ test('a shield absorbing a wall hit does not move the snake and reports it, so t
   expect(s.alive).toBe(true);
   expect(s.effects.shield).toBe(0);
   expect(s.body[0]).toEqual({ x: 0, y: 10 });
+});
+
+test('a new game starts with no cards seen, so each kind is shown once per playthrough', () => {
+  const game1 = new Set();
+  markCardSeen(game1, 'shield');
+  expect(needsCard(game1, 'shield')).toBe(false);
+  // A new game gets a fresh set, so the card is due again.
+  const game2 = new Set();
+  expect(needsCard(game2, 'shield')).toBe(true);
 });

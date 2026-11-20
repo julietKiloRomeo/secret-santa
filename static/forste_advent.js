@@ -154,6 +154,7 @@ class SnakeScene extends Phaser.Scene {
 
   restart() {
     this.waiting = false;
+    this.seenCards = new Set(); // every game start: the loot cards are read again once
     this.s = createSnake(COLS, ROWS, Math.random);
     placeFloor(this.s, Math.random); // the floor holds one gift or powerup, never both
     this.prev = this.s.body.map((p) => ({ ...p }));
