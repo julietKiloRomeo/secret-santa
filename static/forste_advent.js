@@ -211,6 +211,7 @@ class SnakeScene extends Phaser.Scene {
   showCard(kind) {
     const c = cardFor(kind);
     this.card?.destroy();
+    this.cardDom?.destroy();
     const W = this.scale.width;
     const H = this.scale.height;
     const box = this.add.container(W / 2, H / 2).setDepth(20);
@@ -229,7 +230,10 @@ class SnakeScene extends Phaser.Scene {
     const flavor = dom;
     const effect = dom;
     const hint = dom;
-    box.add([panel, dom]);
+    box.add([panel]);
+    // DOM text sits above the canvas (like the name input), so it is not hidden by the panel.
+    dom.node.parentElement.style.zIndex = '10';
+    this.cardDom = dom;
     this.card = box;
     this.cardOpen = true;
     this.paused = true; // the card holds the game until the player dismisses it
@@ -242,6 +246,8 @@ class SnakeScene extends Phaser.Scene {
   dismissCard() {
     if (!this.cardOpen || !this.cardReady) return;
     this.card?.destroy();
+    this.cardDom?.destroy();
+    this.cardDom = null;
     this.card = null;
     this.cardOpen = false;
     this.cardReady = false;
