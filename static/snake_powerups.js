@@ -89,3 +89,29 @@ export function eatPowerup(s, kind) {
 }
 
 export const activeEffects = (s) => ({ shield: s.effects?.shield ?? 0, ghost: s.effects?.ghost ?? 0 });
+
+// Loot-card text, in the dry in-world style of a dungeon-crawler item: a name, a flavor line
+// and a plain effect line. Shown once per kind, on the first pickup.
+export const POWERUP_CARDS = {
+  shield: {
+    name: 'Ward of the Frost Hearth',
+    flavor: 'Forged from the last warm ember in the North Pole. It remembers every wall it has met.',
+    effect: 'Absorbs one collision. Stacks. A wall hit stops you; a body hit still lets you through.',
+  },
+  ghost: {
+    name: 'Mistletoe Spectre',
+    flavor: 'A bored elf\u2019s ghost, bound to a sprig. It has opinions about your tail.',
+    effect: 'Pass through your own body for 6 ticks. Stacks. Ends mid-loop, so plan the exit.',
+  },
+  trim: {
+    name: 'Shears of the Tidy Elf',
+    flavor: 'Used for cutting ribbon and reputations. Clean cuts, no hard feelings.',
+    effect: 'Removes 3 tail segments and their presents. Score is kept. Never drops below 5.',
+  },
+};
+
+export const cardFor = (kind) => POWERUP_CARDS[kind];
+
+// The card appears on the first pickup of each kind, tracked per run in a Set.
+export const needsCard = (seen, kind) => !seen.has(kind);
+export const markCardSeen = (seen, kind) => seen.add(kind);

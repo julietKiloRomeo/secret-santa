@@ -14,7 +14,16 @@ import {
 import { showScores } from './arcade_scene.js';
 import { boardFor } from './snake_board.js';
 import { FEEL } from './snake_feel.js';
-import { placeFloor, tickFloor, eatPowerup, activeEffects, expirePowerup } from './snake_powerups.js';
+import {
+  placeFloor,
+  tickFloor,
+  eatPowerup,
+  activeEffects,
+  expirePowerup,
+  cardFor,
+  needsCard,
+  markCardSeen,
+} from './snake_powerups.js';
 
 const { cols: COLS, rows: ROWS } = boardFor(window.innerWidth, window.innerHeight);
 const CELL = 30; // logical px; Scale.FIT stretches the board to the page
@@ -80,6 +89,7 @@ class SnakeScene extends Phaser.Scene {
     this.marks = []; // reusable sprite objects for the gift and the body skins
     this.input.keyboard.on('keydown', (e) => this.onKey(e));
     this.input.on('pointerdown', (p) => {
+      if (this.cardOpen) return this.dismissCard();
       if (!this.running() && !this.busy) this.restart();
       this.swipe = p.position.clone();
     });
@@ -126,6 +136,7 @@ class SnakeScene extends Phaser.Scene {
   }
 
   onKey(e) {
+    if (this.cardOpen) return this.dismissCard();
     if (!this.running() && !this.busy && RESTART_KEYS.has(e.code)) this.restart();
     if (KEY_DIR[e.key]) {
       turn(this.s, KEY_DIR[e.key]);
@@ -177,9 +188,68 @@ class SnakeScene extends Phaser.Scene {
     this.hudEl.textContent = parts.join('  ');
   }
 
+  // First pickup of a kind: pause and show its loot card. Later pickups only play the sound.
   onPowerup(kind) {
     beep(this, 660, 150, 'triangle', 0.03);
-    this.lastPickupNote = kind;
+    this.seenCards ??= new Set();
+    this.lastCardKind = kind;
+    if (!needsCard(this.seenCards, kind)) return;
+    markCardSeen(this.seenCards, kind);
+    this.showCard(kind);
+  }
+
+  showCard(kind) {
+    const c = cardFor(kind);
+    this.card?.destroy();
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const box = this.add.container(W / 2, H / 2).setDepth(20);
+    const panel = this.add.rectangle(0, 0, W * 0.8, H * 0.5, 0x0b1020, 0.96).setStrokeStyle(2, 0xfbbf24, 0.9);
+    const title = this.add
+      .text(0, -H * 0.19, c.name, { fontFamily: 'Georgia, serif', fontSize: '20px', color: '#fde68a' })
+      .setOrigin(0.5);
+    const flavor = this.add
+      .text(0, -H * 0.05, c.flavor, {
+        fontFamily: 'Georgia, serif',
+        fontSize: '14px',
+        color: '#cbd5e1',
+        fontStyle: 'italic',
+        align: 'center',
+        wordWrap: { width: W * 0.7 },
+      })
+      .setOrigin(0.5);
+    const effect = this.add
+      .text(0, H * 0.08, c.effect, {
+        fontFamily: 'ui-monospace, Menlo, monospace',
+        fontSize: '13px',
+        color: '#f8fafc',
+        align: 'center',
+        wordWrap: { width: W * 0.7 },
+      })
+      .setOrigin(0.5);
+    const hint = this.add
+      .text(0, H * 0.2, '[ tap or press a key ]', {
+        fontFamily: 'ui-monospace, Menlo, monospace',
+        fontSize: '12px',
+        color: '#fbbf24',
+      })
+      .setOrigin(0.5);
+    box.add([panel, title, flavor, effect, hint]);
+    this.card = box;
+    this.cardOpen = true;
+    this.paused = true; // the card holds the game until the player dismisses it
+    this.time.delayedCall(250, () => {
+      this.cardReady = true; // ignore the key or tap that picked the powerup up
+    });
+  }
+
+  dismissCard() {
+    if (!this.cardOpen || !this.cardReady) return;
+    this.card?.destroy();
+    this.card = null;
+    this.cardOpen = false;
+    this.cardReady = false;
+    this.paused = false;
   }
 
   onPickup() {
@@ -325,6 +395,8 @@ function exposeDebug(scene) {
       scene.drawFrame(1);
     },
     getEffects: () => activeEffects(scene.s),
+    getCard: () =>
+      scene.cardOpen ? { open: true, name: cardFor(scene.lastCardKind)?.name } : { open: false },
     getPowerup: () => (scene.s.powerup ? { ...scene.s.powerup } : null),
     placeGiftNextToHead(dx = 1, dy = 0) {
       const h = scene.s.body[0];

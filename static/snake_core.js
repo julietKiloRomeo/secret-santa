@@ -87,13 +87,14 @@ export function step(s, rand) {
   const wall = head.x < 0 || head.x >= s.cols || head.y < 0 || head.y >= s.rows;
   const self = !ghosting && solid.some((p) => p.x === head.x && p.y === head.y);
   if (wall || self) {
-    if ((s.effects?.shield ?? 0) > 0) {
-      // A shield absorbs the hit: the snake stays where it is for this tick.
-      s.effects.shield -= 1;
-      return 'moved';
+    if ((s.effects?.shield ?? 0) <= 0) {
+      s.alive = false;
+      return 'dead';
     }
-    s.alive = false;
-    return 'dead';
+    // A shield absorbs the hit. A wall hit stops the snake where it is; a self hit moves the
+    // head into the body so the next move is free to leave the loop.
+    s.effects.shield -= 1;
+    if (wall) return 'moved';
   }
   s.body.unshift(head);
   if (s.powerup && head.x === s.powerup.x && head.y === s.powerup.y) {

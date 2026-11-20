@@ -212,3 +212,48 @@ test('a powerup counts down one per tick and becomes a gift when it reaches zero
   expect(s.powerup).toBe(null);
   expect(s.gift).toMatchObject({ x: 12, y: 3 });
 });
+
+test('a shield absorbs a self hit: the snake lives, the head moves into the body, the shield is spent', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.gift = null;
+  s.powerup = null;
+  s.skins = [];
+  s.body = [
+    { x: 10, y: 10 },
+    { x: 9, y: 10 },
+    { x: 9, y: 11 },
+    { x: 10, y: 11 },
+    { x: 11, y: 11 },
+    { x: 11, y: 10 },
+    { x: 11, y: 9 },
+    { x: 10, y: 9 },
+    { x: 9, y: 9 },
+    { x: 8, y: 9 },
+  ];
+  s.dir = 'up';
+  s.effects = { shield: 1, ghost: 0 };
+  expect(step(s, () => 0.5)).toBe('moved'); // (10,9) is body: absorbed
+  expect(s.alive).toBe(true);
+  expect(s.effects.shield).toBe(0);
+  expect(s.body[0]).toEqual({ x: 10, y: 9 });
+});
+
+test('every powerup has a loot-style card: name, flavor line and effect line', async () => {
+  const { POWERUP_CARDS, cardFor } = await import('../static/snake_powerups');
+  for (const kind of ['shield', 'ghost', 'trim']) {
+    const c = POWERUP_CARDS[kind];
+    expect(c.name.length).toBeGreaterThan(0);
+    expect(c.flavor.length).toBeGreaterThan(10);
+    expect(c.effect.length).toBeGreaterThan(10);
+    expect(cardFor(kind)).toBe(c);
+  }
+});
+
+test('the first pickup of each kind asks for a card; later pickups do not', async () => {
+  const { needsCard, markCardSeen } = await import('../static/snake_powerups');
+  const seen = new Set();
+  expect(needsCard(seen, 'shield')).toBe(true);
+  markCardSeen(seen, 'shield');
+  expect(needsCard(seen, 'shield')).toBe(false);
+  expect(needsCard(seen, 'ghost')).toBe(true);
+});
