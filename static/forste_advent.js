@@ -1,7 +1,16 @@
 // Første Advent: Jule Snake on Phaser. Rules live in snake_core.js.
 // Fixed-step simulation (tickMsFor sets the pace) drawn with interpolation, so motion stays smooth
 // at any frame rate. The simulation never depends on the frame rate.
-import { createSnake, step, turn, swipeDir, placeGift, nextSkin, tickMsFor } from './snake_core.js';
+import {
+  createSnake,
+  step,
+  turn,
+  swipeDir,
+  placeGift,
+  nextSkin,
+  tickMsFor,
+  shouldStepNow,
+} from './snake_core.js';
 import { showScores } from './arcade_scene.js';
 import { boardFor } from './snake_board.js';
 import { FEEL } from './snake_feel.js';
@@ -77,6 +86,8 @@ class SnakeScene extends Phaser.Scene {
     if (!this.running() || this.stopLeft > 0) return this.drawFrame(1);
     this.acc += Math.min(delta, MAX_FRAME_MS);
     let tick = tickMsFor(this.s.score);
+    // A turn pressed mid-tick steps early (shouldStepNow), so keys do not wait for the next tick.
+    if (shouldStepNow({ acc: this.acc, tick, queued: this.s.queue.length })) this.acc = tick;
     while (this.acc >= tick && this.s.alive && !this.paused) {
       this.acc -= tick;
       this.prev = this.s.body.map((p) => ({ ...p }));
@@ -173,12 +184,7 @@ class SnakeScene extends Phaser.Scene {
       const old = this.prev?.[i] ?? cur;
       return { x: old.x + (cur.x - old.x) * alpha, y: old.y + (cur.y - old.y) * alpha };
     };
-    this.body.clear().fillStyle(COLORS.snake).lineStyle(1, COLORS.edge);
-    for (let i = 1; i < body.length; i += 1) {
-      const p = at(i);
-      this.body.fillRect(p.x * CELL + 2, p.y * CELL + 2, CELL - 4, CELL - 4);
-      this.body.strokeRect(p.x * CELL + 2, p.y * CELL + 2, CELL - 4, CELL - 4);
-    }
+    this.body.clear();
     const h = at(0);
     this.head
       .setVisible(true)
@@ -186,6 +192,7 @@ class SnakeScene extends Phaser.Scene {
       .setPosition(h.x * CELL + CELL / 2, h.y * CELL + CELL / 2)
       .setDisplaySize(CELL * (this.headPop ?? 1), CELL * (this.headPop ?? 1))
       .setRotation(HEAD_ANGLE[this.s.dir] ?? 0);
+    // Body segments are presents too: skins[i] is drawn on body[i + 1].
     const marks = [gift, ...skins.slice(0, body.length - 1).map((skin, i) => ({ ...at(i + 1), skin }))];
     marks.forEach((m, i) => {
       this.marks[i] ??= this.add.image(0, 0, 'gift-red');
