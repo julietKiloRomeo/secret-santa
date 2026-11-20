@@ -24,10 +24,13 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
     const sample = await page.evaluate(() => {
       const canvas = document.getElementById('snake-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const NUM_COLS = 20;
-      const CELL = Math.max(6, Math.floor((canvas.clientWidth || 200) / NUM_COLS));
-      const cols = NUM_COLS;
-      const rows = Math.ceil((canvas.clientHeight || 200) / CELL);
+      // @ts-ignore board size comes from the game, which now matches the screen aspect
+      const grid = window.__snakeDebug__?.getGrid?.();
+      const cols = grid?.cols ?? 20;
+      const rows = grid?.rows ?? 20;
+      // Cells are square: the smaller of width/height per cell sets their size on landscape screens.
+      // Sample the drawing buffer (canvas.width/height), not the on-screen size: Phaser scales the buffer up to fit.
+      const CELL = Math.floor(Math.min(canvas.width / cols, canvas.height / rows));
       function rgbaToHex(data: Uint8ClampedArray, idx: number) {
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
         return '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('');
@@ -59,10 +62,13 @@ test('snake does not leave sticky pixels after resize', async ({ page }) => {
     const after = await page.evaluate(() => {
       const canvas = document.getElementById('snake-canvas') as HTMLCanvasElement;
       const ctx = canvas.getContext('2d')!;
-      const NUM_COLS = 20;
-      const CELL = Math.max(6, Math.floor((canvas.clientWidth || 200) / NUM_COLS));
-      const cols = NUM_COLS;
-      const rows = Math.ceil((canvas.clientHeight || 200) / CELL);
+      // @ts-ignore board size comes from the game, which now matches the screen aspect
+      const grid = window.__snakeDebug__?.getGrid?.();
+      const cols = grid?.cols ?? 20;
+      const rows = grid?.rows ?? 20;
+      // Cells are square: the smaller of width/height per cell sets their size on landscape screens.
+      // Sample the drawing buffer (canvas.width/height), not the on-screen size: Phaser scales the buffer up to fit.
+      const CELL = Math.floor(Math.min(canvas.width / cols, canvas.height / rows));
       function rgbaToHex(data: Uint8ClampedArray, idx: number) {
         const r = data[idx], g = data[idx + 1], b = data[idx + 2];
         return '#' + [r, g, b].map(n => n.toString(16).padStart(2, '0')).join('');
