@@ -36,8 +36,17 @@ test('first shield pickup pauses the game with a card; a key dismisses it', asyn
     name: 'Ward of the Frost Hearth',
   });
   await page.waitForTimeout(400);
+  await page.keyboard.press('Space'); // dismisses the card only
+  await expect(page.locator('#status')).toContainText('Good luck. Press a direction to start again');
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.isRunning())).toBe(false);
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.isWaiting())).toBe(true);
+  // Space is not a direction: the game stays waiting.
   await page.keyboard.press('Space');
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.isWaiting())).toBe(true);
+  // A direction starts it again, and the powerup state is kept.
+  await page.keyboard.press('ArrowRight');
   await expect.poll(() => page.evaluate(() => (window as any).__snakeDebug__.isRunning())).toBe(true);
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.getEffects())).toMatchObject({ shield: 1 });
 });
 
 test('a second shield pickup does not open the card again', async ({ page }) => {

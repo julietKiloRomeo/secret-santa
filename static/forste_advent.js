@@ -90,6 +90,7 @@ class SnakeScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', (e) => this.onKey(e));
     this.input.on('pointerdown', (p) => {
       if (this.cardOpen) return this.dismissCard();
+      if (this.waiting) return; // a tap during the wait does not reset the run
       if (!this.running() && !this.busy) this.restart();
       this.swipe = p.position.clone();
     });
@@ -98,10 +99,9 @@ class SnakeScene extends Phaser.Scene {
         this.swipe &&
         swipeDir((p.x - this.swipe.x) * this.scaleRatio(), (p.y - this.swipe.y) * this.scaleRatio());
       this.swipe = null;
-      if (dir) {
-        turn(this.s, dir);
-        beep(this, 440, 40, 'square', 0.01);
-      }
+      if (dir && this.waiting) this.startFromWait(dir);
+      else if (dir) turn(this.s, dir);
+      if (dir) beep(this, 440, 40, 'square', 0.01);
     });
     this.paused = false;
     this.acc = 0;
@@ -137,6 +137,13 @@ class SnakeScene extends Phaser.Scene {
 
   onKey(e) {
     if (this.cardOpen) return this.dismissCard();
+    if (this.waiting) {
+      if (KEY_DIR[e.key]) {
+        this.startFromWait(KEY_DIR[e.key]);
+        beep(this, 440, 40, 'square', 0.01);
+      }
+      return;
+    }
     if (!this.running() && !this.busy && RESTART_KEYS.has(e.code)) this.restart();
     if (KEY_DIR[e.key]) {
       turn(this.s, KEY_DIR[e.key]);
@@ -145,6 +152,7 @@ class SnakeScene extends Phaser.Scene {
   }
 
   restart() {
+    this.waiting = false;
     this.s = createSnake(COLS, ROWS, Math.random);
     placeFloor(this.s, Math.random); // the floor holds one gift or powerup, never both
     this.prev = this.s.body.map((p) => ({ ...p }));
@@ -243,13 +251,23 @@ class SnakeScene extends Phaser.Scene {
     });
   }
 
+  // Closing the card leaves the game waiting, paused, until a direction is pressed.
   dismissCard() {
     if (!this.cardOpen || !this.cardReady) return;
     this.card?.destroy();
     this.card = null;
     this.cardOpen = false;
     this.cardReady = false;
+    this.waiting = true;
+    setStatus('Good luck. Press a direction to start again');
+  }
+
+  // In the waiting state only a direction (key or swipe) resumes the game.
+  startFromWait(dir) {
+    this.waiting = false;
     this.paused = false;
+    setStatus('');
+    turn(this.s, dir);
   }
 
   onPickup() {
@@ -426,6 +444,7 @@ function exposeDebug(scene) {
       return { x: scene.s.gift.x, y: scene.s.gift.y };
     },
     isRunning: () => scene.running(),
+    isWaiting: () => Boolean(scene.waiting),
     debugStop: (msg = 'Pause') => {
       scene.paused = true;
       setStatus(msg);
