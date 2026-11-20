@@ -29,12 +29,20 @@ export function nextSkin(s, rand) {
   return s.bag.pop();
 }
 
+// Row 0 is under the HUD, so gifts never spawn there.
+export const GIFT_MIN_Y = 1;
+
+// Pick a random free cell from a list of candidates; no retry loop, so a full board cannot hang.
 export function placeGift(s, rand) {
-  let x, y;
-  do {
-    x = Math.floor(rand() * s.cols);
-    y = Math.floor(rand() * s.rows);
-  } while (s.body.some((p) => p.x === x && p.y === y));
+  const taken = new Set(s.body.map((p) => p.y * s.cols + p.x));
+  const free = [];
+  for (let y = GIFT_MIN_Y; y < s.rows; y += 1)
+    for (let x = 0; x < s.cols; x += 1) if (!taken.has(y * s.cols + x)) free.push({ x, y });
+  if (!free.length) {
+    s.gift = null;
+    return;
+  }
+  const { x, y } = free[Math.floor(rand() * free.length)];
   s.gift = { x, y, skin: nextSkin(s, rand) };
 }
 

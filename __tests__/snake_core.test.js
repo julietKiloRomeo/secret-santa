@@ -4,6 +4,8 @@ import {
   turn,
   swipeDir,
   nextSkin,
+  placeGift,
+  GIFT_MIN_Y,
   GIFTS,
   tickMsFor,
   shouldStepNow,
@@ -155,4 +157,29 @@ test('a turn queued late in the tick can take effect early', () => {
 
 test('the opening pace is slower than the old 150 ms tick', () => {
   expect(SPEED_START_MS).toBeGreaterThan(150);
+});
+
+test('gifts never spawn in the top row, which the HUD covers', () => {
+  for (let i = 0; i < 300; i += 1) {
+    const s = createSnake(20, 20, Math.random);
+    placeGift(s, Math.random);
+    expect(s.gift.y).toBeGreaterThanOrEqual(GIFT_MIN_Y);
+  }
+});
+
+test('gift placement finishes on a nearly full board and picks the only free cell', () => {
+  const s = createSnake(4, 3, () => 0.5);
+  s.body = [];
+  for (let y = 0; y < 3; y += 1) for (let x = 0; x < 4; x += 1) s.body.push({ x, y });
+  s.body = s.body.filter((p) => !(p.x === 2 && p.y === 2)); // leave (2,2) free
+  placeGift(s, () => 0.5);
+  expect(s.gift).toMatchObject({ x: 2, y: 2 });
+});
+
+test('a completely full board leaves no gift instead of hanging', () => {
+  const s = createSnake(4, 3, () => 0.5);
+  s.body = [];
+  for (let y = 0; y < 3; y += 1) for (let x = 0; x < 4; x += 1) s.body.push({ x, y });
+  placeGift(s, () => 0.5);
+  expect(s.gift).toBe(null);
 });
