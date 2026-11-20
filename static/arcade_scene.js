@@ -1,6 +1,7 @@
 // Shared Phaser score screen. Games need `dom: { createContainer: true }` in their config.
 // Usage: showScores(this, { gameId, score, title, message }).then(() => restart())
 import { fetchScores, submitScore, qualifies, rankFor, LIMIT, MAX_NAME } from './arcade_scores.js';
+import { sharpen } from './text_resolution.js';
 
 const FONT = 'ui-monospace, Menlo, monospace';
 
@@ -20,6 +21,11 @@ export function showScores(scene, opts) {
 }
 
 class ScoresScene extends Phaser.Scene {
+  // Every text on this screen is drawn sharp for the real screen density (see text_resolution.js).
+  text(x, y, str, style) {
+    return sharpen(this, this.add.text(x, y, str, style));
+  }
+
   async create({ gameId, score, title = 'Søde Børn', message = '', onClose }) {
     this.done = onClose;
     window.__arcadeScores__ = this; // test hook
@@ -31,21 +37,19 @@ class ScoresScene extends Phaser.Scene {
       .setOrigin(0)
       .setInteractive()
       .on('pointerdown', () => this.state === 'list' && this.close());
-    this.add
-      .rectangle(W / 2, H * 0.52, W * 0.86, H * 0.76, 0x0b1020, 0.96)
-      .setStrokeStyle(2, 0xfbbf24, 0.6);
-    this.add
-      .text(W / 2, this.u * 1.5, title, { fontFamily: FONT, fontSize: this.u * 1.2, color: '#fde68a' })
-      .setOrigin(0.5);
-    this.msg = this.add
-      .text(W / 2, this.u * 2.8, `${message ? message + '  ' : ''}Din score: ${score} pts`, {
-        fontFamily: FONT,
-        fontSize: this.u * 0.6,
-        color: '#e2e8f0',
-        align: 'center',
-        wordWrap: { width: W * 0.9 },
-      })
-      .setOrigin(0.5);
+    this.add.rectangle(W / 2, H * 0.52, W * 0.86, H * 0.76, 0x0b1020, 0.96).setStrokeStyle(2, 0xfbbf24, 0.6);
+    this.text(W / 2, this.u * 1.5, title, {
+      fontFamily: FONT,
+      fontSize: this.u * 1.2,
+      color: '#fde68a',
+    }).setOrigin(0.5);
+    this.msg = this.text(W / 2, this.u * 2.8, `${message ? message + '  ' : ''}Din score: ${score} pts`, {
+      fontFamily: FONT,
+      fontSize: this.u * 0.6,
+      color: '#e2e8f0',
+      align: 'center',
+      wordWrap: { width: W * 0.9 },
+    }).setOrigin(0.5);
 
     const scores = await fetchScores(gameId);
     if (!this.sys.isActive()) return;
@@ -64,7 +68,7 @@ class ScoresScene extends Phaser.Scene {
       const y = u * 4.5 + i * u * 1.2;
       const label = `${String(i + 1).padStart(2, '0')}  ${i === pendingAt ? '' : s.name}`;
       const color = i === pendingAt ? '#fbbf24' : '#f8fafc';
-      return this.add.text(W * 0.1, y, label.padEnd(24) + String(s.score).padStart(8), {
+      return this.text(W * 0.1, y, label.padEnd(24) + String(s.score).padStart(8), {
         fontFamily: FONT,
         fontSize: u * 0.7,
         color,
@@ -116,20 +120,16 @@ class ScoresScene extends Phaser.Scene {
     this.rows(scores);
     if (!scores.length)
       this.rowTexts.push(
-        this.add
-          .text(this.scale.width / 2, this.u * 5, 'Ingen scores endnu.', {
-            fontFamily: FONT,
-            fontSize: this.u * 0.7,
-          })
-          .setOrigin(0.5),
+        this.text(this.scale.width / 2, this.u * 5, 'Ingen scores endnu.', {
+          fontFamily: FONT,
+          fontSize: this.u * 0.7,
+        }).setOrigin(0.5),
       );
-    this.add
-      .text(this.scale.width / 2, this.scale.height - this.u * 1.5, '[ Luk ]', {
-        fontFamily: FONT,
-        fontSize: this.u * 0.8,
-        color: '#fde68a',
-      })
-      .setOrigin(0.5);
+    this.text(this.scale.width / 2, this.scale.height - this.u * 1.5, '[ Luk ]', {
+      fontFamily: FONT,
+      fontSize: this.u * 0.8,
+      color: '#fde68a',
+    }).setOrigin(0.5);
     this.time.delayedCall(150, () => {
       this.state = 'list';
     }); // ignore the Enter that saved
