@@ -1,4 +1,14 @@
-import { createSnake, step, turn, swipeDir, nextSkin, GIFTS } from '../static/snake_core';
+import {
+  createSnake,
+  step,
+  turn,
+  swipeDir,
+  nextSkin,
+  GIFTS,
+  tickMsFor,
+  SPEED_START_MS,
+  SPEED_MIN_MS,
+} from '../static/snake_core';
 
 const seq =
   (...vals) =>
@@ -72,4 +82,45 @@ test('two quick turns cannot reverse the snake into its own neck', () => {
   step(s, Math.random);
   expect(s.alive).toBe(true);
   expect(s.dir).not.toBe('left');
+});
+
+test('two quick turns in one tick are both applied, one per tick', () => {
+  // Moving right: up then left arrive before the next tick. The old single slot dropped "up".
+  const s = createSnake(20, 20, Math.random);
+  turn(s, 'up');
+  turn(s, 'left');
+  step(s, Math.random);
+  expect(s.dir).toBe('up');
+  step(s, Math.random);
+  expect(s.dir).toBe('left');
+  expect(s.alive).toBe(true);
+});
+
+test('the turn queue holds at most two inputs; extra presses are dropped', () => {
+  const s = createSnake(20, 20, Math.random);
+  turn(s, 'up');
+  turn(s, 'left');
+  turn(s, 'down');
+  step(s, Math.random); // up
+  step(s, Math.random); // left
+  expect(s.dir).toBe('left');
+  expect(s.queue).toEqual([]);
+});
+
+test('a reverse is judged against the last applied direction, not the queued one', () => {
+  // Moving right. Up is applied first; down is the reverse of up, so it is refused even though it was queued.
+  const s = createSnake(20, 20, Math.random);
+  turn(s, 'up');
+  turn(s, 'down');
+  step(s, Math.random);
+  step(s, Math.random);
+  expect(s.dir).toBe('up');
+  expect(s.alive).toBe(true);
+});
+
+test('tick time gets faster with score, never below the floor', () => {
+  expect(tickMsFor(0)).toBe(SPEED_START_MS);
+  expect(tickMsFor(5)).toBeLessThan(tickMsFor(0));
+  expect(tickMsFor(5)).toBeGreaterThan(tickMsFor(6));
+  expect(tickMsFor(10_000)).toBe(SPEED_MIN_MS);
 });

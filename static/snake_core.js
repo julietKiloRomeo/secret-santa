@@ -2,6 +2,12 @@
 export const GIFTS = ['🎁', '🍬', '🧦', '🍪', '🍫', '🧸'];
 const DELTA = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
+export const SPEED_START_MS = 150;
+export const SPEED_MIN_MS = 70;
+const QUEUE_MAX = 2; // buffered turns; a third quick press in one tick is dropped
+
+// Faster as the snake grows. Tick time in ms, never below SPEED_MIN_MS.
+export const tickMsFor = (score) => Math.max(SPEED_MIN_MS, SPEED_START_MS - score * 4);
 
 export function nextSkin(s, rand) {
   if (s.forcedSkin) {
@@ -35,7 +41,7 @@ export function createSnake(cols, rows, rand) {
     cols,
     rows,
     dir: 'right',
-    pending: 'right',
+    queue: [], // turns waiting for a tick, applied one per tick
     score: 0,
     alive: true,
     body: Array.from({ length: 5 }, (_, i) => ({ x: cx - i, y: cy })),
@@ -48,13 +54,15 @@ export function createSnake(cols, rows, rand) {
   return s;
 }
 
+// Queue a turn. Reverses are checked when applied, against the direction actually in use.
 export const turn = (s, dir) => {
-  s.pending = dir;
+  if (s.queue.length < QUEUE_MAX) s.queue.push(dir);
 };
 
 // Advance one tick. Returns 'dead', 'ate' or 'moved'.
 export function step(s, rand) {
-  if (OPPOSITE[s.pending] !== s.dir) s.dir = s.pending;
+  const next = s.queue.shift();
+  if (next && OPPOSITE[next] !== s.dir) s.dir = next;
   const [dx, dy] = DELTA[s.dir];
   const head = { x: s.body[0].x + dx, y: s.body[0].y + dy };
   // The tail moves away this tick, so its cell is free unless the snake grows (then it stays put).
