@@ -20,10 +20,38 @@ export function showScores(scene, opts) {
   });
 }
 
+// DOM text is laid out at native resolution, so it stays sharp at any scale (like the name input).
+// Returns an object with the setOrigin/setText surface the call sites use.
+function domText(scene, x, y, str, style) {
+  const el = document.createElement('div');
+  el.className = `arcade-text${style.role ? ` arcade-${style.role}` : ''}`;
+  el.textContent = str;
+  el.style.fontFamily = style.fontFamily || FONT;
+  el.style.fontSize = `${style.fontSize}px`;
+  el.style.color = style.color || '#f8fafc';
+  el.style.whiteSpace = 'pre';
+  if (style.align === 'center') el.style.textAlign = 'center';
+  if (style.wordWrap) {
+    el.style.whiteSpace = 'normal';
+    el.style.width = `${style.wordWrap.width}px`;
+  }
+  const obj = scene.add.dom(x, y, el).setOrigin(0.5);
+  // Honour the call's origin like canvas text does: 0.5 centres, 0 anchors the left edge.
+  return {
+    obj,
+    setOrigin: (ox = 0.5, oy = 0.5) => obj.setOrigin(ox, oy), // Phaser owns the DOM transform
+    setText: (t) => {
+      el.textContent = t;
+      return obj;
+    },
+    destroy: () => obj.destroy(),
+  };
+}
+
 class ScoresScene extends Phaser.Scene {
-  // Every text on this screen is drawn sharp for the real screen density (see text_resolution.js).
+  // Score screen text is DOM so it is crisp at any scale, matching the name input.
   text(x, y, str, style) {
-    return sharpen(this, this.add.text(x, y, str, style));
+    return domText(this, x, y, str, style);
   }
 
   async create({ gameId, score, title = 'Søde Børn', message = '', onClose }) {
@@ -39,6 +67,7 @@ class ScoresScene extends Phaser.Scene {
       .on('pointerdown', () => this.state === 'list' && this.close());
     this.add.rectangle(W / 2, H * 0.52, W * 0.86, H * 0.76, 0x0b1020, 0.96).setStrokeStyle(2, 0xfbbf24, 0.6);
     this.text(W / 2, this.u * 1.5, title, {
+      role: 'title',
       fontFamily: FONT,
       fontSize: this.u * 1.2,
       color: '#fde68a',
@@ -69,11 +98,12 @@ class ScoresScene extends Phaser.Scene {
       const label = `${String(i + 1).padStart(2, '0')}  ${i === pendingAt ? '' : s.name}`;
       const color = i === pendingAt ? '#fbbf24' : '#f8fafc';
       return this.text(W * 0.1, y, label.padEnd(24) + String(s.score).padStart(8), {
+        role: 'score-row',
         fontFamily: FONT,
         fontSize: u * 0.7,
         color,
         fixedWidth: W * 0.8,
-      });
+      }).setOrigin(0);
     });
     return (i) => u * 4.5 + i * u * 1.2;
   }

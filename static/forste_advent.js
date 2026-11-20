@@ -14,7 +14,6 @@ import {
 import { showScores } from './arcade_scene.js';
 import { boardFor } from './snake_board.js';
 import { FEEL } from './snake_feel.js';
-import { sharpen } from './text_resolution.js';
 import {
   placeFloor,
   tickFloor,
@@ -216,34 +215,21 @@ class SnakeScene extends Phaser.Scene {
     const H = this.scale.height;
     const box = this.add.container(W / 2, H / 2).setDepth(20);
     const panel = this.add.rectangle(0, 0, W * 0.8, H * 0.5, 0x0b1020, 0.96).setStrokeStyle(2, 0xfbbf24, 0.9);
-    const txt = (y, str, style) => sharpen(this, this.add.text(0, y, str, style).setOrigin(0.5));
-    const title = txt(-H * 0.19, c.name, {
-      fontFamily: 'Georgia, serif',
-      fontSize: '20px',
-      color: '#fde68a',
-    });
-    const flavor = txt(-H * 0.05, c.flavor, {
-      fontFamily: 'Georgia, serif',
-      fontSize: '14px',
-      color: '#cbd5e1',
-      fontStyle: 'italic',
-      align: 'center',
-      wordWrap: { width: W * 0.7 },
-    });
-    const effect = txt(H * 0.08, c.effect, {
-      fontFamily: 'ui-monospace, Menlo, monospace',
-      fontSize: '13px',
-      color: '#f8fafc',
-      align: 'center',
-      wordWrap: { width: W * 0.7 },
-    });
-    const hint = txt(H * 0.2, '[ tap or press a key ]', {
-      fontFamily: 'ui-monospace, Menlo, monospace',
-      fontSize: '12px',
-      color: '#fbbf24',
-    });
-    this.textResolutionSample = title.style.resolution;
-    box.add([panel, title, flavor, effect, hint]);
+    // The card text is DOM, so it is crisp at any scale (same as the score screen and name input).
+    const el = document.createElement('div');
+    el.className = 'arcade-card';
+    el.style.width = `${W * 0.72}px`;
+    el.innerHTML = `
+      <div class="arcade-card-title">${c.name}</div>
+      <div class="arcade-card-flavor">${c.flavor}</div>
+      <div class="arcade-card-effect">${c.effect}</div>
+      <div class="arcade-card-hint">[ tap or press a key ]</div>`;
+    const dom = this.add.dom(W / 2, H / 2, el);
+    const title = dom;
+    const flavor = dom;
+    const effect = dom;
+    const hint = dom;
+    box.add([panel, dom]);
     this.card = box;
     this.cardOpen = true;
     this.paused = true; // the card holds the game until the player dismisses it
@@ -422,7 +408,6 @@ function exposeDebug(scene) {
       scene.drawFrame(1);
     },
     getEffects: () => activeEffects(scene.s),
-    getTextResolution: () => scene.textResolutionSample ?? 1,
     getCard: () =>
       scene.cardOpen ? { open: true, name: cardFor(scene.lastCardKind)?.name } : { open: false },
     getPowerup: () => (scene.s.powerup ? { ...scene.s.powerup } : null),
