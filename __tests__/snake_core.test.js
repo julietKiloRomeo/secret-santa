@@ -6,6 +6,7 @@ import {
   nextSkin,
   GIFTS,
   tickMsFor,
+  shouldStepNow,
   SPEED_START_MS,
   SPEED_MIN_MS,
 } from '../static/snake_core';
@@ -25,14 +26,15 @@ test('starts with 5 segments centred, heading right, gift off the snake', () => 
 
 test('eating grows, scores and stores the gift as a body skin in order', () => {
   const s = createSnake(20, 20, Math.random);
+  const start = s.skins.length; // the starting presents come first
   s.gift = { x: 11, y: 10, skin: '🍪' };
   expect(step(s, Math.random)).toBe('ate');
   expect(s.score).toBe(1);
   expect(s.body).toHaveLength(6);
-  expect(s.skins).toEqual(['🍪']);
+  expect(s.skins.slice(start)).toEqual(['🍪']);
   s.gift = { x: 12, y: 10, skin: '🧦' };
   step(s, Math.random);
-  expect(s.skins).toEqual(['🍪', '🧦']);
+  expect(s.skins.slice(start)).toEqual(['🍪', '🧦']);
 });
 
 test('walls and self kill; reversing is ignored', () => {
@@ -47,8 +49,10 @@ test('walls and self kill; reversing is ignored', () => {
 
 test('gift skins cycle through a shuffle bag before repeating', () => {
   const s = createSnake(20, 20, seq());
-  const seen = [s.gift.skin];
-  for (let i = 1; i < GIFTS.length; i += 1) seen.push(nextSkin(s, Math.random));
+  s.bag = [];
+  s.forcedSkin = null;
+  const seen = [];
+  for (let i = 0; i < GIFTS.length; i += 1) seen.push(nextSkin(s, Math.random));
   expect(new Set(seen).size).toBe(GIFTS.length);
 });
 
@@ -134,4 +138,21 @@ test('feedback tiers keep pickup below death in strength and freeze length', asy
   expect(FEEL.death.trauma).toBeGreaterThanOrEqual(0.7);
   expect(FEEL.death.stopMs).toBeLessThanOrEqual(150);
   expect(FEEL.pickup.burstCount).toBeGreaterThanOrEqual(8);
+});
+
+test('the starting body is presents: one skin per body segment after the head', () => {
+  const s = createSnake(20, 20, Math.random);
+  expect(s.skins).toHaveLength(s.body.length - 1);
+  s.skins.forEach((k) => expect(GIFTS).toContain(k));
+});
+
+test('a turn queued late in the tick can take effect early', () => {
+  // Half a tick has passed; a turn pressed now should step the snake now instead of waiting.
+  expect(shouldStepNow({ acc: 120, tick: 200, queued: 1 })).toBe(true);
+  expect(shouldStepNow({ acc: 20, tick: 200, queued: 1 })).toBe(false);
+  expect(shouldStepNow({ acc: 190, tick: 200, queued: 0 })).toBe(false);
+});
+
+test('the opening pace is slower than the old 150 ms tick', () => {
+  expect(SPEED_START_MS).toBeGreaterThan(150);
 });
