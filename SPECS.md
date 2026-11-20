@@ -88,13 +88,13 @@ All four games are Phaser 4 scenes (`static/vendor/phaser-4.2.1.min.js`). The ru
   - Arrow keys or swipe (24px threshold) steer. The board matches the screen aspect (`static/snake_board.js`), about 400 cells.
   - Turns are queued: up to two per tick, applied in press order. A reverse is refused against the direction in use.
   - The snake starts as a 5-segment body with four present segments. Gifts come from a shuffle bag and become body segments in the order eaten.
-  - Tick time starts at 190 ms, drops 4 ms per gift, and never goes below 70 ms. A queued turn steps early once half a tick has passed.
+  - Tick time starts at 220 ms, drops 3 ms per gift, and never goes below 90 ms. A queued turn steps early once half a tick has passed.
   - The floor holds one item: a gift, or with 20% chance a powerup. Gifts never spawn in row 0, under the HUD.
   - Powerups: `shield` absorbs one wall or self hit; `ghost` lets the head pass through its body for 6 ticks; `trim` removes 3 tail segments and their presents with no score loss (the snake keeps at least 5). Pickups stack. Shield and ghost counts show on the HUD.
   - A powerup has a timer of max(8, ceil(path length × 1.5)) ticks, where path length is the shortest walk from the head around the body. It blinks in its last 3 ticks, then becomes a normal gift on the same cell.
   - The first pickup of each powerup kind pauses the game and shows a loot-style card (name, flavor line, effect line). A key or tap dismisses it and leaves the game paused with the message "Good luck. Press a direction to start again". Only a direction (key or swipe) resumes it; Space, Enter and taps do not. Later pickups of that kind in the same game only play a sound. Every new game starts with no cards seen, so each kind's card is shown once per playthrough. Card text lives in `POWERUP_CARDS` in `static/snake_powerups.js`.
   - A shield absorbs a wall hit: the snake stops, the game pauses, and the status reads "Good luck. Press a direction to start again". A direction resumes it. A shield absorbs a body hit by moving the head into the body. A ghost that runs out inside a body loop is a death on the next move.
-  - Text on the loot card and the score screen is drawn at screen density (`static/text_resolution.js`), so it stays sharp when the canvas is scaled.
+  - Text on the loot card and the score screen is DOM text, so it stays sharp when the canvas is scaled, like the name input. Panels are Phaser shapes. `static/text_resolution.js` is no longer used by these screens.
   - Eating a gift gives a 50 ms hit-stop and a burst. Death gives a 120 ms hit-stop, a shake and a red flash.
   - Space, Enter or an arrow key restart after game over. Scores post to `/api/scores/advent-1`.
   - Debug hooks for Playwright: `window.__snakeDebug__` (see `TESTING.md`), including `placePowerupNextToHead`, `getEffects`, `getQueue`.

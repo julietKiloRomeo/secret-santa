@@ -183,3 +183,11 @@ test('a completely full board leaves no gift instead of hanging', () => {
   placeGift(s, () => 0.5);
   expect(s.gift).toBe(null);
 });
+
+test('the speed ramp is gentler: slower start, slower drop, higher floor', () => {
+  expect(SPEED_START_MS).toBe(220);
+  expect(SPEED_MIN_MS).toBe(90);
+  // 3 ms per gift: a gift 10 in is still well above the floor, so the pace builds slowly.
+  expect(tickMsFor(10)).toBe(190);
+  expect(tickMsFor(10_000)).toBe(90);
+});

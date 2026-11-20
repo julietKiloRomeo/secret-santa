@@ -2,12 +2,12 @@
 export const GIFTS = ['🎁', '🍬', '🧦', '🍪', '🍫', '🧸'];
 const DELTA = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
-export const SPEED_START_MS = 190;
-export const SPEED_MIN_MS = 70;
+export const SPEED_START_MS = 220;
+export const SPEED_MIN_MS = 90;
 const QUEUE_MAX = 2; // buffered turns; a third quick press in one tick is dropped
 
 // Faster as the snake grows. Tick time in ms, never below SPEED_MIN_MS.
-export const tickMsFor = (score) => Math.max(SPEED_MIN_MS, SPEED_START_MS - score * 4);
+export const tickMsFor = (score) => Math.max(SPEED_MIN_MS, SPEED_START_MS - score * 3);
 
 // A queued turn steps the snake early once half a tick has passed, so a key press
 // lands within about half a tick instead of up to a full one.
