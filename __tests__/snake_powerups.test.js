@@ -56,7 +56,13 @@ test('pathLength is the shortest walk around the body', () => {
   s.body = [{ x: 5, y: 5 }];
   expect(pathLength(s, { x: 8, y: 5 })).toBe(3);
   // The head at (5,5) with a body wall at x=6 (y 4..7) forces a detour around the wall's end.
-  s.body = [{ x: 5, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 5 }, { x: 6, y: 6 }, { x: 6, y: 7 }];
+  s.body = [
+    { x: 5, y: 5 },
+    { x: 6, y: 4 },
+    { x: 6, y: 5 },
+    { x: 6, y: 6 },
+    { x: 6, y: 7 },
+  ];
   expect(pathLength(s, { x: 8, y: 5 })).toBeGreaterThan(3);
 });
 
@@ -64,7 +70,14 @@ test('an unreachable powerup has no path length', () => {
   // Head at the corner (0,0). Body cells at (1,0), (1,1), (0,1) wall it in; the tail is the
   // last cell and is excluded from the walls, so the wall is three real body cells + one more.
   const s = createSnake(10, 10, Math.random);
-  s.body = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }];
+  s.body = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+    { x: 0, y: 2 },
+    { x: 1, y: 2 },
+  ];
   // (0,1) is a body cell but not the tail, so it blocks; the head cannot leave the corner.
   expect(pathLength(s, { x: 5, y: 5 })).toBe(Infinity);
 });
@@ -72,7 +85,10 @@ test('an unreachable powerup has no path length', () => {
 test('shield absorbs one wall hit and is used up', () => {
   const s = createSnake(20, 20, () => 0.5);
   s.effects = { shield: 1, ghost: 0 };
-  s.body = [{ x: 0, y: 10 }, { x: 1, y: 10 }];
+  s.body = [
+    { x: 0, y: 10 },
+    { x: 1, y: 10 },
+  ];
   s.dir = 'left';
   expect(step(s, () => 0.5)).toBe('moved');
   expect(s.alive).toBe(true);
@@ -85,7 +101,10 @@ test('two shields stack and absorb two hits', () => {
   eatPowerup(s, 'shield');
   eatPowerup(s, 'shield');
   expect(s.effects.shield).toBe(2);
-  s.body = [{ x: 0, y: 10 }, { x: 1, y: 10 }];
+  s.body = [
+    { x: 0, y: 10 },
+    { x: 1, y: 10 },
+  ];
   s.dir = 'left';
   step(s, () => 0.5);
   step(s, () => 0.5);
@@ -116,7 +135,13 @@ test('ghost lets the head pass through its own body for GHOST_TICKS ticks', () =
 test('ghost runs out: the same self-collision kills once the time is spent', () => {
   const s = createSnake(20, 20, () => 0.5);
   // Head at (5,5) heading down into (5,6), a middle segment (not the tail, which is (4,6) here).
-  s.body = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }];
+  s.body = [
+    { x: 5, y: 5 },
+    { x: 4, y: 5 },
+    { x: 4, y: 6 },
+    { x: 5, y: 6 },
+    { x: 6, y: 6 },
+  ];
   s.dir = 'down';
   s.effects = { shield: 0, ghost: 0 };
   s.gift = { x: 0, y: 0, skin: '🍪' };
