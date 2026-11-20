@@ -4,6 +4,7 @@
 import { createSnake, step, turn, swipeDir, placeGift, nextSkin, tickMsFor } from './snake_core.js';
 import { showScores } from './arcade_scene.js';
 import { boardFor } from './snake_board.js';
+import { FEEL } from './snake_feel.js';
 
 const { cols: COLS, rows: ROWS } = boardFor(window.innerWidth, window.innerHeight);
 const CELL = 30; // logical px; Scale.FIT stretches the board to the page
@@ -72,7 +73,8 @@ class SnakeScene extends Phaser.Scene {
 
   // Accumulate real time and run whole ticks; draw between ticks at the fractional position.
   update(_time, delta) {
-    if (!this.running()) return this.drawFrame(1);
+    if (this.stopLeft > 0) this.stopLeft -= delta; // hit-stop: real time, input still queues
+    if (!this.running() || this.stopLeft > 0) return this.drawFrame(1);
     this.acc += Math.min(delta, MAX_FRAME_MS);
     let tick = tickMsFor(this.s.score);
     while (this.acc >= tick && this.s.alive && !this.paused) {
@@ -106,6 +108,7 @@ class SnakeScene extends Phaser.Scene {
     this.prev = this.s.body.map((p) => ({ ...p }));
     this.paused = false;
     this.acc = 0;
+    this.stopLeft = 0;
     scoreEl.textContent = 'Score: 0';
     setStatus('Klar! Tap eller brug piletasterne.');
     this.drawFrame(1);
@@ -124,15 +127,16 @@ class SnakeScene extends Phaser.Scene {
     this.time.delayedCall(120, () => beep(this, 1320, 120, 'sine', 0.02));
     if (REDUCE_MOTION) return;
     const h = this.s.body[0];
-    this.burst(h.x * CELL + CELL / 2, h.y * CELL + CELL / 2);
-    this.headPop = 1.35;
-    this.tweens.add({ targets: this, headPop: 1, duration: 160, ease: 'Back.easeOut' });
+    this.burst(h.x * CELL + CELL / 2, h.y * CELL + CELL / 2, FEEL.pickup.burstCount);
+    this.stopLeft = FEEL.pickup.stopMs;
+    this.headPop = FEEL.pickup.popScale;
+    this.tweens.add({ targets: this, headPop: 1, duration: FEEL.pickup.popMs, ease: 'Back.easeOut' });
   }
 
   // Ring of small circles that expands and fades. Visual only.
-  burst(x, y) {
-    for (let i = 0; i < 6; i += 1) {
-      const a = (i / 6) * Math.PI * 2;
+  burst(x, y, count) {
+    for (let i = 0; i < count; i += 1) {
+      const a = (i / count) * Math.PI * 2;
       const dot = this.add.circle(x, y, 4, COLORS.burst).setDepth(5);
       this.tweens.add({
         targets: dot,
@@ -151,7 +155,11 @@ class SnakeScene extends Phaser.Scene {
     this.paused = true;
     setStatus('Game Over! Tryk Space, pil eller tap for at prøve igen 🎅');
     beep(this, 220, 400, 'sawtooth', 0.03);
-    if (!REDUCE_MOTION) this.cameras.main.shake(220, 0.008);
+    if (!REDUCE_MOTION) {
+      this.stopLeft = FEEL.death.stopMs;
+      this.cameras.main.shake(260, 0.012 * FEEL.death.trauma);
+      this.cameras.main.flash(FEEL.death.flashMs, 255, 80, 80, false);
+    }
     this.busy = true;
     await showScores(this, { gameId: 'advent-1', score: this.s.score, title: 'Søde Børn' });
     this.busy = false;

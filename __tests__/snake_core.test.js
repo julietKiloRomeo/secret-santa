@@ -124,3 +124,14 @@ test('tick time gets faster with score, never below the floor', () => {
   expect(tickMsFor(5)).toBeGreaterThan(tickMsFor(6));
   expect(tickMsFor(10_000)).toBe(SPEED_MIN_MS);
 });
+
+test('feedback tiers keep pickup below death in strength and freeze length', async () => {
+  // game-feel tiers: pickup = medium, death = large. Hit-stop stays under 0.15 s.
+  const { FEEL } = await import('../static/snake_feel.js');
+  expect(FEEL.pickup.stopMs).toBeGreaterThanOrEqual(40);
+  expect(FEEL.pickup.stopMs).toBeLessThanOrEqual(60);
+  expect(FEEL.death.trauma).toBeGreaterThan(FEEL.pickup.trauma ?? 0);
+  expect(FEEL.death.trauma).toBeGreaterThanOrEqual(0.7);
+  expect(FEEL.death.stopMs).toBeLessThanOrEqual(150);
+  expect(FEEL.pickup.burstCount).toBeGreaterThanOrEqual(8);
+});
