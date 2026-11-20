@@ -19,7 +19,8 @@ test('shield saves you from a wall, pauses, and waits for a direction', async ({
   for (let i = 0; i < 14; i += 1) {
     await page.evaluate(() => (window as any).__snakeDebug__.tickOnce());
   }
-  await expect(page.locator('#status')).toContainText('Good luck. Press a direction to start again');
+  // A random save line is shown (see shield_messages.js); it always asks for an arrow.
+  await expect(page.locator('#status')).toContainText(/arrow|pil/i);
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isWaiting())).toBe(true);
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isAlive())).toBe(true);
   // Space does not start it; a direction does.

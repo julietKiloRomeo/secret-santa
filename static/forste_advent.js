@@ -12,6 +12,8 @@ import {
   shouldStepNow,
 } from './snake_core.js';
 import { showScores } from './arcade_scene.js';
+import { pickSaveLine, saveStreakLine, nextStreak } from './shield_messages.js';
+import { newlyUnlocked, loadUnlocked, saveUnlocked } from './achievements.js';
 import { boardFor } from './snake_board.js';
 import { FEEL } from './snake_feel.js';
 import {
@@ -153,6 +155,8 @@ class SnakeScene extends Phaser.Scene {
 
   restart() {
     this.waiting = false;
+    this.saveStreak = 0;
+    this.stats = null;
     this.seenCards = new Set(); // every game start: the loot cards are read again once
     this.s = createSnake(COLS, ROWS, Math.random);
     placeFloor(this.s, Math.random); // the floor holds one gift or powerup, never both
@@ -169,7 +173,9 @@ class SnakeScene extends Phaser.Scene {
   advance() {
     const r = step(this.s, Math.random);
     if (r === 'dead') return this.gameOver();
-    if (r === 'absorbed') return this.holdForDirection(); // shield stopped a wall: pick a way out
+    this.saveStreak = nextStreak(this.saveStreak ?? 0, r);
+    this.trackRun(r);
+    if (r === 'absorbed') return this.holdForDirection(); // shield stopped the snake: pick a way out
     tickFloor(this.s, Math.random); // a waiting powerup counts down one tick
     if (r === 'ate') {
       placeFloor(this.s, Math.random); // refill the floor: gift or powerup
@@ -181,6 +187,35 @@ class SnakeScene extends Phaser.Scene {
       this.onPowerup(this.s.lastPowerup);
     }
     this.refreshHud();
+  }
+
+  // Per-run stats for achievements. Unlocks are kept per player, across games.
+  trackRun(r) {
+    this.stats ??= { gifts: 0, saves: 0, powerups: 0, saveStreak: 0 };
+    this.stats.saveStreak = this.saveStreak ?? 0;
+    if (r === 'ate') this.stats.gifts += 1;
+    if (r === 'powered') this.stats.powerups += 1;
+    if (r === 'absorbed') this.stats.saves += 1;
+    this.checkAchievements();
+  }
+
+  checkAchievements() {
+    const player = window.__defaultPlayerName__ || 'Nisse';
+    const have = loadUnlocked(localStorage, player);
+    const fresh = newlyUnlocked(this.stats, have);
+    if (!fresh.length) return;
+    for (const a of fresh) have.add(a.id);
+    saveUnlocked(localStorage, player, have);
+    // One card at a time: unlocks that land while a card is open wait their turn.
+    this.pendingCards ??= [];
+    for (const a of fresh)
+      this.pendingCards.push({ name: a.name, flavor: a.snark, effect: 'Achievement unlocked.' });
+    this.showNextPending();
+  }
+
+  showNextPending() {
+    if (this.cardOpen || !this.pendingCards?.length) return;
+    this.showCard(this.pendingCards.shift());
   }
 
   // Shield and ghost counts plus the trim note, so stacked pickups stay readable.
@@ -208,8 +243,9 @@ class SnakeScene extends Phaser.Scene {
     this.showCard(kind);
   }
 
+  // A loot card: either a powerup kind, or an ready-made card object (achievements).
   showCard(kind) {
-    const c = cardFor(kind);
+    const c = typeof kind === 'string' ? cardFor(kind) : kind;
     this.card?.destroy();
     this.cardDom?.destroy();
     const W = this.scale.width;
@@ -253,15 +289,20 @@ class SnakeScene extends Phaser.Scene {
     this.cardReady = false;
     this.waiting = true;
     setStatus('Good luck. Press a direction to start again');
+    this.showNextPending();
   }
 
   // In the waiting state only a direction (key or swipe) resumes the game.
   // A shield stopped the snake at a wall. Pause and wait for a direction, like after a loot card.
+  // A shield saved the snake. Show a random line for the hit kind; the fifth save in a row can
+  // get the rare streak line. The game waits until a direction is pressed.
   holdForDirection() {
     this.waiting = true;
     this.paused = true;
     beep(this, 330, 160, 'triangle', 0.03);
-    setStatus('Good luck. Press a direction to start again');
+    const streak = saveStreakLine(this.saveStreak);
+    const line = streak ?? pickSaveLine(this.s.lastHit);
+    setStatus(line);
   }
 
   startFromWait(dir) {
@@ -448,6 +489,23 @@ function exposeDebug(scene) {
     isWaiting: () => Boolean(scene.waiting),
     isAlive: () => scene.s.alive,
     grantEffect: (kind) => eatPowerup(scene.s, kind),
+    // Forms a loop so the next move is a body hit: the head moves into segment 2 (a self hit).
+    placeBodyHitAhead: () => {
+      const b = scene.s.body;
+      const h = b[0];
+      scene.s.body = [
+        h,
+        { x: h.x - 1, y: h.y },
+        { x: h.x - 1, y: h.y + 1 },
+        { x: h.x, y: h.y + 1 },
+        { x: h.x + 1, y: h.y + 1 },
+        { x: h.x + 1, y: h.y },
+      ];
+      scene.s.skins = [];
+      scene.s.dir = 'up';
+      scene.s.queue = [];
+      scene.s.body[1] = { x: h.x, y: h.y - 1 };
+    },
     debugStop: (msg = 'Pause') => {
       scene.paused = true;
       setStatus(msg);
