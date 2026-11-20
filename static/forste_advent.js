@@ -18,7 +18,14 @@ import { FEEL } from './snake_feel.js';
 const { cols: COLS, rows: ROWS } = boardFor(window.innerWidth, window.innerHeight);
 const CELL = 30; // logical px; Scale.FIT stretches the board to the page
 const MAX_FRAME_MS = 250; // clamp so a stalled tab cannot queue a burst of ticks
-const COLORS = { bg: 0x000022, grid: 0x111144, snake: 0x2c8a2c, edge: 0x1e5e1e, burst: 0xfde68a };
+const COLORS = {
+  bg: 0x000022,
+  grid: 0x111144,
+  snake: 0x2c8a2c,
+  edge: 0x1e5e1e,
+  burst: 0xfde68a,
+  glow: 0xfde68a,
+};
 // Gift emoji from snake_core.js mapped to pixel-art sprites in static/sprites/snake/.
 const SKIN_SPRITE = {
   '🎁': 'gift-red',
@@ -56,6 +63,7 @@ class SnakeScene extends Phaser.Scene {
       g.lineBetween(0, i * CELL, COLS * CELL, i * CELL);
     }
     this.body = this.add.graphics();
+    this.glow = this.add.graphics().setDepth(3);
     this.head = this.add.image(0, 0, 'head').setVisible(false);
     this.headPop = 1;
     this.marks = []; // reusable sprite objects for the gift and the body skins
@@ -144,6 +152,18 @@ class SnakeScene extends Phaser.Scene {
     this.tweens.add({ targets: this, headPop: 1, duration: FEEL.pickup.popMs, ease: 'Back.easeOut' });
   }
 
+  // Soft pulsing ring under the floor gift. Drawn in the body graphics layer, so no extra objects.
+  drawGlow(gift) {
+    if (!gift || REDUCE_MOTION) return;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 180);
+    const x = gift.x * CELL + CELL / 2;
+    const y = gift.y * CELL + CELL / 2;
+    this.glow
+      .clear()
+      .lineStyle(2, COLORS.glow, 0.35 + 0.4 * pulse)
+      .strokeCircle(x, y, CELL * (0.55 + 0.1 * pulse));
+  }
+
   // Ring of small circles that expands and fades. Visual only.
   burst(x, y, count) {
     for (let i = 0; i < count; i += 1) {
@@ -193,16 +213,20 @@ class SnakeScene extends Phaser.Scene {
       .setDisplaySize(CELL * (this.headPop ?? 1), CELL * (this.headPop ?? 1))
       .setRotation(HEAD_ANGLE[this.s.dir] ?? 0);
     // Body segments are presents too: skins[i] is drawn on body[i + 1].
-    const marks = [gift, ...skins.slice(0, body.length - 1).map((skin, i) => ({ ...at(i + 1), skin }))];
+    // The floor gift is drawn last, on top of the body, with a pulsing glow so it reads at a glance.
+    const bodyMarks = skins.slice(0, body.length - 1).map((skin, i) => ({ ...at(i + 1), skin }));
+    const marks = [...bodyMarks, ...(gift ? [{ ...gift, floor: true }] : [])];
     marks.forEach((m, i) => {
       this.marks[i] ??= this.add.image(0, 0, 'gift-red');
       this.marks[i]
         .setTexture(SKIN_SPRITE[m.skin] ?? 'gift-red')
         .setPosition(m.x * CELL + CELL / 2, m.y * CELL + CELL / 2)
         .setDisplaySize(CELL - 4, CELL - 4)
-        .setVisible(true);
+        .setVisible(true)
+        .setDepth(m.floor ? 4 : 2);
     });
     this.marks.slice(marks.length).forEach((t) => t.setVisible(false));
+    this.drawGlow(gift);
   }
 }
 
