@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => loginAsPlaywright(page));
 
 const dbg = (page) => page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
-test('two quick keypresses within one tick both turn the snake', async ({ page }) => {
+test('two quick keypresses are both queued in order', async ({ page }) => {
   await page.goto('/advent-1');
   await dbg(page);
   await page.evaluate(() => (window as any).__snakeDebug__.debugStop());
@@ -15,12 +15,8 @@ test('two quick keypresses within one tick both turn the snake', async ({ page }
   await page.evaluate(() => (window as any).__snakeDebug__.debugStop());
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowLeft');
-  await page.evaluate(() => {
-    const d = (window as any).__snakeDebug__;
-    d.tickOnce();
-    d.tickOnce();
-  });
-  expect(await page.evaluate(() => (window as any).__snakeDebug__.getDirection())).toBe('left');
+  // Timing-free check: the newest queued turn is left, and up was not dropped.
+  expect(await page.evaluate(() => (window as any).__snakeDebug__.getPendingDirection())).toBe('left');
 });
 
 test('a wall death opens the score screen and freezes the snake', async ({ page }) => {

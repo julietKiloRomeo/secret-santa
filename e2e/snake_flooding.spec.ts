@@ -7,6 +7,12 @@ test.describe('Snake gift order and no flooding', () => {
     await page.goto('/advent-1');
     await page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
+    // The snake starts as presents: note how many before any gift is eaten.
+    const start = await page.evaluate(() => {
+      // @ts-ignore
+      return window.__snakeDebug__?.getSkinsFiltered?.().length ?? 0;
+    });
+
     // Helper to eat a gift with a specific skin by placing it ahead
     async function eatGiftWithSkin(skin: string) {
       await page.evaluate((skinArg) => {
@@ -34,7 +40,7 @@ test.describe('Snake gift order and no flooding', () => {
       return window.__snakeDebug__?.getSkinsFiltered?.();
     });
     // We started length 5; after 3 gifts, some body skins should exist but order must start with first eaten
-    expect(skins.slice(0, gifts.length)).toEqual(gifts);
+    expect(skins.slice(start, start + gifts.length)).toEqual(gifts);
 
     // Advance movement without eating and verify order unchanged
     await page.evaluate(() => {
@@ -46,12 +52,11 @@ test.describe('Snake gift order and no flooding', () => {
       return window.__snakeDebug__?.getSkinsFiltered?.();
     });
     // Filter might have grown due to movement, but prefix must still equal gifts in same order
-    expect(skinsAfter.slice(0, gifts.length)).toEqual(gifts);
+    expect(skinsAfter.slice(start, start + gifts.length)).toEqual(gifts);
 
     // Ensure no flooding: the count of the last eaten gift emoji equals exactly 1
     const last = gifts[gifts.length - 1];
-    const countLast = skinsAfter.filter((s: string) => s === last).length;
+    const countLast = skinsAfter.slice(start).filter((s: string) => s === last).length;
     expect(countLast).toBe(1);
   });
 });
-
