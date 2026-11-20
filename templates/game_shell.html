@@ -16,5 +16,5 @@
   </section>
   <script>window.__defaultPlayerName__ = {{ default_name|default('Nisse')|tojson }};</script>
   <script src="/static/vendor/phaser-4.2.1.min.js"></script>
-  <script type="module" src="/static/{{ game_script }}"></script>
+  <script type="module" src="/static/{{ game_script }}?v={{ asset_version }}"></script>
 {% endblock %}

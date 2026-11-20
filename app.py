@@ -1,5 +1,6 @@
 """Secret Santa + advent mini-games. Run as a single process (state lives in module globals)."""
 
+import time
 import os
 import sqlite3
 from contextlib import closing
@@ -162,6 +163,10 @@ def require_admin(user=Depends(require_user)):
     return user
 
 
+# Changes on every server start, so browsers fetch fresh CSS and game scripts after a deploy.
+ASSET_VERSION = str(int(time.time()))
+
+
 def render(request: Request, template: str, **ctx):
     user = request.session.get("user")
     admin = user in ADMINS
@@ -170,6 +175,7 @@ def render(request: Request, template: str, **ctx):
         template,
         {
             "session": request.session,
+            "asset_version": ASSET_VERSION,
             "is_admin_user": lambda: admin,
             "game_enabled_for_user": lambda g: admin or is_game_enabled(g),
             "published_games": [{"id": g, "title": GAMES[g][0]} for g in PUBLISHED],
@@ -427,6 +433,6 @@ def admin_restore_snapshot(body: SnapshotIn, _=Depends(require_admin)):
 
 
 if __name__ == "__main__":
-    import uvicorn
+    __NOPE__
 
     uvicorn.run("app:app", port=5000, reload=True)

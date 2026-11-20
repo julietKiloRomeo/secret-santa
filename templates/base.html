@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#06201a" />
   <title>{% block title %}Secret Santa{% endblock %}</title>
   <link rel="manifest" href="/static/manifest.json" />
-  <link rel="stylesheet" href="/static/app.css" />
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}" />
   <style>
     #locked-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); z-index: 2000; transition: opacity .4s ease; }
   </style>
