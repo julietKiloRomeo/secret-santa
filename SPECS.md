@@ -84,10 +84,17 @@ Client behavior / Mini-games
 
 All four games are Phaser 4 scenes (`static/vendor/phaser-4.2.1.min.js`). The rules live in pure modules that Jest tests; the views draw them and handle input. Every game ends with the shared score screen (`static/arcade_scene.js`): it shows the top 10, asks for a name if the score qualifies (max 18 characters, pre-filled with the player's name), and posts it. The game pauses while the screen is open.
 
-- Jule Snake (`/advent-1`, `static/forste_advent.js`, rules `static/snake_core.js`):
-  - Arrow keys or swipe (24px threshold) steer. The grid is 20 columns.
-  - Gifts come from a shuffle bag and become body skins in the order eaten.
+- Jule Snake (`/advent-1`, `static/forste_advent.js`, rules `static/snake_core.js` and `static/snake_powerups.js`, feedback values `static/snake_feel.js`):
+  - Arrow keys or swipe (24px threshold) steer. The board matches the screen aspect (`static/snake_board.js`), about 400 cells.
+  - Turns are queued: up to two per tick, applied in press order. A reverse is refused against the direction in use.
+  - The snake starts as a 5-segment body with four present segments. Gifts come from a shuffle bag and become body segments in the order eaten.
+  - Tick time starts at 190 ms, drops 4 ms per gift, and never goes below 70 ms. A queued turn steps early once half a tick has passed.
+  - The floor holds one item: a gift, or with 20% chance a powerup. Gifts never spawn in row 0, under the HUD.
+  - Powerups: `shield` absorbs one wall or self hit; `ghost` lets the head pass through its body for 6 ticks; `trim` removes 3 tail segments and their presents with no score loss (the snake keeps at least 5). Pickups stack. Shield and ghost counts show on the HUD.
+  - A powerup has a timer of max(8, ceil(path length × 1.5)) ticks, where path length is the shortest walk from the head around the body. It blinks in its last 3 ticks, then becomes a normal gift on the same cell.
+  - Eating a gift gives a 50 ms hit-stop and a burst. Death gives a 120 ms hit-stop, a shake and a red flash.
   - Space, Enter or an arrow key restart after game over. Scores post to `/api/scores/advent-1`.
+  - Debug hooks for Playwright: `window.__snakeDebug__` (see `TESTING.md`), including `placePowerupNextToHead`, `getEffects`, `getQueue`.
 
 - Flappy Santa (`/advent-2`, `static/anden_advent.js`, rules `static/anden_core.js`):
   - Tap, click or Space flaps. Gravity, flap impulse and speed scale with the canvas width.
