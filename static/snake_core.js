@@ -82,21 +82,30 @@ export function step(s, rand) {
   // The tail moves away this tick, so its cell is free unless the snake grows (then it stays put).
   const eating = s.gift && head.x === s.gift.x && head.y === s.gift.y;
   const solid = eating ? s.body : s.body.slice(0, -1);
-  const hit =
-    head.x < 0 ||
-    head.x >= s.cols ||
-    head.y < 0 ||
-    head.y >= s.rows ||
-    solid.some((p) => p.x === head.x && p.y === head.y);
-  if (hit) {
+  const ghosting = (s.effects?.ghost ?? 0) > 0;
+  if (ghosting) s.effects.ghost -= 1;
+  const wall = head.x < 0 || head.x >= s.cols || head.y < 0 || head.y >= s.rows;
+  const self = !ghosting && solid.some((p) => p.x === head.x && p.y === head.y);
+  if (wall || self) {
+    if ((s.effects?.shield ?? 0) > 0) {
+      // A shield absorbs the hit: the snake stays where it is for this tick.
+      s.effects.shield -= 1;
+      return 'moved';
+    }
     s.alive = false;
     return 'dead';
   }
   s.body.unshift(head);
+  if (s.powerup && head.x === s.powerup.x && head.y === s.powerup.y) {
+    s.lastPowerup = s.powerup.kind; // the caller applies it with eatPowerup (see snake_powerups)
+    s.powerup = null;
+    s.body.pop();
+    return 'powered';
+  }
   if (s.gift && head.x === s.gift.x && head.y === s.gift.y) {
     s.skins.push(s.gift.skin); // skins[i] is drawn on body[i + 1]
     s.score += 1;
-    placeGift(s, rand);
+    s.gift = null; // the caller refills the floor with placeFloor (gift or powerup)
     return 'ate';
   }
   s.body.pop();
