@@ -14,6 +14,7 @@ import {
 import { showScores } from './arcade_scene.js';
 import { boardFor } from './snake_board.js';
 import { FEEL } from './snake_feel.js';
+import { placeFloor, tickFloor, eatPowerup, activeEffects, expirePowerup } from './snake_powerups.js';
 
 const { cols: COLS, rows: ROWS } = boardFor(window.innerWidth, window.innerHeight);
 const CELL = 30; // logical px; Scale.FIT stretches the board to the page
@@ -25,6 +26,7 @@ const COLORS = {
   edge: 0x1e5e1e,
   burst: 0xfde68a,
   glow: 0xfde68a,
+  puRing: 0x7dd3fc,
 };
 // Gift emoji from snake_core.js mapped to pixel-art sprites in static/sprites/snake/.
 const SKIN_SPRITE = {
@@ -35,7 +37,13 @@ const SKIN_SPRITE = {
   '🧸': 'gift-blue',
   '🍫': 'gift-green',
 };
-const SPRITE_FILES = { ...Object.fromEntries(Object.values(SKIN_SPRITE).map((k) => [k, k])), head: 'head' };
+const SPRITE_FILES = {
+  ...Object.fromEntries(Object.values(SKIN_SPRITE).map((k) => [k, k])),
+  head: 'head',
+  'pu-shield': 'pu-shield',
+  'pu-ghost': 'pu-ghost',
+  'pu-trim': 'pu-trim',
+};
 const HEAD_ANGLE = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
 const KEY_DIR = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 const RESTART_KEYS = new Set(['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -64,6 +72,9 @@ class SnakeScene extends Phaser.Scene {
     }
     this.body = this.add.graphics();
     this.glow = this.add.graphics().setDepth(3);
+    this.puRing = this.add.graphics().setDepth(4);
+    this.puSprite = this.add.image(0, 0, 'pu-shield').setVisible(false);
+    this.hudEl = null; // effects line is created on first use, see refreshHud
     this.head = this.add.image(0, 0, 'head').setVisible(false);
     this.headPop = 1;
     this.marks = []; // reusable sprite objects for the gift and the body skins
@@ -124,6 +135,7 @@ class SnakeScene extends Phaser.Scene {
 
   restart() {
     this.s = createSnake(COLS, ROWS, Math.random);
+    placeFloor(this.s, Math.random); // the floor holds one gift or powerup, never both
     this.prev = this.s.body.map((p) => ({ ...p }));
     this.paused = false;
     this.acc = 0;
@@ -136,8 +148,38 @@ class SnakeScene extends Phaser.Scene {
   // One simulation tick. Only ever called from update() or the debug hook.
   advance() {
     const r = step(this.s, Math.random);
-    if (r === 'ate') this.onPickup();
     if (r === 'dead') return this.gameOver();
+    tickFloor(this.s, Math.random); // a waiting powerup counts down one tick
+    if (r === 'ate') {
+      placeFloor(this.s, Math.random); // refill the floor: gift or powerup
+      this.onPickup();
+    }
+    if (r === 'powered') {
+      eatPowerup(this.s, this.s.lastPowerup);
+      placeFloor(this.s, Math.random);
+      this.onPowerup(this.s.lastPowerup);
+    }
+    this.refreshHud();
+  }
+
+  // Shield and ghost counts plus the trim note, so stacked pickups stay readable.
+  refreshHud() {
+    const e = activeEffects(this.s);
+    const parts = [];
+    if (e.shield) parts.push(`🛡 ${e.shield}`);
+    if (e.ghost) parts.push(`👻 ${e.ghost}`);
+    if (!this.hudEl) {
+      this.hudEl = document.createElement('div');
+      this.hudEl.className = 'game-status';
+      this.hudEl.style.top = '6.5rem';
+      statusEl?.parentElement?.appendChild(this.hudEl);
+    }
+    this.hudEl.textContent = parts.join('  ');
+  }
+
+  onPowerup(kind) {
+    beep(this, 660, 150, 'triangle', 0.03);
+    this.lastPickupNote = kind;
   }
 
   onPickup() {
@@ -152,9 +194,34 @@ class SnakeScene extends Phaser.Scene {
     this.tweens.add({ targets: this, headPop: 1, duration: FEEL.pickup.popMs, ease: 'Back.easeOut' });
   }
 
+  // Powerup on the floor: its sprite with a shrinking countdown ring. Blinks in its last 3 ticks.
+  drawPowerup(pu) {
+    if (!pu) return;
+    const x = pu.x * CELL + CELL / 2;
+    const y = pu.y * CELL + CELL / 2;
+    const left = pu.ttl / pu.maxTtl;
+    const blink = pu.ttl <= 3 && Math.floor(this.time.now / 120) % 2 === 0;
+    this.puSprite
+      .setTexture(`pu-${pu.kind}`)
+      .setPosition(x, y)
+      .setDisplaySize(CELL - 2, CELL - 2)
+      .setDepth(4)
+      .setAlpha(blink ? 0.35 : 1)
+      .setVisible(true);
+    this.puRing
+      .clear()
+      .lineStyle(3, COLORS.puRing, 0.9)
+      .beginPath()
+      .arc(x, y, CELL * 0.62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left, false)
+      .strokePath();
+  }
+
   // Soft pulsing ring under the floor gift. Drawn in the body graphics layer, so no extra objects.
   drawGlow(gift) {
-    if (!gift || REDUCE_MOTION) return;
+    if (!gift || REDUCE_MOTION) {
+      this.glow.clear(); // a powerup or no item on the floor: no gift glow
+      return;
+    }
     const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 180);
     const x = gift.x * CELL + CELL / 2;
     const y = gift.y * CELL + CELL / 2;
@@ -227,6 +294,11 @@ class SnakeScene extends Phaser.Scene {
     });
     this.marks.slice(marks.length).forEach((t) => t.setVisible(false));
     this.drawGlow(gift);
+    if (this.s.powerup) this.drawPowerup(this.s.powerup);
+    else {
+      this.puSprite.setVisible(false);
+      this.puRing.clear();
+    }
   }
 }
 
@@ -246,6 +318,14 @@ function beep(scene, freq, ms, type, gain) {
 // Hooks for Playwright. Keep names stable: specs and TESTING.md depend on them.
 function exposeDebug(scene) {
   window.__snakeDebug__ = {
+    placePowerupNextToHead(kind = 'shield', dx = 1, dy = 0) {
+      const h = scene.s.body[0];
+      scene.s.gift = null;
+      scene.s.powerup = { x: h.x + dx, y: h.y + dy, kind, ttl: 40, maxTtl: 40 };
+      scene.drawFrame(1);
+    },
+    getEffects: () => activeEffects(scene.s),
+    getPowerup: () => (scene.s.powerup ? { ...scene.s.powerup } : null),
     placeGiftNextToHead(dx = 1, dy = 0) {
       const h = scene.s.body[0];
       scene.s.gift = { x: h.x + dx, y: h.y + dy, skin: nextSkin(scene.s, Math.random) };
@@ -254,6 +334,7 @@ function exposeDebug(scene) {
     setDirection: (d) => turn(scene.s, d),
     getPendingDirection: () => scene.s.queue.at(-1) ?? scene.s.dir,
     getDirection: () => scene.s.dir,
+    getQueue: () => [...scene.s.queue],
     tickOnce: () => {
       if (!scene.s.alive) return;
       scene.prev = scene.s.body.map((p) => ({ ...p }));
