@@ -2,12 +2,16 @@
 export const GIFTS = ['🎁', '🍬', '🧦', '🍪', '🍫', '🧸'];
 const DELTA = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
-export const SPEED_START_MS = 150;
+export const SPEED_START_MS = 190;
 export const SPEED_MIN_MS = 70;
 const QUEUE_MAX = 2; // buffered turns; a third quick press in one tick is dropped
 
 // Faster as the snake grows. Tick time in ms, never below SPEED_MIN_MS.
 export const tickMsFor = (score) => Math.max(SPEED_MIN_MS, SPEED_START_MS - score * 4);
+
+// A queued turn steps the snake early once half a tick has passed, so a key press
+// lands within about half a tick instead of up to a full one.
+export const shouldStepNow = ({ acc, tick, queued }) => queued > 0 && acc >= tick / 2;
 
 export function nextSkin(s, rand) {
   if (s.forcedSkin) {
@@ -50,6 +54,8 @@ export function createSnake(cols, rows, rand) {
     forcedSkin: null,
     gift: null,
   };
+  // Start as a present: the body is skinned from the same shuffle bag as the gifts.
+  s.skins = Array.from({ length: 4 }, () => nextSkin(s, rand));
   placeGift(s, rand);
   return s;
 }
