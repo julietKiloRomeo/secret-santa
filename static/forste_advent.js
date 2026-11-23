@@ -19,6 +19,8 @@ import { FEEL } from './snake_feel.js';
 import {
   placeFloor,
   tickFloor,
+  tickTrimmed,
+  trimAlpha,
   eatPowerup,
   activeEffects,
   expirePowerup,
@@ -177,6 +179,7 @@ class SnakeScene extends Phaser.Scene {
     this.trackRun(r);
     if (r === 'absorbed') return this.holdForDirection(); // shield stopped the snake: pick a way out
     tickFloor(this.s, Math.random); // a waiting powerup counts down one tick
+    tickTrimmed(this.s); // frozen trim pieces age and fade
     if (r === 'ate') {
       placeFloor(this.s, Math.random); // refill the floor: gift or powerup
       this.onPickup();
@@ -412,13 +415,16 @@ class SnakeScene extends Phaser.Scene {
     // Body segments are presents too: skins[i] is drawn on body[i + 1].
     // The floor gift is drawn last, on top of the body, with a pulsing glow so it reads at a glance.
     const bodyMarks = skins.slice(0, body.length - 1).map((skin, i) => ({ ...at(i + 1), skin }));
-    const marks = [...bodyMarks, ...(gift ? [{ ...gift, floor: true }] : [])];
+    // Frozen trim pieces: their cells, held still, fading out. Drawn behind the live body.
+    const trimMarks = (this.s.trimmed ?? []).map((p) => ({ x: p.x, y: p.y, skin: p.skin, alpha: trimAlpha(p.ttl) }));
+    const marks = [...trimMarks, ...bodyMarks, ...(gift ? [{ ...gift, floor: true }] : [])];
     marks.forEach((m, i) => {
       this.marks[i] ??= this.add.image(0, 0, 'gift-red');
       this.marks[i]
         .setTexture(SKIN_SPRITE[m.skin] ?? 'gift-red')
         .setPosition(m.x * CELL + CELL / 2, m.y * CELL + CELL / 2)
         .setDisplaySize(CELL - 4, CELL - 4)
+        .setAlpha(m.alpha ?? 1)
         .setVisible(true)
         .setDepth(m.floor ? 4 : 2);
     });

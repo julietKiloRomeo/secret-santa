@@ -13,6 +13,9 @@ import {
   tickFloor,
   needsCard,
   markCardSeen,
+  tickTrimmed,
+  TRIM_HOLD_TICKS,
+  TRIM_FADE_TICKS,
 } from '../static/snake_powerups';
 
 const rng = (seq) => {
@@ -357,4 +360,53 @@ test('the ghost card hints at looping without spelling out the mechanic', async 
   expect(POWERUP_CARDS.ghost.flavor + POWERUP_CARDS.ghost.effect).toMatch(/coil|coiled|circle/i);
   expect(text).toMatch(/10 ticks/);
   expect(text).not.toMatch(/loop/i); // hint only, not the mechanic's name
+});
+
+test('trim keeps the cut segments as frozen pieces with their skins', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.body = Array.from({ length: 10 }, (_, i) => ({ x: 10 - i, y: 10 }));
+  s.skins = Array.from({ length: 9 }, (_, i) => `skin${i}`);
+  eatPowerup(s, 'trim');
+  expect(s.trimmed).toHaveLength(TRIM_COUNT);
+  // The cut tail is the last TRIM_COUNT body cells, with the skins drawn on them.
+  // skins[i] is drawn on body[i + 1]: the cut cell at body[7] (x=3) carries skins[6].
+  expect(s.trimmed.map((p) => [p.x, p.skin])).toEqual([
+    [3, 'skin6'],
+    [2, 'skin7'],
+    [1, 'skin8'],
+  ]);
+  expect(s.trimmed[0].ttl).toBe(TRIM_HOLD_TICKS + TRIM_FADE_TICKS);
+});
+
+test('frozen trim pieces stay for the hold time, then are removed', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.body = Array.from({ length: 10 }, (_, i) => ({ x: 10 - i, y: 10 }));
+  s.skins = Array.from({ length: 9 }, () => '🍪');
+  eatPowerup(s, 'trim');
+  for (let i = 0; i < TRIM_HOLD_TICKS; i++) tickTrimmed(s);
+  expect(s.trimmed.length).toBe(TRIM_COUNT);
+  expect(s.trimmed[0].ttl).toBe(TRIM_FADE_TICKS);
+  for (let i = 0; i < TRIM_FADE_TICKS; i++) tickTrimmed(s);
+  expect(s.trimmed).toHaveLength(0);
+});
+
+test('frozen trim pieces do not move or count as collisions', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.body = Array.from({ length: 10 }, (_, i) => ({ x: 10 - i, y: 10 }));
+  s.skins = Array.from({ length: 9 }, () => '🍪');
+  eatPowerup(s, 'trim');
+  const before = s.trimmed.map((p) => ({ x: p.x, y: p.y }));
+  s.dir = 'up';
+  step(s, () => 0.5);
+  expect(s.trimmed.map((p) => ({ x: p.x, y: p.y }))).toEqual(before);
+  expect(s.alive).toBe(true);
+});
+
+test('trim piece opacity holds at 1 during the hold, then fades to 0', async () => {
+  const { trimAlpha } = await import('../static/snake_powerups');
+  expect(trimAlpha(TRIM_FADE_TICKS + TRIM_HOLD_TICKS)).toBe(1);
+  expect(trimAlpha(TRIM_FADE_TICKS + 1)).toBe(1);
+  expect(trimAlpha(TRIM_FADE_TICKS)).toBeCloseTo(1);
+  expect(trimAlpha(1)).toBeCloseTo(0.5);
+  expect(trimAlpha(0)).toBe(0);
 });

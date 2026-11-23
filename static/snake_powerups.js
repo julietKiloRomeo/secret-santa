@@ -6,6 +6,8 @@ export const POWERUP_CHANCE = 0.2; // share of floor spawns that are powerups
 export const POWERUP_KINDS = ['shield', 'ghost', 'trim'];
 export const GHOST_TICKS = 10; // ticks the head may pass through its own body per pickup
 export const TRIM_COUNT = 3; // tail segments removed by a trim pickup
+export const TRIM_HOLD_TICKS = 4; // cut pieces stay frozen in place for this many ticks (~1 s)
+export const TRIM_FADE_TICKS = 2; // then fade out over this many ticks (~0.5 s)
 const MIN_TIMER = 8; // ticks
 const TIMER_FACTOR = 1.5; // timer = path length x this
 
@@ -87,9 +89,21 @@ export function eatPowerup(s, kind) {
   if (kind === 'trim') {
     const keep = Math.max(s.body.length - TRIM_COUNT, 5);
     const drop = s.body.length - keep;
-    s.body.splice(keep);
-    s.skins.splice(Math.max(s.skins.length - drop, 0));
+    const cut = s.body.splice(keep);
+    const skins = s.skins.splice(Math.max(s.skins.length - drop, 0));
+    // Cut pieces stay where they were, frozen and visual only, so the player sees what was lost.
+    s.trimmed = [
+      ...(s.trimmed ?? []),
+      ...cut.map((p, i) => ({ x: p.x, y: p.y, skin: skins[i - (cut.length - skins.length)] ?? null, ttl: TRIM_HOLD_TICKS + TRIM_FADE_TICKS })),
+    ];
   }
+}
+
+// One tick: frozen trim pieces age; they are removed once the hold and fade are over.
+export function tickTrimmed(s) {
+  if (!s.trimmed) return;
+  for (const p of s.trimmed) p.ttl -= 1;
+  s.trimmed = s.trimmed.filter((p) => p.ttl > 0);
 }
 
 export const activeEffects = (s) => ({ shield: s.effects?.shield ?? 0, ghost: s.effects?.ghost ?? 0 });
@@ -119,3 +133,6 @@ export const cardFor = (kind) => POWERUP_CARDS[kind];
 // The card appears on the first pickup of each kind, tracked per run in a Set.
 export const needsCard = (seen, kind) => !seen.has(kind);
 export const markCardSeen = (seen, kind) => seen.add(kind);
+
+// Opacity of a frozen trim piece from its remaining ticks: full during the hold, then a linear fade.
+export const trimAlpha = (ttl) => Math.max(0, Math.min(1, ttl / TRIM_FADE_TICKS));
