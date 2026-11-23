@@ -1,0 +1,70 @@
+# Player profiles and player cards
+
+Two new pages for logged-in players. Tests before code (AGENTS.md).
+
+## Decisions
+
+1. Achievements: games post unlocks to the server (`POST /api/achievements`).
+2. Profile picture: user uploads a file or picks a preset (both). Server re-encodes with Pillow
+   to a 256 px square, stored under `DATA_DIR/avatars/`.
+3. Wish list: rich text with links. Create a link with Ctrl-K (Cmd-K on Mac), or select text and
+   right-click, like Teams, Word and PowerPoint.
+4. Editing: the owner and admins (`ADMINS`) can edit a profile.
+5. Player cards: all logged-in players see all cards. Each card shows scores and achievement
+   badges. Nav link `/spillere`.
+6. Persistence: deferred. Decide later how `DATA_DIR` is kept on Render.
+
+## Open questions
+
+A. Achievement badges. The 5 snake achievements exist only in localStorage today.
+   Proposal:
+   - One shared catalogue on the server, keyed by a global id (`snake:first-present`).
+   - Games post an unlock once. Idempotent on `(name, achievement_id)`.
+   - On the next visit, each game uploads its localStorage set once, so existing unlocks are not lost.
+   - Badges show the achievement name as a hover title (`title`) and the snark as the tooltip body.
+   Confirm, or name a different strategy.
+
+B. Wish list storage. Options:
+   - a. Store sanitized HTML. Allowlist tags (`a`, `b`, `i`, `u`, `br`, `ul`, `ol`, `li`) and
+     `href` schemes (`https`, `http`, `mailto`) in Python with `html.parser`, no new dependency.
+   - b. Store Markdown, render with the existing escape helper. Simpler and safer, but users
+     don't get Word-style formatting.
+   Recommended: a, because the editor is contenteditable and the sanitizer is the trust boundary.
+
+## Data
+
+- `profiles(name PK, wish_html TEXT, avatar_path TEXT, updated_at TEXT)`
+- `achievements(name, achievement_id, unlocked_at, PK(name, achievement_id))`
+
+## API
+
+- `GET /api/profile/{name}`: public to logged-in users.
+- `PUT /api/profile/{name}`: owner or admin. Wish length capped (4000 chars).
+- `POST /api/profile/{name}/avatar`: multipart. Only JPEG/PNG/WebP, max 2 MB. Pillow re-encode
+  to 256x256. Reject files that do not decode.
+- `GET /api/players`: all players with profile, best score per game, achievements.
+- `POST /api/achievements`: body `{achievement_id}`; caller is the session user only.
+
+## Pages
+
+- `/profil`: avatar (upload or preset picker), wish list editor with Ctrl-K link dialog.
+- `/spillere`: grid of player cards. Mobile first, one column, then 2 and 3.
+  Badges wrap and are never hidden by crowding. Scores show top 3 per game.
+
+## Test plan (write first)
+
+- Wish sanitizer: `<script>`, `javascript:` hrefs and `onerror` are removed; `https` links survive.
+- Avatar: non-image rejected; oversize rejected; output is 256x256.
+- Permissions: a non-owner non-admin gets 403 on PUT.
+- Achievements POST is idempotent and only writes to the session user.
+- `/spillere` renders a card per player with the user's badges.
+- Playwright screenshots at phone and desktop widths.
+
+## Progress
+
+- [ ] Spec agreed (questions A and B)
+- [ ] Profile table, API and tests
+- [ ] Avatar upload
+- [ ] `/profil` editor
+- [ ] Achievement sync from games
+- [ ] `/spillere` cards
