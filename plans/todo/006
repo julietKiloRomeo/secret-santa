@@ -33,15 +33,18 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
    - Two more tracks TBD. Candidates from the existing code: shield saves (`snake:shield`),
      save streak (`snake:lives`). Pick the two to keep, with their tiers.
 
-   Ghost cross (proposed):
-   - Ghost gives 6 ticks of passing through the body (snake_powerups.js GHOST_TICKS).
-   - A cross is counted when the head passes over body segments while ghosting and the
-     snake is still alive afterwards. The loop must be closed before the ghost ends, so the
-     snake has to cross, not just hit itself.
-   - Tiers by number of distinct body crossings in one run, e.g. 1, 2, 3 crossings.
-     The board is limited; crossing 3 times needs a long snake. Check feasibility before
-     fixing tier thresholds.
-   - Funny texts for the card come from the reference post (plans/reference/).
+   Ghost loops (agreed rules):
+   - Ghost gives 10 ticks of passing through the body (GHOST_TICKS = 10).
+   - A loop is recorded when the head moves into a body cell while ghosting and stays alive.
+   - After a loop, the next floor item is always a ghost powerup.
+   - The card text hints at coiling without naming the mechanic (done, commit b38aea8).
+
+   Tiers (proposed names, to confirm):
+   - Tier 1, one loop: Ouroboros (the snake that eats its own tail).
+   - Tier 2, two loops at once: Jormungandr (the world serpent that encircles the earth).
+   - Tier 3, three loops at once: name open. Options: Nidhogg (the dragon gnawing the roots of
+     Yggdrasil), Apep (Egyptian serpent of chaos), or Uroboros variant. Pick one.
+   - Spelling: Jörmungandr with the umlaut, if the card font supports it.
 
    Badges show the name on hover (title) and the snark as tooltip text.
 
