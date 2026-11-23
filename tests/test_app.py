@@ -319,3 +319,38 @@ def test_spil_hub_lists_every_candidate_with_launchers(client):
     for g in GAMES:
         assert f'href="/{g}"' in html, g
     assert "Kommer snart" in html
+
+
+# --- login env values --------------------------------------------------------
+# Render's env UI and pasted .env lines often add quotes or trailing whitespace.
+
+
+@pytest.mark.parametrize(
+    "wrap", ['"{}"', "'{}'", "{} ", "{}\n", ' "{}" \n'], ids=["dq", "sq", "space", "newline", "mixed"]
+)
+def test_login_accepts_hash_with_pasted_quotes_or_whitespace(appmod, client, wrap, monkeypatch):
+    from werkzeug.security import generate_password_hash
+
+    monkeypatch.setenv("LOGIN_tommy", wrap.format(generate_password_hash("swift-fox-meadow")))
+    appmod.logins = appmod.load_logins()
+    r = login(client, "tommy", "swift-fox-meadow")
+    assert r.status_code == 200, r.text
+
+
+def test_login_malformed_hash_is_401_not_500(appmod, client, monkeypatch):
+    monkeypatch.setenv("LOGIN_tommy", "not-a-hash")
+    appmod.logins = appmod.load_logins()
+    r = login(client, "tommy", "swift-fox-meadow")
+    assert r.status_code == 401
+
+
+def test_documented_passphrase_matches_documented_hash_format():
+    # README and .env.example must describe the hash format Werkzeug actually emits.
+    from pathlib import Path
+    from werkzeug.security import generate_password_hash
+
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text()
+    assert "pbkdf2:sha256:260000" not in readme
+    assert generate_password_hash("x").startswith(("scrypt:", "pbkdf2:"))
+    assert "scripts/hash_password.py" in readme
