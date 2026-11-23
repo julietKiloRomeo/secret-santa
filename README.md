@@ -184,11 +184,21 @@ Render automatically detects the `Dockerfile`, so no extra build scripts are req
    - `SECRET_KEY` (required, strong random string).
    - `ENV_FILE` if you keep credentials in a non-default path.
    - `DATA_DIR` to point writable files (env, scores, matches) at a persistent directory like `/var/data`.
-   - Any `LOGIN_*`, `DRAW_LOCKED`, `SCORES_DB`, etc., values you need.
+   - Any `LOGIN_*`, `DRAW_LIVE`, `SCORES_DB`, etc., values you need.
+   - `DRAW_LIVE` stays unset (or `0`) until the draw should be revealed. Set it to `1` to show real recipients.
 5. Expose port `5000` (Render auto-detects from the `EXPOSE 5000` directive). The Dockerfile starts uvicorn on port 5000.
 6. (Optional) Add a persistent disk and mount it at `/app` if you want SQLite files (`scores.sqlite3`, `secret-santa-<year>.json`) to survive deploys. Otherwise, keep those files in git or move to a managed database.
 
 Trigger a deploy by pushing a new commit; Render will rebuild the container and restart the service with the new image.
+
+## Draw
+
+The draw is made locally and committed in encoded form. It is hidden from accidental viewing only. The key is in the repo and this is not a security control.
+
+- Draw: `uv run python scripts/draw.py --year 2026` writes `secret-santa-2026.json` (gitignored) and `secret-santa-2026.enc` (commit this). It refuses to overwrite without `--force` and writes nothing if a rule breaks.
+- The server reads the `.enc` file, falling back to the repo copy when `DATA_DIR` lacks it.
+- Until `DRAW_LIVE=1`, logins and `/lodtraekning` show a placeholder recipient.
+- There is no redraw button in the app.
 
 ## Configuration
 

@@ -30,19 +30,6 @@
         </form>
       </section>
 
-      <section class="bg-white/5 border border-white/10 rounded-3xl p-6 shadow-lg flex flex-col justify-between">
-        <div>
-          <h2 class="text-xl font-semibold mb-1">Kør årets matcher</h2>
-          <p class="text-sm text-white/70 mb-4">Træk matches igen når deltagerlisten er opdateret.</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <button id="runMatchesBtn" data-js="run-matches-btn" class="flex-1 rounded-2xl bg-blue-500/90 px-4 py-2 text-white font-semibold hover:bg-blue-400 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300" {% if draw_locked %}disabled{% endif %} onclick="runMatches()">Kør matcher</button>
-          {% if draw_locked %}
-            <span class="text-sm text-red-300">Trækning låst</span>
-          {% endif %}
-        </div>
-        <p id="matchesMsg" class="mt-3 text-sm text-white/70"></p>
-      </section>
     </div>
 
     <section class="bg-white/5 border border-white/10 rounded-3xl p-6 shadow-lg">
@@ -87,23 +74,6 @@
         setPassMsg.className = data.success ? 'text-sm text-emerald-300' : 'text-sm text-amber-300';
       }
       return false;
-    }
-
-    async function runMatches() {
-      const btn = getMsgEl('runMatchesBtn');
-      const matchesMsg = getMsgEl('matchesMsg');
-      if (btn && btn.disabled) {
-        if (matchesMsg) matchesMsg.textContent = 'Drawing locked by server configuration.';
-        return;
-      }
-      if (btn) btn.disabled = true;
-      const resp = await fetch('/api/admin/run_matches', { method: 'POST' });
-      const data = await resp.json();
-      if (matchesMsg) {
-        matchesMsg.textContent = data.success ? `Matcher gemt for år ${data.year}` : (data.error || 'Fejl');
-        matchesMsg.className = data.success ? 'text-sm text-emerald-300' : 'text-sm text-amber-300';
-      }
-      if (btn) btn.disabled = false;
     }
 
     async function loadGames() {

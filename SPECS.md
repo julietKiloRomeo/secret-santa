@@ -40,8 +40,7 @@ Admin APIs (require admin login: `jimmy` or `ditte`)
   - Body: `{ "name": <fornavn>, "passphrase": <pass> }`.
   - Stores a hashed passphrase in the configured `.env` file and re-loads the login env.
 
-- `POST /api/admin/run_matches`
-  - Regenerates current-year matches and saves `secret-santa-<year>.json`.
+- Draws are made locally with `uv run python scripts/draw.py --year <year>`, then `secret-santa-<year>.enc` is committed. The server has no redraw endpoint.
 
 - `GET /api/admin/games`
   - Returns list of games and whether they are enabled.
