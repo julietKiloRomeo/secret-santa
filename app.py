@@ -18,6 +18,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from profile_sanitize import sanitize_wish
+from achievement_catalog import CATALOG, highest_tiers, tier_for
 from avatars import save_avatar, AvatarError, avatar_dir
 from secret_santa import SecretSanta
 from storage import (
@@ -296,6 +297,14 @@ def spil(request: Request):
     return render(request, "spil.html", cards=cards)
 
 
+@app.get("/spillere")
+def players_page(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return to_login()
+    return render(request, "spillere.html", player=user)
+
+
 @app.get("/profil")
 def profile_page(request: Request):
     user = request.session.get("user")
@@ -421,7 +430,12 @@ def get_profile(name: str, _=Depends(require_user)):
     if not _known_player(name):
         raise HTTPException(404, "Unknown player")
     row = _profile_row(name)
-    return {"name": name, "wish_html": row[0] if row else "", "avatar": row[1] if row else None}
+    # Re-clean on read: the editor loads this as HTML.
+    return {
+        "name": name,
+        "wish_html": sanitize_wish(row[0]) if row else "",
+        "avatar": row[1] if row else None,
+    }
 
 
 @app.put("/api/profile/{name}")
@@ -474,6 +488,43 @@ def get_avatar(filename: str, _=Depends(require_user)):
     if not path.is_file() or path.parent != avatar_dir():
         raise HTTPException(404, "No picture")
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/api/players")
+def list_players(_=Depends(require_user)):
+    """Every player with profile, best score per game and the highest badge per track."""
+    with db() as con:
+        names = [r[0] for r in con.execute("SELECT name FROM logins ORDER BY name").fetchall()]
+        profiles = {
+            r[0]: (r[1], r[2])
+            for r in con.execute("SELECT name, wish_html, avatar FROM profiles").fetchall()
+        }
+        best = {}
+        for name, game, score in con.execute(
+            "SELECT name, game, MAX(score) FROM scores GROUP BY name, game"
+        ).fetchall():
+            best.setdefault(name, {})[game] = score
+        unlocked = {}
+        for name, aid in con.execute("SELECT name, achievement_id FROM achievements").fetchall():
+            unlocked.setdefault(name, []).append(aid)
+    players = []
+    for name in names:
+        wish, avatar = profiles.get(name, ("", None))
+        wish = sanitize_wish(wish)  # re-clean on read: the card inserts this as HTML
+        badges = []
+        for aid in highest_tiers(unlocked.get(name, [])):
+            entry = CATALOG[aid]
+            badges.append({"id": aid, "name": entry["name"], "snark": entry["snark"], "reward": entry["reward"]})
+        players.append(
+            {
+                "name": name,
+                "wish_html": wish,
+                "avatar": avatar,
+                "best_scores": best.get(name, {}),
+                "badges": badges,
+            }
+        )
+    return {"players": players}
 
 
 # Achievement ids are "<game>:<track>:<tier>", e.g. "snake:gifts:10". Games send the tier they reached.

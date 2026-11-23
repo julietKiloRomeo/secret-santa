@@ -47,3 +47,19 @@ def test_wish_length_is_capped(client, appmod):
 def test_unknown_player_profile_is_404(client, appmod):
     login(client, "ditte")
     assert client.get("/api/profile/nobody").status_code == 404
+
+
+def test_profile_get_never_returns_unsanitized_wish_html(client, appmod):
+    import sqlite3
+
+    login(client, "ditte")
+    con = sqlite3.connect(appmod.DB_PATH)
+    con.execute(
+        "INSERT INTO profiles (name, wish_html, updated_at) VALUES ('ditte', '<img src=x onerror=alert(1)><i>ok</i>', 'now')"
+        " ON CONFLICT(name) DO UPDATE SET wish_html = excluded.wish_html"
+    )
+    con.commit()
+    con.close()
+    wish = client.get("/api/profile/ditte").json()["wish_html"]
+    assert "onerror" not in wish.lower()
+    assert "<i>ok</i>" in wish
