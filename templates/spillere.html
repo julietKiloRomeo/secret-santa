@@ -11,11 +11,29 @@
     </div>
   </section>
 
+  <dialog id="player-modal" class="xmas-card max-w-lg w-full" aria-labelledby="player-modal-title">
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-between gap-2">
+        <h2 id="player-modal-title" class="text-2xl"></h2>
+        <button type="button" data-modal-close class="btn-gold !px-3 !py-1 text-sm">Luk</button>
+      </div>
+      <div role="tablist" aria-label="Detaljer" class="flex gap-2">
+        <button type="button" role="tab" id="tab-badges" aria-controls="panel-badges" aria-selected="true" data-tab="badges" class="btn-gold !px-3 !py-1 text-sm">Badges</button>
+        <button type="button" role="tab" id="tab-wish" aria-controls="panel-wish" aria-selected="false" data-tab="wish" tabindex="-1" class="btn-gold !px-3 !py-1 text-sm">Ønskeliste</button>
+      </div>
+      <div id="panel-badges" role="tabpanel" aria-labelledby="tab-badges" data-panel="badges" class="flex flex-wrap gap-3 [&[hidden]]:hidden"></div>
+      <div id="panel-wish" role="tabpanel" aria-labelledby="tab-wish" data-panel="wish" class="text-sm text-snow-100/90" hidden></div>
+    </div>
+  </dialog>
+
   <script>
     (function () {
       const me = {{ player|tojson }};
       const root = document.getElementById('player-cards');
+      const modal = document.getElementById('player-modal');
       const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const players = {};
+      let lastCard = null;
 
       function badge(b) {
         // Hover text: the name is the title, the snark and reward are the tooltip body.
@@ -27,21 +45,63 @@
       }
 
       function card(p) {
+        players[p.name] = p;
         const avatar = p.avatar
           ? `<img src="${esc(p.avatar)}" alt="" class="h-20 w-20 rounded-full border border-gold-500/40 object-cover">`
           : `<div class="flex h-20 w-20 items-center justify-center rounded-full border border-gold-500/40 bg-pine-950/60 font-display text-2xl text-gold-300">${esc(p.name[0].toUpperCase())}</div>`;
         const badges = p.badges.map(badge).join('') || '<span class="text-xs text-snow-100/60">Ingen badges endnu</span>';
-        const wish = p.wish_html ? `<div class="mt-3 text-sm text-snow-100/90">${p.wish_html}</div>` : '';
         return `
           <article class="xmas-card flex flex-col gap-3 ${p.name === me ? 'ring-2 ring-gold-300/60' : ''}" data-card="${esc(p.name)}">
-            <div class="flex items-center gap-3">
+            <button type="button" data-card-open="${esc(p.name)}" class="flex items-center gap-3 rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-300"
+                    aria-haspopup="dialog" aria-label="Vis ${esc(p.name)}">
               ${avatar}
               <h2 class="text-2xl">${esc(p.name)}</h2>
-            </div>
+            </button>
             <div class="flex flex-wrap gap-2">${badges}</div>
-            ${wish}
           </article>`;
       }
+
+      function selectTab(name, focus) {
+        document.querySelectorAll('[role="tab"]').forEach((t) => {
+          const on = t.dataset.tab === name;
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+          t.tabIndex = on ? 0 : -1;
+          if (on && focus) t.focus();
+        });
+        document.querySelectorAll('[role="tabpanel"]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
+      }
+
+      function openPlayer(name, card) {
+        const p = players[name];
+        if (!p) return;
+        lastCard = card || null;
+        document.getElementById('player-modal-title').textContent = p.name;
+        const wishEl = document.querySelector('[data-panel="wish"]');
+        // The wish list is HTML the server already sanitized on read.
+        wishEl.innerHTML = p.wish_html || '<p class="text-snow-100/60">Ingen ønsker endnu.</p>';
+        document.querySelector('[data-panel="badges"]').innerHTML =
+          p.badges.map(badge).join('') || '<p class="text-snow-100/60">Ingen badges endnu.</p>';
+        selectTab('badges', false);
+        modal.showModal();
+      }
+
+      root.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-card-open]');
+        if (btn) openPlayer(btn.dataset.cardOpen, btn);
+      });
+      modal.querySelector('[data-modal-close]').addEventListener('click', () => modal.close());
+      modal.addEventListener('close', () => { if (lastCard) lastCard.focus(); lastCard = null; });
+
+      // Tabs: click, or arrow keys between them.
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      tabs.forEach((t) => t.addEventListener('click', () => selectTab(t.dataset.tab, true)));
+      document.querySelector('[role="tablist"]').addEventListener('keydown', (ev) => {
+        if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+        const i = tabs.indexOf(document.activeElement);
+        if (i < 0) return;
+        const next = tabs[(i + (ev.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+        selectTab(next.dataset.tab, true);
+      });
 
       fetch('/api/players', { credentials: 'same-origin' })
         .then((r) => r.json())
