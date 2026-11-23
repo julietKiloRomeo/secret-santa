@@ -39,12 +39,10 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
    - After a loop, the next floor item is always a ghost powerup.
    - The card text hints at coiling without naming the mechanic (done, commit b38aea8).
 
-   Tiers (names to confirm):
-   - Tier 1, one loop: NAME NEEDED. Options: Lindworm (coiled serpent of Germanic folklore),
-     Vritra (serpent coiled around the mountain, slain by Indra), Fafnir (dragon coiled on its hoard).
-   - Tier 2, two loops at once: Ouroboros (assumed; user to confirm).
-   - Tier 3, three loops at once: Jormungandr (assumed; user to confirm). Spelling with umlaut
-     Jörmungandr if the card font supports it.
+   Loop tiers (agreed names):
+   - Tier 1, one loop: Nidhogg.
+   - Tier 2, two loops at once: Ouroboros.
+   - Tier 3, three loops at once: Jormungandr (spelling Jörmungandr if the card font supports it).
 
    Badges show the name on hover (title) and the snark as tooltip text.
 
