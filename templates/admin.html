@@ -32,6 +32,26 @@
 
     </div>
 
+    <section class="bg-white/5 border border-white/10 rounded-3xl p-6 shadow-lg space-y-4">
+      <div>
+        <h2 class="text-xl font-semibold">Lodtrækning og scores</h2>
+        <p class="text-sm text-white/70">Vis rigtige lodtrækninger for alle, og nulstil alle high scores efter at have arkiveret 2025.</p>
+      </div>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button type="button" data-js="draw-live-toggle" onclick="toggleDrawLive()" class="rounded-2xl bg-emerald-600/90 px-4 py-2 font-semibold text-white hover:bg-emerald-500">Vis lodtrækning: laden</button>
+        <span id="drawLiveState" class="text-sm text-white/70"></span>
+      </div>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+          <label for="archiveLabel" class="text-xs font-semibold uppercase text-white/60">Arkiv-navn</label>
+          <input id="archiveLabel" type="text" value="2025" maxlength="32" class="mt-1 block w-full rounded-xl border border-white/20 bg-slate-900/40 px-3 py-2 text-white" />
+        </div>
+        <button type="button" data-js="archive-scores" onclick="archiveScores()" class="rounded-2xl bg-blue-500/90 px-4 py-2 font-semibold text-white hover:bg-blue-400">Arkivér scores</button>
+        <button type="button" data-js="reset-all-scores" onclick="resetAllScores()" class="rounded-2xl bg-red-600/90 px-4 py-2 font-semibold text-white hover:bg-red-500">Nulstil alle scores</button>
+      </div>
+      <p id="liveMsg" data-js="live-msg" class="text-sm text-white/70"></p>
+    </section>
+
     <section class="bg-white/5 border border-white/10 rounded-3xl p-6 shadow-lg">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -74,6 +94,50 @@
         setPassMsg.className = data.success ? 'text-sm text-emerald-300' : 'text-sm text-amber-300';
       }
       return false;
+    }
+
+    async function loadDrawLive() {
+      const data = await (await fetch('/api/admin/draw_live')).json();
+      const el = document.getElementById('drawLiveState');
+      if (el) el.textContent = data.live ? 'Lodtrækning er synlig for alle.' : 'Lodtrækning er skjult (placeholder).';
+      const btn = document.querySelector('[data-js="draw-live-toggle"]');
+      if (btn) btn.textContent = data.live ? 'Skjul lodtrækning' : 'Vis lodtrækning';
+      return data.live;
+    }
+
+    async function toggleDrawLive() {
+      const live = await loadDrawLive();
+      const msg = document.getElementById('liveMsg');
+      if (!confirm(live ? 'Skjul lodtrækningen igen?' : 'Vis den rigtige lodtrækning for alle deltagere?')) return;
+      const resp = await fetch('/api/admin/draw_live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ live: !live })
+      });
+      const data = await resp.json();
+      if (msg) msg.textContent = data.success ? (data.live ? 'Lodtrækningen er nu synlig.' : 'Lodtrækningen er skjult igen.') : (data.error || 'Fejl');
+      await loadDrawLive();
+    }
+
+    async function archiveScores() {
+      const label = document.getElementById('archiveLabel').value.trim();
+      const msg = document.getElementById('liveMsg');
+      const resp = await fetch('/api/admin/archive_scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label })
+      });
+      const data = await resp.json();
+      if (msg) msg.textContent = data.success ? `Arkiveret ${data.rows} rækker som "${label}".` : (data.error || 'Fejl ved arkivering.');
+    }
+
+    async function resetAllScores() {
+      const msg = document.getElementById('liveMsg');
+      if (!confirm('Slet alle high scores i alle spil? Det kan ikke fortrydes.')) return;
+      const resp = await fetch('/api/admin/reset_all_scores', { method: 'POST' });
+      const data = await resp.json();
+      if (msg) msg.textContent = data.success ? 'Alle scores er nulstillet.' : (data.error || 'Fejl ved nulstilling.');
+      await loadGames();
     }
 
     async function loadGames() {
@@ -167,6 +231,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       loadGames();
+      loadDrawLive();
     });
   </script>
 {% endblock %}
