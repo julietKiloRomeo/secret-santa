@@ -137,3 +137,9 @@ def test_players_api_returns_badge_image_urls(client, appmod):
     by = {p["name"]: p for p in client.get("/api/players").json()["players"]}
     badge = by["ditte"]["badges"][0]
     assert badge["image"] == "/static/badges/jormungandr.png"
+
+
+def test_badge_images_are_clipped_to_a_circle(client):
+    # The PNGs carry an opaque square background, so the card must clip them round.
+    html = client.get("/spillere").text
+    assert "rounded-full object-cover" in html

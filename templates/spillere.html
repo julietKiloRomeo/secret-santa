@@ -21,7 +21,7 @@
         // Hover text: the name is the title, the snark and reward are the tooltip body.
         const tip = `${b.snark}\n\n${b.reward}`;
         return `<figure class="flex w-20 flex-col items-center gap-1 text-center" title="${esc(tip)}" tabindex="0" data-badge="${esc(b.id)}">
-          <img src="${esc(b.image)}" alt="${esc(b.name)}" class="h-16 w-16 object-contain drop-shadow-lg">
+          <img src="${esc(b.image)}" alt="${esc(b.name)}" class="h-16 w-16 rounded-full object-cover drop-shadow-lg">
           <figcaption class="text-[0.7rem] leading-tight text-gold-300">${esc(b.name)}</figcaption>
         </figure>`;
       }
