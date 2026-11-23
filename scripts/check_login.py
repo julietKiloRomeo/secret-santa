@@ -12,7 +12,8 @@ import os
 import sqlite3
 import sys
 
-from werkzeug.security import check_password_hash
+import yaml
+from werkzeug.security import check_password_hash, generate_password_hash
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -60,17 +61,39 @@ def _is_seeded_db(name):
         con.close()
 
 
-def main(argv=None, reader=None):
-    argv = sys.argv[1:] if argv is None else argv
-    if not argv:
-        print("usage: check_login.py <name>")
-        return 2
-    name = argv[0].strip().lower()
-    reader = reader or (lambda prompt: getpass.getpass(prompt))
+def _participants():
+    with open(os.path.join(os.path.dirname(__file__), "..", "couples.yaml")) as f:
+        return {n for couple in yaml.safe_load(f) for n in couple}
 
-    print(f"data_dir={get_data_dir()}")
-    print(f"secret_key={'set' if os.environ.get('SECRET_KEY') else 'NOT SET'}")
 
+def _set(name, reader):
+    """Write a new hash to the logins table. Used when the old row is stale."""
+    if name not in _participants():
+        print(f"unknown participant '{name}'")
+        return 1
+    first = reader(f"new passphrase for {name}: ")
+    again = reader("repeat it: ")
+    if first != again:
+        print("passphrases do not match; nothing changed")
+        return 1
+    con = sqlite3.connect(scores_db_path())
+    try:
+        with con:
+            con.execute(
+                "CREATE TABLE IF NOT EXISTS logins (name TEXT PRIMARY KEY, hash TEXT NOT NULL)"
+            )
+            con.execute(
+                "INSERT INTO logins (name, hash) VALUES (?, ?)"
+                " ON CONFLICT(name) DO UPDATE SET hash = excluded.hash",
+                (name, generate_password_hash(first)),
+            )
+    finally:
+        con.close()
+    print(f"stored new hash for {name} in the database")
+    return check(name, reader=lambda _p: first)
+
+
+def check(name, reader):
     stored, source = _db_hash(name)
     if stored is None and _is_seeded_db(name):
         print(f"no login for '{name}' in the database; LOGIN_ env is ignored once the table has rows")
@@ -90,6 +113,23 @@ def main(argv=None, reader=None):
         return 1
     print("MATCH" if ok else "NO MATCH")
     return 0 if ok else 1
+
+
+def main(argv=None, reader=None):
+    argv = sys.argv[1:] if argv is None else argv
+    args = [a for a in argv if not a.startswith("--")]
+    if not args:
+        print("usage: check_login.py <name> [--set]")
+        return 2
+    name = args[0].strip().lower()
+    reader = reader or (lambda prompt: getpass.getpass(prompt))
+
+    print(f"data_dir={get_data_dir()}")
+    print(f"secret_key={'set' if os.environ.get('SECRET_KEY') else 'NOT SET'}")
+    if "--set" in argv:
+        return _set(name, reader)
+
+    return check(name, reader)
 
 
 if __name__ == "__main__":
