@@ -28,11 +28,20 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
    API: `POST /api/achievements` with `{achievement_id}`. The server stores the unlock for the
    session user and ignores repeats. The server does not decide tiers; games send the tier they reached.
 
-   Proposed snake mapping (current 5 achievements become 3 tracks):
-   - `snake:gifts`: 1 Gift Receipt, 10 Chimney Inspector, 25 Santa Is Nervous
-   - `snake:lives`: 5 Five Lives, Zero Dignity
-   - `snake:shield`: 1 Insurance Claim
-   Open: `snake:lives` and `snake:shield` have one tier each. Fine as-is, or add tiers?
+   Snake tracks (proposed, 3 max; gifts track dropped, it correlates with score):
+   - `snake:ghost-cross`: cross your own body while ghosting (see below). Tiers TBD.
+   - Two more tracks TBD. Candidates from the existing code: shield saves (`snake:shield`),
+     save streak (`snake:lives`). Pick the two to keep, with their tiers.
+
+   Ghost cross (proposed):
+   - Ghost gives 6 ticks of passing through the body (snake_powerups.js GHOST_TICKS).
+   - A cross is counted when the head passes over body segments while ghosting and the
+     snake is still alive afterwards. The loop must be closed before the ghost ends, so the
+     snake has to cross, not just hit itself.
+   - Tiers by number of distinct body crossings in one run, e.g. 1, 2, 3 crossings.
+     The board is limited; crossing 3 times needs a long snake. Check feasibility before
+     fixing tier thresholds.
+   - Funny texts for the card come from the reference post (plans/reference/).
 
    Badges show the name on hover (title) and the snark as tooltip text.
 
