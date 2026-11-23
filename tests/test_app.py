@@ -1,8 +1,10 @@
+import importlib
 import json
 from pathlib import Path
 
 import pytest
-from conftest import NAMES, login
+from conftest import NAMES, PASSWORDS, login
+from fastapi.testclient import TestClient
 
 DUMMY_RECIPIENT = "Buddy the Elf"
 
@@ -321,25 +323,36 @@ def test_spil_hub_lists_every_candidate_with_launchers(client):
     assert "Kommer snart" in html
 
 
-# --- login env values --------------------------------------------------------
+# --- login seed values -------------------------------------------------------
 # Render's env UI and pasted .env lines often add quotes or trailing whitespace.
 
 
 @pytest.mark.parametrize(
     "wrap", ['"{}"', "'{}'", "{} ", "{}\n", ' "{}" \n'], ids=["dq", "sq", "space", "newline", "mixed"]
 )
-def test_login_accepts_hash_with_pasted_quotes_or_whitespace(appmod, client, wrap, monkeypatch):
+def test_seed_accepts_hash_with_pasted_quotes_or_whitespace(tmp_path, monkeypatch, wrap):
     from werkzeug.security import generate_password_hash
 
+    for key in ("SCORES_DB", "ENV_FILE", *(f"LOGIN_{n}" for n in NAMES)):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    (tmp_path / ".env").write_text("SECRET_KEY=k\n")
     monkeypatch.setenv("LOGIN_tommy", wrap.format(generate_password_hash("swift-fox-meadow")))
-    appmod.logins = appmod.load_logins()
-    r = login(client, "tommy", "swift-fox-meadow")
+    import app as appmod
+
+    importlib.reload(appmod)
+    c = TestClient(appmod.app, follow_redirects=False)
+    r = login(c, "tommy", "swift-fox-meadow")
     assert r.status_code == 200, r.text
 
 
-def test_login_malformed_hash_is_401_not_500(appmod, client, monkeypatch):
-    monkeypatch.setenv("LOGIN_tommy", "not-a-hash")
-    appmod.logins = appmod.load_logins()
+def test_malformed_stored_hash_is_401_not_500(appmod, client):
+    import sqlite3
+
+    con = sqlite3.connect(appmod.DB_PATH)
+    con.execute("UPDATE logins SET hash = 'not-a-hash' WHERE name = 'tommy'")
+    con.commit()
+    con.close()
     r = login(client, "tommy", "swift-fox-meadow")
     assert r.status_code == 401
 
@@ -354,3 +367,71 @@ def test_documented_passphrase_matches_documented_hash_format():
     assert "pbkdf2:sha256:260000" not in readme
     assert generate_password_hash("x").startswith(("scrypt:", "pbkdf2:"))
     assert "scripts/hash_password.py" in readme
+
+
+# --- passwords in the database -----------------------------------------------
+
+
+def test_logins_are_stored_in_db_and_seeded_from_env(appmod, tmp_path):
+    import sqlite3
+
+    con = sqlite3.connect(appmod.DB_PATH)
+    rows = dict(con.execute("SELECT name, hash FROM logins").fetchall())
+    con.close()
+    assert set(rows) == set(PASSWORDS)
+    assert all(h.startswith(("scrypt:", "pbkdf2:")) for h in rows.values())
+
+
+def test_env_login_seed_only_when_table_empty(appmod, client, monkeypatch):
+    from werkzeug.security import generate_password_hash
+
+    # Changing the env later must not override what is already in the DB.
+    monkeypatch.setenv("LOGIN_jimmy", generate_password_hash("some-other-phrase"))
+    appmod.init_db()
+    assert login(client, "jimmy").status_code == 200
+
+
+def test_admin_updates_password_in_db(client, appmod):
+    login(client, "jimmy")
+    r = client.post(
+        "/api/admin/set_password",
+        json={"name": "sara", "passphrase": "happy-snow-ember"},
+    )
+    assert r.json()["success"] is True
+    assert login(client, "sara", "happy-snow-ember").status_code == 200
+    assert login(client, "sara", "old-phrase").status_code == 401
+
+
+def test_password_change_survives_restart(client, appmod, monkeypatch):
+    login(client, "jimmy")
+    client.post(
+        "/api/admin/set_password",
+        json={"name": "sara", "passphrase": "persist-me-now"},
+    )
+    reloaded = importlib.reload(appmod)  # simulates a server restart
+    c = TestClient(reloaded.app, follow_redirects=False)
+    assert login(c, "sara", "persist-me-now").status_code == 200
+
+
+def test_set_password_writes_no_env_file(client, appmod, tmp_path):
+    before = (tmp_path / ".env").read_text()
+    login(client, "jimmy")
+    client.post("/api/admin/set_password", json={"name": "sara", "passphrase": "x-y-z"})
+    assert (tmp_path / ".env").read_text() == before
+
+
+def test_set_password_requires_admin(client):
+    login(client, "emma")
+    r = client.post("/api/admin/set_password", json={"name": "sara", "passphrase": "x"})
+    assert r.status_code == 403
+
+
+def test_set_password_hash_is_not_plaintext(client, appmod):
+    import sqlite3
+
+    login(client, "jimmy")
+    client.post("/api/admin/set_password", json={"name": "sara", "passphrase": "plain-text-check"})
+    con = sqlite3.connect(appmod.DB_PATH)
+    stored = con.execute("SELECT hash FROM logins WHERE name='sara'").fetchone()[0]
+    con.close()
+    assert "plain-text-check" not in stored
