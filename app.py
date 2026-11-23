@@ -9,8 +9,8 @@ from contextlib import closing
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -18,6 +18,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from profile_sanitize import sanitize_wish
+from avatars import save_avatar, AvatarError, avatar_dir
 from secret_santa import SecretSanta
 from storage import (
     archive_scores_path,
@@ -431,6 +432,40 @@ def put_profile(name: str, body: WishIn, user=Depends(require_user)):
             (name, wish, datetime.now(timezone.utc).isoformat()),
         )
     return {"success": True}
+
+
+AVATAR_MAX_BYTES = 2 * 1024 * 1024
+
+
+@app.post("/api/profile/{name}/avatar")
+async def post_avatar(name: str, request: Request, file: UploadFile, user=Depends(require_user)):
+    if user != name and user not in ADMINS:
+        raise HTTPException(403, "Only the owner or an admin can change this picture")
+    if not _known_player(name):
+        raise HTTPException(404, "Unknown player")
+    data = await file.read(AVATAR_MAX_BYTES + 1)
+    if len(data) > AVATAR_MAX_BYTES:
+        raise HTTPException(413, "Picture is larger than 2 MB")
+    try:
+        filename = save_avatar(name, data, avatar_dir())
+    except AvatarError as exc:
+        raise HTTPException(400, str(exc))
+    url = f"/avatars/{filename}?v={time.time_ns()}"  # changes every upload, so browsers refetch
+    with db() as con, con:
+        con.execute(
+            "INSERT INTO profiles (name, avatar, updated_at) VALUES (?, ?, ?)"
+            " ON CONFLICT(name) DO UPDATE SET avatar = excluded.avatar, updated_at = excluded.updated_at",
+            (name, url, datetime.now(timezone.utc).isoformat()),
+        )
+    return {"success": True, "avatar": url}
+
+
+@app.get("/avatars/{filename}")
+def get_avatar(filename: str, _=Depends(require_user)):
+    path = avatar_dir() / filename
+    if not path.is_file() or path.parent != avatar_dir():
+        raise HTTPException(404, "No picture")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
 
 # Achievement ids are "<game>:<track>:<tier>", e.g. "snake:gifts:10". Games send the tier they reached.
