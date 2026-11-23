@@ -51,20 +51,20 @@ We use `uv` to manage Python environments. Do not activate virtualenvs manually;
 
 ### Environment configuration
 
-Create a `.env` file (use `.env.example` as a template) to configure secrets and login passphrases. Store HASHED values using Werkzeug (salted PBKDF2):
+Create a `.env` file (use `.env.example` as a template) to configure secrets and login passphrases. Store HASHED values made by Werkzeug (`scripts/hash_password.py`). Do not write plaintext passphrases:
 
 ```
 SECRET_KEY=<strong-random-hex>
-LOGIN_ditte=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_camilla=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_emma=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_andreas=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_jimmy=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_sara=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_mathias=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_klaus=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_tommy=pbkdf2:sha256:260000$<salt>$<hash>
-LOGIN_jonna=pbkdf2:sha256:260000$<salt>$<hash>
+LOGIN_ditte=<hash from scripts/hash_password.py>
+LOGIN_camilla=<hash from scripts/hash_password.py>
+LOGIN_emma=<hash from scripts/hash_password.py>
+LOGIN_andreas=<hash from scripts/hash_password.py>
+LOGIN_jimmy=<hash from scripts/hash_password.py>
+LOGIN_sara=<hash from scripts/hash_password.py>
+LOGIN_mathias=<hash from scripts/hash_password.py>
+LOGIN_klaus=<hash from scripts/hash_password.py>
+LOGIN_tommy=<hash from scripts/hash_password.py>
+LOGIN_jonna=<hash from scripts/hash_password.py>
 ```
 
 The app loads `.env` on startup and builds logins from environment variables with the `LOGIN_` prefix. Passphrases can be any string; hyphenated multi‑word sequences are recommended for memorability. Values must be hashed (plaintext is not supported).
@@ -88,7 +88,7 @@ uv run python scripts/hash_password.py horse-staple-orange
 Then set in `.env`:
 
 ```
-LOGIN_ditte=pbkdf2:sha256:260000$<salt>$<hash>
+LOGIN_ditte=<hash from scripts/hash_password.py>
 ```
 
 ### Prerequisites
