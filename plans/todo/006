@@ -16,15 +16,16 @@ Two new pages for logged-in players. Tests before code (AGENTS.md).
 
 ## Open questions
 
-A. Achievement badges. The 5 snake achievements exist only in localStorage today.
-   Proposal:
-   - One shared catalogue on the server, keyed by a global id (`snake:first-present`).
-   - Games post an unlock once. Idempotent on `(name, achievement_id)`.
-   - On the next visit, each game uploads its localStorage set once, so existing unlocks are not lost.
-   - Badges show the achievement name as a hover title (`title`) and the snark as the tooltip body.
-   Confirm, or name a different strategy.
+A. Achievements (agreed, 1a): games call `POST /api/achievements` with an achievement id when a
+   player unlocks one. The server stores `(name, achievement_id, unlocked_at)` and ignores repeats.
+   Badges on the cards show the achievement name as a hover title and the snark as tooltip text.
+   Open point: achievement ids are not namespaced today (`first-present` could exist in two games).
+   Proposal: prefix with the game, e.g. `snake:first-present`.
+   Open point: unlocks already in localStorage are not sent to the server. Options: ignore them,
+   or let each game post its local set once on the next visit.
 
-B. Wish list storage. Options:
+B. Wish list storage (agreed: sanitized HTML, allowlisted tags and URL schemes).
+   Options considered: Options:
    - a. Store sanitized HTML. Allowlist tags (`a`, `b`, `i`, `u`, `br`, `ul`, `ol`, `li`) and
      `href` schemes (`https`, `http`, `mailto`) in Python with `html.parser`, no new dependency.
    - b. Store Markdown, render with the existing escape helper. Simpler and safer, but users
