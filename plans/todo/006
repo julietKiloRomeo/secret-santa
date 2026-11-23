@@ -74,22 +74,32 @@ B. Wish list storage (agreed: sanitized HTML, allowlisted tags and URL schemes).
 
 Each card: title, one snark line. Tooltip = snark. Title shown on hover.
 
-Each track has 3 tiers, each with its own name and text. Names agreed.
+Each track has 3 tiers, each with its own name and text. Names agreed. Every tier ends with a
+REWARD line. Tone escalates: each tier is more impressed than the last.
 
 Loops (snake):
-- Tier 1, Nidhogg (1 loop): "You ran into your own body on purpose. The System AI has filed it under hobbies."
-- Tier 2, Ouroboros (2 loops open at once): "Two loops, both open. You are now eating your own tail in stereo. Please stop before someone files a report."
-- Tier 3, Jormungandr (3 loops open at once): "Three loops. You have encircled the whole board. Midgard is in danger, and you are the cause. Reward: none. Enjoy your serpent."
+- Tier 1, Nidhogg (1 loop): "You bit your own tail. On purpose. The System AI has opened a file titled 'Hobbies, Concerning.' Somewhere a dragon is taking notes.
+  REWARD: One loop you can call your own. Pity it is the only one."
+- Tier 2, Ouroboros (2 loops open at once): "Two loops, both open, both crossing. You are eating yourself in stereo, and the System AI is politely hoping you have a plan. It does not think you have a plan. Look at you, forming a circle of pure self-indulgence.
+  REWARD: A gold serpent-scale hat. It fits, unfortunately."
+- Tier 3, Jormungandr (3 loops open at once): "Three loops. You have wrapped the whole board around yourself like a scarf on a snake that should know better. Midgard is shaking. The gods are gathering. The System AI has stopped talking, which has never happened before. We are in awe. You are the end of days, and it suits you.
+  REWARD: The World Serpent's Ring. Wear it and the sea rises to meet you."
 
 Shields held at once (snake):
-- Tier 3, Buckler: "Three shields in your pocket. Either you are prepared or you are a hoarder. The shield has not decided."
-- Tier 6, Aegis: "Six shields held at once. Insurance agents have started calling you back."
-- Tier 10, Aegishjalmur (the helm of awe, a protective rune): "Ten shields. The System AI has requested a meeting about your risk profile."
+- Tier 3, Buckler: "Three shields. You collect protection the way other crawlers collect regret. The System AI says prepared. The System AI also says hoarder. It is taking bets.
+  REWARD: One Buckler, a small round shield with a rune that stings."
+- Tier 6, Aegis: "Six shields held at once. Insurance agents across the galaxy have started calling you back, and they are crying. You are no longer a crawler. You are a fortress with a bad attitude.
+  REWARD: The Aegis, six shields gleaming. Try not to be smug about it."
+- Tier 10, Aegishjalmur (the helm of awe, a protective rune): "Ten shields. The System AI has stopped reading the spreadsheet and is simply staring at you, with what can only be called reverence. Nothing can touch you. Nothing dares.
+  REWARD: The Helm of Awe. Every wall in the dungeon feels a little less certain of itself."
 
 Trims in one run (snake):
-- Tier 3, Snip of the Norns: "Three cuts. Clean, polite and deeply unnecessary. The tail did not ask for this."
-- Tier 6, Shears of Atropos (Atropos cuts the thread of life): "Six trims. The tail is now a rumour, and Santa is asking where the ribbon went."
-- Tier 10, The Last Cut: "Ten trims. The elves will be talking about this haircut for a decade."
+- Tier 3, Snip of the Norns: "Three cuts. Clean, polite, and deeply unnecessary. Your tail did not ask for this and is still in shock. The Norns are watching with very sharp scissors.
+  REWARD: The Snip, a pair of ribbon scissors. Decorate responsibly."
+- Tier 6, Shears of Atropos (Atropos cuts the thread of life): "Six trims. Your tail is a rumour now. Santa is asking where the ribbon went, and the elves have formed a committee. Atropos leans over your shoulder, impressed, which is terrifying.
+  REWARD: The Shears of Atropos. Do not hold them near anything you care about."
+- Tier 10, The Last Cut: "Ten trims. The elves will be talking about this haircut for a decade. The Norns have closed their book, Atropos has put down her shears, and the System AI whispers, 'Well. Look at that.' We have no words. We are reverent. We are slightly afraid of you.
+  REWARD: The Last Cut. Not to be used on anything with a pulse."
 
 Tone reference: plans/reference/achievement-texts-dungeon-crawler-carl.md. Texts are original;
 do not reuse the reference lines.
