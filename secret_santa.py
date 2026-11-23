@@ -5,7 +5,7 @@ import datetime
 import os
 import yaml
 
-from storage import match_file_path, ensure_match_file
+from storage import decode_draw, encode_draw, match_file_path, ensure_match_file
 
 
 class SecretSanta:
@@ -71,11 +71,37 @@ class SecretSanta:
     def file_path(self):
         return match_file_path(self.year, data_dir=self.data_dir)
 
+    @property
+    def encoded_path(self):
+        return self.file_path[: -len(".json")] + ".enc"
+
+    def violations(self, config):
+        """Return rule breaks for a draw; an empty list means it is valid."""
+        problems = []
+        if set(config) != self.names or set(config.values()) != self.names:
+            problems.append("not a one-to-one draw of every name")
+        partner = {b: a for a, b in self.couples} | {a: b for a, b in self.couples}
+        for giver, receiver in config.items():
+            if giver == receiver:
+                problems.append(f"self: {giver}")
+            if partner.get(giver) == receiver:
+                problems.append(f"spouse: {giver} -> {receiver}")
+            if receiver in self.previous.get(giver, []):
+                problems.append(f"repeat: {giver} -> {receiver}")
+        return problems
+
     def save(self):
         with open(self.file_path, "w") as f:
             json.dump(self.config, f)
-            
+        with open(self.encoded_path, "w") as f:
+            f.write(encode_draw(self.config))
+
     def load(self):
+        for enc in (self.encoded_path, os.path.join(os.getcwd(), os.path.basename(self.encoded_path))):
+            if os.path.exists(enc):
+                with open(enc) as f:
+                    self.config = decode_draw(f.read())
+                return
         resolved = ensure_match_file(self.year, data_dir=self.data_dir)
         with open(resolved, "r") as f:
             self.config = json.load(f)
