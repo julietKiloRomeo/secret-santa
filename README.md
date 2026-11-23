@@ -71,10 +71,20 @@ To generate a hash by hand (for a first-deploy seed or a direct DB edit):
 uv run python scripts/hash_password.py horse-staple-orange
 ```
 
+Check or reset a passphrase on the server (Render Shell):
+
+```
+uv run python scripts/check_login.py jimmy          # prints source and MATCH / NO MATCH
+uv run python scripts/check_login.py jimmy --set    # stores a new passphrase (asks twice)
+```
+
+The checker prints the source it used. `source=database` means the `logins` table is in charge, and a `LOGIN_<name>` value in Render is ignored. Use `--set` to replace a stale row. The script never prints a hash or a passphrase.
+
 Login troubleshooting:
 
-- **401 Invalid credentials:** the passphrase doesn't match. An admin can set a new one on `/admin`.
-- **Locked out of admin:** restore a snapshot from `/api/admin/snapshots/restore`, or on the server run a hash update against `logins` in `scores.sqlite3`.
+- **401 Invalid credentials:** run `check_login.py <name>`. If it says `NO MATCH`, use `--set` or change the password on `/admin`.
+- **Stale row on Render:** the first deploy seeded the database, so later `LOGIN_*` edits do nothing. Fix with `--set`.
+- **Locked out of admin:** run `check_login.py <admin> --set` in the Render Shell, or restore a snapshot from `/api/admin/snapshots/restore`.
 - **500 on login:** check `SECRET_KEY` is set. The app won't start without it.
 
 ### Prerequisites
