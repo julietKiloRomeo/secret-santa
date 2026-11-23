@@ -220,7 +220,7 @@ def render(request: Request, template: str, **ctx):
             "session": request.session,
             "asset_version": ASSET_VERSION,
             "is_admin_user": lambda: admin,
-            "game_enabled_for_user": lambda g: admin or is_game_enabled(g),
+            "game_enabled_for_user": lambda g: admin or (g in PUBLISHED and is_game_enabled(g)),
             "published_games": [{"id": g, "title": GAMES[g][0]} for g in PUBLISHED],
             **ctx,
         },
@@ -322,6 +322,7 @@ GAME_BLURBS = {
 def spil(request: Request):
     if not request.session.get("user"):
         return to_login()
+    admin = request.session.get("user") in ADMINS
     cards = [
         {
             "id": g,
@@ -331,6 +332,7 @@ def spil(request: Request):
             "published": g in PUBLISHED,
         }
         for g in GAMES
+        if admin or g in PUBLISHED
     ]
     return render(request, "spil.html", cards=cards)
 
@@ -375,7 +377,7 @@ def game_page(request: Request, game: str = Depends(known_game)):
     if not user:
         return to_login()
     title, _, template = GAMES[game]
-    if user not in ADMINS and not is_game_enabled(game):
+    if user not in ADMINS and (game not in PUBLISHED or not is_game_enabled(game)):
         return render(request, "under_construction.html", title=title)
     shell = GAME_SHELL.get(game, {})
     return render(request, template, title=title, game=game, default_name=user, **shell)

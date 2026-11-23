@@ -8,13 +8,21 @@
   <div class="grid gap-5 sm:grid-cols-2">
     {% for c in cards %}
     {% set _disabled = not game_enabled_for_user(c.id) %}
-    <a href="/{{ c.id }}" data-disabled="{{ '1' if _disabled else '0' }}"
+    {% if _disabled %}
+    <a href="/{{ c.id }}" data-disabled="1" aria-disabled="true"
+       class="xmas-card flex flex-col gap-2 opacity-60 grayscale cursor-not-allowed">
+      <span class="text-sm uppercase tracking-widest text-gold-300/80">{{ c.title }}</span>
+      <span class="mt-2 text-xs text-snow-100/60">Kommer snart</span>
+    </a>
+    {% else %}
+    <a href="/{{ c.id }}" data-disabled="0"
        class="xmas-card group flex flex-col gap-2 transition hover:-translate-y-1 hover:border-gold-300">
       <span class="text-sm uppercase tracking-widest text-gold-300/80">{{ c.title }}</span>
       <span class="font-display text-3xl text-snow-50 group-hover:text-gold-300">{{ c.name }}</span>
       <span class="text-snow-100/80">{{ c.blurb }}</span>
-      {% if _disabled or not c.published %}<span class="mt-2 text-xs text-snow-100/60">Kommer snart</span>{% endif %}
+      {% if not c.published %}<span class="mt-2 text-xs text-snow-100/60">Kommer snart</span>{% endif %}
     </a>
+    {% endif %}
     {% endfor %}
   </div>
 {% endblock %}

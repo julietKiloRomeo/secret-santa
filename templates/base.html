@@ -8,7 +8,6 @@
   <link rel="manifest" href="/static/manifest.json" />
   <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}" />
   <style>
-    #locked-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); z-index: 2000; transition: opacity .4s ease; }
   </style>
 </head>
 <body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
@@ -56,13 +55,17 @@
         if (!t) {
           t = document.createElement('div');
           t.id = 'locked-toast';
+          t.setAttribute('role', 'status');
+          t.className = 'pointer-events-none fixed left-1/2 z-[2000] -translate-x-1/2 rounded-2xl border border-gold-300/70 bg-pine-950/95 px-5 py-3 text-center font-semibold text-gold-300 shadow-2xl transition-opacity duration-300 opacity-0';
+          t.style.bottom = '24px';
+          t.style.boxShadow = '0 0 0 4px rgba(249,201,74,.15), 0 12px 32px rgba(0,0,0,.45)';
           document.body.appendChild(t);
         }
         t.textContent = msg;
-        t.style.opacity = 1;
+        t.classList.remove('opacity-0');
         clearTimeout(t._timeout);
         t._timeout = setTimeout(() => {
-          t.style.opacity = 0;
+          t.classList.add('opacity-0');
         }, 2200);
       }
     });

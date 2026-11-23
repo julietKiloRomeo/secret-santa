@@ -306,7 +306,6 @@ def test_spil_hub_lists_published_games_with_danish_titles(client):
     html = resp.text
     for g in PUBLISHED:
         assert f'href="/{g}"' in html, g
-    assert "Kommer snart" in html
     assert "Første Advent" in html and "Snake" in html
 
 
@@ -315,12 +314,43 @@ def test_spil_hub_requires_login(client):
     assert resp.status_code == 302
 
 
-def test_spil_hub_lists_every_candidate_with_launchers(client):
+def test_spil_hub_shows_only_first_four_games_to_non_admins(client):
     login(client, "emma")
+    html = client.get("/spil").text
+    for g in PUBLISHED:
+        assert f'href="/{g}"' in html, g
+    for g in GAMES[4:]:
+        assert f'href="/{g}"' not in html, g
+    for name in ("Pac-Santa", "Snøkugle-kast", "Pakkepuslespil", "Julebag", "Nisse-hop"):
+        assert name not in html, name
+    assert "Kommer snart" not in html
+
+
+def test_spil_hub_lists_every_candidate_with_launchers_for_admins(client):
+    login(client, "jimmy")
     html = client.get("/spil").text
     for g in GAMES:
         assert f'href="/{g}"' in html, g
     assert "Kommer snart" in html
+
+
+def test_non_admin_cannot_open_unpublished_game(client):
+    login(client, "emma")
+    assert "Under Construction" in client.get("/advent-5").text
+
+
+def test_inactive_game_card_hides_its_name_and_is_marked_inactive(client):
+    login(client, "jimmy")
+    client.post("/api/admin/set_game", json={"game": "advent-1", "enabled": False})
+    login(client, "emma")
+    html = client.get("/spil").text
+    card = html[html.index('href="/advent-1"') :].split("</a>", 1)[0]
+    assert "Første Advent" in card
+    assert "Kommer snart" in card
+    assert "Snake" not in card
+    assert "Styr nissen" not in card
+    assert 'data-disabled="1"' in card
+    assert "opacity-60" in card and "grayscale" in card
 
 
 # --- login seed values -------------------------------------------------------
@@ -435,3 +465,12 @@ def test_set_password_hash_is_not_plaintext(client, appmod):
     stored = con.execute("SELECT hash FROM logins WHERE name='sara'").fetchone()[0]
     con.close()
     assert "plain-text-check" not in stored
+
+
+
+def test_locked_game_warning_is_a_styled_status_toast():
+    base = (Path(__file__).parent.parent / "templates" / "base.html").read_text()
+    assert "setAttribute('role', 'status')" in base
+    assert "Hov hov. Den låge må du ikke åbne endnu!" in base
+    assert "bg-pine-950/95" in base and "border-gold-300/70" in base
+    assert "style.bottom = '24px'" in base
