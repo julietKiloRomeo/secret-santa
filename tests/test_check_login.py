@@ -93,3 +93,40 @@ def test_never_prints_hash_or_passphrase(data_dir, capsys):
     make_db(data_dir, [("jimmy", h)])
     _, out = run("jimmy", PHRASE, capsys)
     assert h not in out and PHRASE not in out
+
+
+def test_set_writes_new_hash_to_database(data_dir, capsys):
+    make_db(data_dir, [("jimmy", generate_password_hash("old-phrase-here"))])
+    answers = iter([PHRASE, PHRASE])
+    code = check_login.main(["jimmy", "--set"], reader=lambda _p: next(answers))
+    out = capsys.readouterr().out
+    assert code == 0 and "MATCH" in out and "source=database" in out
+    con = sqlite3.connect(data_dir / "scores.sqlite3")
+    stored = con.execute("SELECT hash FROM logins WHERE name='jimmy'").fetchone()[0]
+    con.close()
+    assert check_password_hash_ok(stored, PHRASE)
+
+
+def test_set_refuses_when_repeat_differs(data_dir, capsys):
+    make_db(data_dir, [("jimmy", generate_password_hash("old-phrase-here"))])
+    answers = iter([PHRASE, "typo-words-here"])
+    code = check_login.main(["jimmy", "--set"], reader=lambda _p: next(answers))
+    out = capsys.readouterr().out
+    assert code == 1 and "do not match" in out
+    con = sqlite3.connect(data_dir / "scores.sqlite3")
+    stored = con.execute("SELECT hash FROM logins WHERE name='jimmy'").fetchone()[0]
+    con.close()
+    assert check_password_hash_ok(stored, "old-phrase-here")
+
+
+def test_set_creates_row_for_unknown_name_only_if_user_exists(data_dir, capsys):
+    make_db(data_dir, [("jimmy", generate_password_hash(PHRASE))])
+    answers = iter([PHRASE, PHRASE])
+    code = check_login.main(["ghost", "--set"], reader=lambda _p: next(answers))
+    assert code == 1 and "unknown participant" in capsys.readouterr().out
+
+
+def check_password_hash_ok(stored, phrase):
+    from werkzeug.security import check_password_hash
+
+    return check_password_hash(stored, phrase)
