@@ -46,13 +46,16 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
 
    Snake tracks (3 max per game). Agreed:
    - Loops: Nidhogg, Ouroboros, Jormungandr (see above).
-   - `snake:shield`: most shields held at once. Proposed 5, 10, 20.
-   - `snake:trim`: trim pickups in one run. Proposed 5, 10, 20.
+   - `snake:shield`: most shields held at once. Tiers 3, 6, 10 (agreed).
+   - `snake:trim`: trim pickups in one run. Tiers 3, 6, 10 (agreed).
    Measured with the game's rules (2000 simulated runs, simple bot, 20x20 board):
    - Most shields held at once: best run 6. 5 reached by 1.7% of runs; 10 and 20 never.
    - Trims in one run: best run 8. 5 reached by 1.9% of runs; 10 and 20 never.
-   Open: 10 and 20 are unreachable with the current spawn rates. Options: lower thresholds,
-   or raise the shield/trim share of spawns, or keep them as aspirational tiers.
+   With 3, 6, 10 (simulated, 2000 runs, simple bot):
+   - Trims: 3 reached by 11.3%, 6 by 0.8%, 10 never.
+   - Shields held: 3 reached by 10.6%, 6 by 0.4%, 10 never.
+   Open: tier 10 is not reached by the simple bot. Keep it as a skilled-player target, or
+   raise powerup supply.
    Trim rule: removes 3 tail segments, never below 5 segments. Score is kept.
 
    Badges show the name on hover (title) and the snark as tooltip text.
