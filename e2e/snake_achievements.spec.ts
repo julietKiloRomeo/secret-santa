@@ -1,31 +1,30 @@
 import { test, expect } from '@playwright/test';
 import { loginAsPlaywright } from './helpers/login';
 
-// Eating the first present unlocks "Gift Receipt" once, and the unlock is kept after a reload.
+// Achievements are not shown in the game. Reached tiers are posted to the server instead.
 test.beforeEach(async ({ page }) => loginAsPlaywright(page));
 
 const dbg = (page) => page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
-test('the first present unlocks an achievement that survives a reload', async ({ page }) => {
+test('an achievement tier is posted to the server and no achievement card opens', async ({ page }) => {
+  const posted: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().endsWith('/api/achievements') && r.method() === 'POST')
+      posted.push(JSON.parse(r.postData() ?? '{}').achievement_id);
+  });
   await page.goto('/advent-1');
   await dbg(page);
   await page.evaluate(() => {
-    localStorage.removeItem('snake-achievements:playwright');
     const d = (window as any).__snakeDebug__;
-    d.debugStop();
-    d.restartGame();
-    d.debugStop();
-    d.placeGiftNextToHead(1, 0);
-    d.setDirection('right');
-    d.tickOnce();
+    d.debugStop(); d.restartGame(); d.debugStop();
+    for (let i = 0; i < 3; i++) {
+      d.placePowerupNextToHead('shield', 1, 0);
+      d.setDirection('right');
+      d.tickOnce();
+    }
   });
-  expect(await page.evaluate(() => (window as any).__snakeDebug__.getCard())).toMatchObject({ open: true });
-  await page.waitForTimeout(400);
-  await page.keyboard.press('Space');
-  await page.reload();
-  await dbg(page);
-  const kept = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('snake-achievements:playwright') || '[]'),
-  );
-  expect(kept).toContain('first-present');
+  await page.waitForTimeout(600);
+  expect(posted).toContain('advent-1:shield:3');
+  const card = await page.evaluate(() => (window as any).__snakeDebug__.getCard());
+  expect(card.name).not.toBe('Insurance Claim');
 });

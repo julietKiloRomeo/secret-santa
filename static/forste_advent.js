@@ -13,14 +13,15 @@ import {
 } from './snake_core.js';
 import { showScores } from './arcade_scene.js';
 import { pickSaveLine, saveStreakLine, nextStreak } from './shield_messages.js';
-import { newlyUnlocked, loadUnlocked, saveUnlocked } from './achievements.js';
 import { boardFor } from './snake_board.js';
+import { reachedSnakeIds } from './snake_achievements.js';
 import { FEEL } from './snake_feel.js';
 import {
   placeFloor,
   tickFloor,
   tickTrimmed,
   trimAlpha,
+  ghostAlpha,
   eatPowerup,
   activeEffects,
   expirePowerup,
@@ -176,8 +177,10 @@ class SnakeScene extends Phaser.Scene {
     const r = step(this.s, Math.random);
     if (r === 'dead') return this.gameOver();
     this.saveStreak = nextStreak(this.saveStreak ?? 0, r);
-    this.trackRun(r);
-    if (r === 'absorbed') return this.holdForDirection(); // shield stopped the snake: pick a way out
+    if (r === 'absorbed') {
+      this.trackRun(r);
+      return this.holdForDirection(); // shield stopped the snake: pick a way out
+    }
     tickFloor(this.s, Math.random); // a waiting powerup counts down one tick
     tickTrimmed(this.s); // frozen trim pieces age and fade
     if (r === 'ate') {
@@ -189,37 +192,38 @@ class SnakeScene extends Phaser.Scene {
       placeFloor(this.s, Math.random);
       this.onPowerup(this.s.lastPowerup);
     }
+    this.trackRun(r); // after the pickup, so the shield and trim counts include it
     this.refreshHud();
   }
 
   // Per-run stats for achievements. Unlocks are kept per player, across games.
   trackRun(r) {
-    this.stats ??= { gifts: 0, saves: 0, powerups: 0, saveStreak: 0 };
+    this.stats ??= { gifts: 0, saves: 0, powerups: 0, saveStreak: 0, maxLoops: 0, maxShields: 0, trims: 0 };
     this.stats.saveStreak = this.saveStreak ?? 0;
+    this.stats.maxLoops = Math.max(this.stats.maxLoops, this.s.openLoops ?? 0);
+    this.stats.maxShields = Math.max(this.stats.maxShields, this.s.effects?.shield ?? 0);
     if (r === 'ate') this.stats.gifts += 1;
     if (r === 'powered') this.stats.powerups += 1;
+    if (r === 'powered' && this.s.lastPowerup === 'trim') this.stats.trims += 1;
     if (r === 'absorbed') this.stats.saves += 1;
-    this.checkAchievements();
+    this.sendReachedTiers();
   }
 
-  checkAchievements() {
-    const player = window.__defaultPlayerName__ || 'Nisse';
-    const have = loadUnlocked(localStorage, player);
-    const fresh = newlyUnlocked(this.stats, have);
-    if (!fresh.length) return;
-    for (const a of fresh) have.add(a.id);
-    saveUnlocked(localStorage, player, have);
-    // One card at a time: unlocks that land while a card is open wait their turn.
-    this.pendingCards ??= [];
-    for (const a of fresh)
-      this.pendingCards.push({ name: a.name, flavor: a.snark, effect: 'Achievement unlocked.' });
-    this.showNextPending();
+  // Reached snake tiers go to the server. Each id is sent once per page; the server ignores repeats.
+  sendReachedTiers() {
+    this.sentTiers ??= new Set();
+    for (const id of reachedSnakeIds(this.stats ?? {})) {
+      if (this.sentTiers.has(id)) continue;
+      this.sentTiers.add(id);
+      fetch('/api/achievements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ achievement_id: id }),
+        credentials: 'same-origin',
+      }).catch(() => this.sentTiers.delete(id)); // offline or failed: try again on the next update
+    }
   }
 
-  showNextPending() {
-    if (this.cardOpen || !this.pendingCards?.length) return;
-    this.showCard(this.pendingCards.shift());
-  }
 
   // Shield and ghost counts plus the trim note, so stacked pickups stay readable.
   refreshHud() {
@@ -292,7 +296,6 @@ class SnakeScene extends Phaser.Scene {
     this.cardReady = false;
     this.waiting = true;
     setStatus('Good luck. Press a direction to start again');
-    this.showNextPending();
   }
 
   // In the waiting state only a direction (key or swipe) resumes the game.
@@ -418,13 +421,16 @@ class SnakeScene extends Phaser.Scene {
     // Frozen trim pieces: their cells, held still, fading out. Drawn behind the live body.
     const trimMarks = (this.s.trimmed ?? []).map((p) => ({ x: p.x, y: p.y, skin: p.skin, alpha: trimAlpha(p.ttl) }));
     const marks = [...trimMarks, ...bodyMarks, ...(gift ? [{ ...gift, floor: true }] : [])];
+    // While ghosting, the body and head are see-through. The floor gift stays solid.
+    const bodyAlpha = ghostAlpha(this.s);
+    this.head.setAlpha(bodyAlpha);
     marks.forEach((m, i) => {
       this.marks[i] ??= this.add.image(0, 0, 'gift-red');
       this.marks[i]
         .setTexture(SKIN_SPRITE[m.skin] ?? 'gift-red')
         .setPosition(m.x * CELL + CELL / 2, m.y * CELL + CELL / 2)
         .setDisplaySize(CELL - 4, CELL - 4)
-        .setAlpha(m.alpha ?? 1)
+        .setAlpha((m.floor ? 1 : bodyAlpha) * (m.alpha ?? 1))
         .setVisible(true)
         .setDepth(m.floor ? 4 : 2);
     });
