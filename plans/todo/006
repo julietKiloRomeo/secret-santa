@@ -96,10 +96,11 @@ do not reuse the reference lines.
 
 ## Art
 
-Image model: gateway model `topsoe-image` (mode image_generation). The key is `LITELLM_IMG_KEY` in
-the project `.env` (gitignored). The gateway accepts it; the list call returns the one image model.
-Note: one probe POST to /v1/images/generations returned 400, so no image was made. Nothing is
-generated until the descriptions below are approved.
+Image model: gateway model `topsoe-image`. The key is `LITELLM_IMG_KEY` in the project `.env`
+(gitignored). Calls go direct over HTTPS to /v1/images/generations and return base64 PNG in
+`data[0].b64_json`. Probe calls: the first returned 400 (a guessed `size` value was rejected);
+the second, with only model, prompt and n, returned an image. That second probe used a test
+prompt and its output was not saved. Generate nothing else until the descriptions are approved.
 
 Style: a single icon on a dark pine background (#06201a), gold (#ffe27a) rim, flat-shaded,
 readable at 64 px. No text in the image; the name is shown by the app. Same frame for all nine.
