@@ -1,25 +1,25 @@
 // Reindeer Rush view: draws the run and turns input into core actions. Rules are in reindeer_core.js.
 import { createRun, tick, jump, duck, unduck, dash, STEP, REINDEER_X } from './reindeer_core.js';
 import { showScores } from './arcade_scene.js';
+import { worldFor } from './world_fit.js';
 
-const W = 640;
-const H = 260;
-const GROUND_SURFACE_ROW = 78; // ground.png: the grass line sits on this row
-const GROUND_W = 364;
-const GROUND_H = 212;
-const RUDOLPH = { run: 6, jump: 3 }; // frame counts: /static/sprites/rudolph/{run,jump}-N.png
+const DESIGN_H = 260; // design height the rules are tuned for; the world fills the screen (see world_fit.js)
+// Desktop keeps the 640-wide level; a phone may use a narrower world so the height fills the screen.
+const MIN_W = window.innerWidth < 700 ? 200 : 640;
+const world = worldFor(window.innerWidth, window.innerHeight, DESIGN_H, MIN_W);
+const W = world.width;
+const H = world.height;
 const SWIPE_PX = 24; // same swipe threshold as Snake
+const SPRITE = { run: 'rudolph/run-1.png', jump: 'rudolph/jump-1.png', slide: 'rudolph/slide.png', snowman: 'rr/snowman.png', tile: 'rr/tile.png' };
+const RUN_FRAMES = ['rudolph/run-1.png', 'rudolph/run-2.png', 'rudolph/run-3.png', 'rudolph/run-4.png', 'rudolph/run-5.png', 'rudolph/run-6.png'];
+const RUN_FRAME_MS = 80; // time per run frame, so the legs cycle at a readable pace
 
 class ReindeerScene extends Phaser.Scene {
   preload() {
-    for (let i = 1; i <= RUDOLPH.run; i += 1)
-      this.load.image(`run${i}`, `/static/sprites/rudolph/run-${i}.png`);
-    for (let i = 1; i <= RUDOLPH.jump; i += 1)
-      this.load.image(`jump${i}`, `/static/sprites/rudolph/jump-${i}.png`);
-    this.load.image('slide', '/static/sprites/rudolph/slide.png');
-    this.load.image('ground', '/static/sprites/ground.png');
-    this.load.image('snowman', '/static/sprites/snowman.png');
-    this.load.image('moon', '/static/BG/moon.png');
+    for (const [key, file] of Object.entries(SPRITE)) this.load.image(key, `/static/sprites/${file}`);
+    RUN_FRAMES.forEach((file, i) => this.load.image(`run-${i}`, `/static/sprites/${file}`));
+    this.load.image('snowball', '/static/sprites/rr/snowball.png');
+    this.load.image('star', '/static/sprites/rr/star.png');
     this.load.audio('jump', '/static/jump.mp3');
     this.load.audio('coin', '/static/coin.mp3');
     this.load.audio('death', '/static/explosion.mp3');
@@ -27,30 +27,25 @@ class ReindeerScene extends Phaser.Scene {
 
   create() {
     this.sky = this.add.graphics().setDepth(0);
-    this.add
-      .image(W - 70, 50, 'moon')
-      .setScale(0.4)
-      .setDepth(1);
-    this.rudolph = this.add.image(REINDEER_X, 0, 'run1').setOrigin(0.5, 1).setDepth(4);
-    // Sprite pools: reuse images each frame instead of creating new ones.
-    this.groundImgs = [];
+    this.flakes = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 20 + Math.random() * 40 }));
+    this.snowGfx = this.add.graphics().setDepth(1);
+    this.platformImgs = [];
     this.snowmanImgs = [];
-    this.label = this.add
-      .text(12, 10, '', { fontFamily: 'monospace', fontSize: '16px', color: '#fff' })
-      .setDepth(9);
+    this.reindeer = this.add.image(REINDEER_X, 0, 'run-0').setOrigin(0.5, 1).setDepth(4);
+    this.label = this.add.text(12, 56, '', { fontFamily: 'monospace', fontSize: '16px', color: '#fff3b0' }).setDepth(9);
     this.hint = this.add
-      .text(W / 2, H * 0.3, 'Tap eller mellemrum for at løbe', {
+      .text(W / 2, H * 0.3, 'Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe', {
         fontFamily: 'monospace',
-        fontSize: '16px',
+        fontSize: '14px',
         color: '#fde68a',
+        align: 'center',
+        wordWrap: { width: W - 40 },
       })
       .setOrigin(0.5)
       .setDepth(9);
 
-    this.run = null;
     this.busy = false;
     this.frameClock = 0;
-    this.holdStart = null;
     this.drag = null;
     this.input.keyboard.on('keydown-SPACE', () => this.pressJump());
     this.input.keyboard.on('keydown-DOWN', () => this.setDuck(true));
@@ -61,24 +56,27 @@ class ReindeerScene extends Phaser.Scene {
       this.pressJump();
     });
     this.input.on('pointermove', (p) => this.onDrag(p));
-    this.input.on('pointerup', (p) => this.onRelease(p));
+    this.input.on('pointerup', () => this.onRelease());
     window.__rrDebug__ = {
       snapshot: () => ({
         state: this.run.state,
         score: this.run.score,
         y: this.run.y,
+        grounded: this.run.grounded,
+        speed: this.run.speed,
+        platforms: this.run.platforms.map((p) => ({ x: p.x, y: p.y, w: p.w })),
         snowmen: this.run.snowmen.length,
+        snowmanX: this.run.snowmen.map((s) => s.x),
       }),
     };
     this.newRun();
   }
 
   newRun() {
-    this.run = createRun({ width: W, height: H });
+    this.run = createRun({ width: W, height: H, scale: 1 }); // physics stay at design size; the taller world only shows more sky
     this.busy = false;
     this.accum = 0;
     this.hint.setVisible(true);
-    this.label.setText('');
     this.drawRun();
   }
 
@@ -135,7 +133,7 @@ class ReindeerScene extends Phaser.Scene {
 
   async die() {
     this.busy = true;
-    this.hint.setText('Ouch!').setVisible(true);
+    this.hint.setText('Av!').setVisible(true);
     this.sound.play('death', { volume: 0.5 });
     await new Promise((r) => this.time.delayedCall(1200, r));
     await showScores(this, { gameId: 'advent-4', score: this.run.score, title: 'Reindeer Rush' });
@@ -145,41 +143,54 @@ class ReindeerScene extends Phaser.Scene {
   drawRun() {
     const r = this.run;
     this.label.setText(`Score ${r.score}`);
-    this.sky.clear().fillStyle(0x0d093a).fillRect(0, 0, W, H);
-
-    this.placeAll(this.groundImgs, 'ground', r.platforms, (img, p) => {
-      const scale = p.w / GROUND_W;
-      img
-        .setPosition(p.x, p.y - GROUND_SURFACE_ROW * scale)
-        .setOrigin(0, 0)
-        .setDisplaySize(p.w, GROUND_H * scale);
+    this.drawSky();
+    // Each platform is a solid ice tile stretched to its width. Its top edge is the platform's y.
+    this.placeAll(this.platformImgs, () => 'tile', r.platforms, (img, p) => {
+      img.setOrigin(0, 0).setDisplaySize(p.w, 40 * r.scale).setDepth(3);
+      img.setPosition(p.x, p.y);
     });
-    this.placeAll(this.snowmanImgs, 'snowman', r.snowmen, (img, s) => {
+    this.placeAll(this.snowmanImgs, () => 'snowman', r.snowmen, (img, s) => {
+      // Drawn at exactly its collision box, so the visible snowman is the one that hits.
       img.setPosition(s.x, r.groundY).setOrigin(0, 1).setDisplaySize(s.w, s.h);
     });
 
-    // Draw Rudolph at the hitbox height so what you see is what collides, keeping the sprite's aspect.
-    const drawH = r.hitbox.h * r.scale * 1.6;
-    this.rudolph
-      .setTexture(this.frameFor(r))
-      .setPosition(REINDEER_X, r.y)
-      .setDisplaySize(drawH * (351 / 291), drawH);
+    // Reindeer frame by state. The drawn height matches the hitbox so what you see is what collides.
+    const key = this.frameFor(r);
+    const baseH = r.hitbox.h * r.scale * 1.8;
+    this.reindeer.setTexture(key).setPosition(REINDEER_X, r.y).setDisplaySize(baseH * (this.reindeer.width / this.reindeer.height), baseH);
+  }
+
+  drawSky() {
+    const g = this.sky.clear();
+    g.fillGradientStyle(0x0d093a, 0x0d093a, 0x2a1a5e, 0x2a1a5e, 1);
+    g.fillRect(0, 0, W, H);
+    g.fillStyle(0xffffff, 0.8);
+    for (const f of this.flakes) {
+      f.y += f.v * (1 / 60);
+      if (f.y > H) f.y = -4;
+      g.fillCircle(f.x, f.y, 1.4);
+    }
   }
 
   frameFor(r) {
-    if (r.state === 'ready') return 'run1';
-    if (!r.grounded) return `jump${1 + Math.min(RUDOLPH.jump - 1, Math.floor((r.vy + 600) / 300))}`;
+    if (r.state === 'ready') return this.runFrame();
+    if (!r.grounded) return 'jump';
     if (r.ducking) return 'slide';
-    this.frameClock += 1;
-    return `run${1 + (Math.floor(this.frameClock / 4) % RUDOLPH.run)}`;
+    return this.runFrame();
   }
 
-  // Show one image per item from the pool, hiding unused ones.
-  placeAll(pool, key, items, place) {
+  // Cycle the six Rudolph run frames by time, so the legs animate while running.
+  runFrame() {
+    const i = Math.floor(this.time.now / RUN_FRAME_MS) % RUN_FRAMES.length;
+    return `run-${i}`;
+  }
+
+  // Show one image per item from a pool, hiding unused ones. Pool entries are created on demand.
+  placeAll(pool, keyFor, items, place) {
     items.forEach((item, i) => {
-      pool[i] ??= this.add.image(0, 0, key).setDepth(3);
-      pool[i].setVisible(true);
-      place(pool[i], item);
+      pool[i] ??= this.add.image(0, 0, keyFor(i)).setDepth(3);
+      pool[i].setTexture(keyFor(i)).setVisible(true);
+      place(pool[i], item, i);
     });
     for (let i = items.length; i < pool.length; i += 1) pool[i].setVisible(false);
   }

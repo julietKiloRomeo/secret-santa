@@ -35,8 +35,8 @@ export const MAX_LIVES = 3;
 
 export const RELEASE_TICKS = 40; // ghost i leaves the pen after i * RELEASE_TICKS
 
-export function createGame() {
-  const maze = MAZE.map((row) => row.split(''));
+export function createGame(rows = MAZE) {
+  const maze = rows.map((row) => row.split(''));
   let santa = null;
   const ghosts = [];
   maze.forEach((row, y) =>
@@ -58,10 +58,14 @@ export function createGame() {
 const at = (g, x, y) => g.maze[y]?.[x] ?? '#';
 const passable = (g, x, y) => at(g, x, y) !== '#';
 
-// Tunnel wrap on the middle row so Santa can use the chimney portals.
+// Tunnels wrap on both axes, so a transposed maze plays the same either way.
 function wrap(g, x, y) {
-  if (x < 0) return { x: g.maze[0].length - 1, y };
-  if (x >= g.maze[0].length) return { x: 0, y };
+  const w = g.maze[0].length;
+  const h = g.maze.length;
+  if (x < 0) return { x: w - 1, y };
+  if (x >= w) return { x: 0, y };
+  if (y < 0) return { x, y: h - 1 };
+  if (y >= h) return { x, y: 0 };
   return { x, y };
 }
 

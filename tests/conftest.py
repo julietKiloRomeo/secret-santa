@@ -28,7 +28,7 @@ PASSWORDS = {
 @pytest.fixture
 def appmod(tmp_path, monkeypatch):
     """Fresh app module whose data (env, db, draws) all live in tmp_path."""
-    for key in ("SCORES_DB", "ENV_FILE", "DRAW_LOCKED", *(f"LOGIN_{n}" for n in NAMES)):
+    for key in ("SCORES_DB", "ENV_FILE", "DRAW_LIVE", *(f"LOGIN_{n}" for n in NAMES)):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     env = "SECRET_KEY=test-secret-key\n" + "".join(

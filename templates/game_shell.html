@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{# Full-screen game page. Child templates set game_id, game_title, game_hint and fill game_stage. #}
+{% block body_class %}arcade-fullscreen{% endblock %}
+{% block content %}
+  <section id="{{ stage_id }}" class="game-stage">
+    <div class="game-canvas" id="{{ canvas_wrap_id }}">
+      {% block game_stage %}{% endblock %}
+    </div>
+    <header class="game-hud">
+      <a href="/spil" class="game-back" aria-label="Tilbage til spil">← Spil</a>
+      <div class="game-title">{{ game_title }}</div>
+      <div class="game-score" id="score">{% block score %}{% endblock %}</div>
+    </header>
+    <div id="status" class="game-status"></div>
+    <p class="game-hint">{{ game_hint }}</p>
+  </section>
+  <script>window.__defaultPlayerName__ = {{ default_name|default('Nisse')|tojson }};</script>
+  <script src="/static/vendor/phaser-4.2.1.min.js"></script>
+  <script type="module" src="/static/{{ game_script }}?v={{ asset_version }}"></script>
+{% endblock %}

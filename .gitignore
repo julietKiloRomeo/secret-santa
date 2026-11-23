@@ -56,3 +56,6 @@ scores.sqlite3
 !.env.example
 .data.test.*/
 out/
+
+# Plaintext draw: only the encoded .enc is committed
+secret-santa-*.json

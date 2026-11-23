@@ -1,8 +1,19 @@
 // Pac-Santa view: draws the maze and turns keys and swipes into queued turns.
 // Rules live in pac_santa_core.js.
-import { createGame, queueTurn, tick, MAZE } from './pac_santa_core.js';
+import { createGame, queueTurn, tick } from './pac_santa_core.js';
 import { showScores } from './arcade_scene.js';
+import { generateMaze } from './pac_maze_gen.js';
+import { transpose, mazeSizeFor } from './pac_orientation.js';
 
+// The maze size follows the screen: portrait is 30 wide by 40 tall, landscape is the same maze transposed.
+const SIZE = mazeSizeFor(window.innerWidth, window.innerHeight);
+const LANDSCAPE = SIZE.cols > SIZE.rows;
+const newMaze = () => {
+  const tall = generateMaze(30, 40); // always generated tall, then transposed for landscape
+  return LANDSCAPE ? transpose(tall) : tall;
+};
+const MAZE_W = SIZE.cols;
+const MAZE_H = SIZE.rows;
 const TILE = 24;
 const STEP_MS = 120; // one tick per step: Santa moves a tile every 120 ms
 const SWIPE_PX = 24;
@@ -17,12 +28,26 @@ const KEYS = {
   d: 'right',
 };
 
+const SPRITE_FILES = {
+  santa: 'pac/santa.png',
+  ghost: 'pac/ghost-red.png',
+  ghostPink: 'pac/ghost-pink.png',
+  ghostCyan: 'pac/ghost-cyan.png',
+  frightened: 'pac/ghost-frightened.png',
+  candy: 'pac/candy-cane.png',
+  cookie: 'pac/cookie.png',
+};
+const GHOST_KEYS = ['ghost', 'ghostPink', 'ghostCyan'];
+
 class PacScene extends Phaser.Scene {
+  preload() {
+    for (const [key, file] of Object.entries(SPRITE_FILES)) this.load.image(key, `/static/sprites/${file}`);
+  }
+
   create() {
-    this.width = MAZE[0].length * TILE;
-    this.height = MAZE.length * TILE;
     this.cameras.main.setBackgroundColor('#0b1a33');
     this.gfx = this.add.graphics();
+    this.sprites = [];
     this.hud = this.add.text(8, 4, '', { fontFamily: 'monospace', fontSize: '16px', color: '#f0f8ff' });
     this.hud.setDepth(10);
     this.start();
@@ -33,11 +58,20 @@ class PacScene extends Phaser.Scene {
     this.input.on('pointerdown', (p) => (this.swipeStart = { x: p.x, y: p.y }));
     this.input.on('pointerup', (p) => this.onSwipe(p));
     this.timer = this.time.addEvent({ delay: STEP_MS, loop: true, callback: () => this.step() });
-    window.__pacDebug__ = { snapshot: () => this.snapshot() };
+    window.__pacDebug__ = {
+      snapshot: () => this.snapshot(),
+      // Test hook: one life left and a ghost on Santa's tile, so the next tick ends the run.
+      endRunNow: () => {
+        const { santa, ghosts } = this.g;
+        this.g.lives = 1;
+        Object.assign(ghosts[0], { x: santa.x, y: santa.y, frightened: false, eaten: false, releaseAt: 0 });
+      },
+    };
   }
 
   start() {
-    this.g = createGame();
+    this.rows = newMaze();
+    this.g = createGame(this.rows);
     this.ended = false;
   }
 
@@ -77,23 +111,28 @@ class PacScene extends Phaser.Scene {
   draw() {
     const g = this.g;
     this.gfx.clear();
-    MAZE.forEach((row, y) =>
+    const items = [];
+    this.rows.forEach((row, y) =>
       [...row].forEach((c, x) => {
         const px = x * TILE;
         const py = y * TILE;
         if (c === '#') this.gfx.fillStyle(0x3b6ea5).fillRect(px, py, TILE, TILE);
-        if (g.maze[y][x] === '.') this.gfx.fillStyle(0xffe9b0).fillCircle(px + TILE / 2, py + TILE / 2, 3);
-        if (g.maze[y][x] === 'o') this.gfx.fillStyle(0xff4d6d).fillCircle(px + TILE / 2, py + TILE / 2, 7);
+        if (g.maze[y][x] === '.') items.push({ key: 'cookie', x: px + TILE / 2, y: py + TILE / 2, s: 14 });
+        if (g.maze[y][x] === 'o') items.push({ key: 'candy', x: px + TILE / 2, y: py + TILE / 2, s: 22 });
       }),
     );
-    this.gfx
-      .fillStyle(0xffd23f)
-      .fillCircle(g.santa.x * TILE + TILE / 2, g.santa.y * TILE + TILE / 2, TILE / 2 - 2);
-    g.ghosts.forEach((gh) => {
+    items.push({ key: 'santa', x: g.santa.x * TILE + TILE / 2, y: g.santa.y * TILE + TILE / 2, s: TILE + 8 });
+    g.ghosts.forEach((gh, i) => {
       if (gh.eaten) return;
-      this.gfx.fillStyle(gh.frightened ? 0x9ad0ff : 0xe0245e);
-      this.gfx.fillCircle(gh.x * TILE + TILE / 2, gh.y * TILE + TILE / 2, TILE / 2 - 3);
+      const key = gh.frightened ? 'frightened' : GHOST_KEYS[i % GHOST_KEYS.length];
+      items.push({ key, x: gh.x * TILE + TILE / 2, y: gh.y * TILE + TILE / 2, s: TILE + 6 });
     });
+    // Reuse sprite objects across frames instead of creating new ones every tick.
+    items.forEach((it, i) => {
+      this.sprites[i] ??= this.add.image(0, 0, it.key).setDepth(2);
+      this.sprites[i].setTexture(it.key).setPosition(it.x, it.y).setDisplaySize(it.s, it.s).setVisible(true);
+    });
+    this.sprites.slice(items.length).forEach((s) => s.setVisible(false));
     this.hud.setText(`Score ${g.score}   Lives ${g.lives}`);
   }
 
@@ -112,8 +151,8 @@ class PacScene extends Phaser.Scene {
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'pac-santa-canvas-wrap',
-  width: MAZE[0].length * TILE,
-  height: MAZE.length * TILE,
+  width: MAZE_W * TILE,
+  height: MAZE_H * TILE,
   backgroundColor: '#0b1a33',
   dom: { createContainer: true },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },

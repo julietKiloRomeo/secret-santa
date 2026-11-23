@@ -161,3 +161,25 @@ def restore_snapshot(name: str) -> str:
         target = dest_root / entry.name
         shutil.copy2(entry, target)
     return str(source)
+
+
+def encode_draw(config: dict) -> str:
+    """Obfuscate a draw so it is not readable at a glance. Not a security control."""
+    import base64
+    import json
+
+    return base64.b64encode(json.dumps(config, sort_keys=True).encode()).decode()
+
+
+def decode_draw(text: str) -> dict:
+    import base64
+    import binascii
+    import json
+
+    try:
+        data = json.loads(base64.b64decode(text.strip(), validate=True))
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Draw file is not a valid encoded draw") from exc
+    if not isinstance(data, dict):
+        raise ValueError("Draw file is not a valid encoded draw")
+    return data

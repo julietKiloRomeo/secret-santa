@@ -1,5 +1,6 @@
 """Secret Santa + advent mini-games. Run as a single process (state lives in module globals)."""
 
+import time
 import os
 import sqlite3
 from contextlib import closing
@@ -33,6 +34,11 @@ GAMES = {
     "advent-3": ("Tredje Advent", "Jingle Bell Hero", "tredje_advent.html"),
     "advent-4": ("Fjerde Advent", "Reindeer Rush", "fjerde_advent.html"),
     "advent-5": ("Femte Advent", "Pac-Santa", "femte_advent.html"),
+    "advent-6": ("Sjette Advent", "Nissen & Kuglen", "bauble.html"),
+    "advent-7": ("Syvende Advent", "Snøkugle-kast", "under_construction.html"),
+    "advent-8": ("Ottende Advent", "Pakkepuslespil", "under_construction.html"),
+    "advent-9": ("Niende Advent", "Julebag", "under_construction.html"),
+    "advent-10": ("Tiende Advent", "Nisse-hop", "under_construction.html"),
 }
 # Games listed in the navbar and high-score page. Change to publish a different four.
 PUBLISHED = ["advent-1", "advent-2", "advent-3", "advent-4"]
@@ -126,8 +132,14 @@ def http_error(request: Request, exc: HTTPException):
 # --- helpers ---------------------------------------------------------------
 
 
-def draw_locked():
-    return os.environ.get("DRAW_LOCKED", "").lower() in ("1", "true", "yes", "on")
+# Shown instead of a real recipient until DRAW_LIVE is set. Testing only; not a security control.
+DUMMY_RECIPIENT = "Buddy the Elf"
+
+
+def recipient_for(name):
+    if os.environ.get("DRAW_LIVE", "").lower() not in ("1", "true", "yes", "on"):
+        return DUMMY_RECIPIENT
+    return (SS.config.get(name) or "").capitalize()
 
 
 def is_game_enabled(game):
@@ -157,6 +169,10 @@ def require_admin(user=Depends(require_user)):
     return user
 
 
+# Changes on every server start, so browsers fetch fresh CSS and game scripts after a deploy.
+ASSET_VERSION = str(int(time.time()))
+
+
 def render(request: Request, template: str, **ctx):
     user = request.session.get("user")
     admin = user in ADMINS
@@ -165,6 +181,7 @@ def render(request: Request, template: str, **ctx):
         template,
         {
             "session": request.session,
+            "asset_version": ASSET_VERSION,
             "is_admin_user": lambda: admin,
             "game_enabled_for_user": lambda g: admin or is_game_enabled(g),
             "published_games": [{"id": g, "title": GAMES[g][0]} for g in PUBLISHED],
@@ -199,8 +216,52 @@ def lodtraekning(request: Request):
         request,
         "lodtraekning.html",
         name=user,
-        recipient=(SS.config.get(user) or "").capitalize(),
+        recipient=recipient_for(user),
     )
+
+
+# Full-screen shell settings per game: stage/canvas ids, HUD title, hint line and Phaser script.
+GAME_SHELL = {
+    "advent-1": {"stage_id": "snake-stage", "canvas_wrap_id": "snake-wrap", "game_title": "Jule Snake",
+                 "game_hint": "Swipe eller piletaster for at styre", "game_script": "forste_advent.js"},
+    "advent-2": {"stage_id": "santa-stage", "canvas_wrap_id": "santa-canvas-wrap", "game_title": "Flappy Santa",
+                 "game_hint": "Tryk eller mellemrum for at flyve", "game_script": "anden_advent.js"},
+    "advent-3": {"stage_id": "bell-stage", "canvas_wrap_id": "jingle-bell-hero-root", "game_title": "Jingle Bell Hero",
+                 "game_hint": "D F J K eller tryk på linjerne", "game_script": "jingle_bell_hero.js"},
+    "advent-4": {"stage_id": "reindeer-stage", "canvas_wrap_id": "reindeer-canvas", "game_title": "Reindeer Rush",
+                 "game_hint": "Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe",
+                 "game_script": "reindeer_rush.js"},
+    "advent-6": {"stage_id": "bauble-stage", "canvas_wrap_id": "bauble-wrap", "game_title": "Nissen & Kuglen",
+                 "game_hint": "Træk, fjern eller drej klodserne, så kuglen falder i stjernen",
+                 "game_script": "bauble.js"},
+    "advent-5": {"stage_id": "pac-stage", "canvas_wrap_id": "pac-santa-canvas-wrap", "game_title": "Pac-Santa",
+                 "game_hint": "Swipe eller piletaster for at styre", "game_script": "pac_santa.js"},
+}
+
+# One-line promise shown on the games hub, per published game.
+GAME_BLURBS = {
+    "advent-1": "Styr nissen gennem snefyldte ruter og saml gaverne.",
+    "advent-2": "Flyv gennem skorstenene med sleden. Ét tryk, ét hop.",
+    "advent-3": "Ram tonerne i takt med klokkeklangen.",
+    "advent-4": "Løb, hop og dash med Rudolf over sne og snemænd.",
+    "advent-5": "Labyrint med småkager, slik og en sur julemand.",
+    "advent-6": "Få kuglen ned i stjernen med så få træk som muligt.",
+    "advent-7": "Kast snebolde mod de bevægelige mål.",
+    "advent-8": "Skub og drej indpakningerne, så gaverne passer.",
+    "advent-9": "Hæng pynten på træet, før tiden løber ud.",
+    "advent-10": "Hop op gennem nisselandet fra platform til platform.",
+}
+
+
+@app.get("/spil")
+def spil(request: Request):
+    if not request.session.get("user"):
+        return to_login()
+    cards = [
+        {"id": g, "title": GAMES[g][0], "name": GAMES[g][1], "blurb": GAME_BLURBS[g], "published": g in PUBLISHED}
+        for g in GAMES
+    ]
+    return render(request, "spil.html", cards=cards)
 
 
 @app.get("/high-scores")
@@ -217,7 +278,6 @@ def admin_page(request: Request, user=Depends(require_admin)):
         request,
         "admin.html",
         year=SS.year,
-        draw_locked=draw_locked(),
         users=sorted(SS.config),
     )
 
@@ -230,7 +290,8 @@ def game_page(request: Request, game: str = Depends(known_game)):
     title, _, template = GAMES[game]
     if user not in ADMINS and not is_game_enabled(game):
         return render(request, "under_construction.html", title=title)
-    return render(request, template, title=title, game=game, default_name=user)
+    shell = GAME_SHELL.get(game, {})
+    return render(request, template, title=title, game=game, default_name=user, **shell)
 
 
 # --- api -------------------------------------------------------------------
@@ -251,7 +312,7 @@ def login(body: LoginIn, request: Request):
     return {
         "success": True,
         "name": name,
-        "recipient": (SS.config.get(name) or "").capitalize(),
+        "recipient": recipient_for(name),
     }
 
 
@@ -301,18 +362,6 @@ def admin_set_password(body: PasswordIn, _=Depends(require_admin)):
     load_dotenv(ENV_FILE, override=True)
     logins = load_logins()
     return {"success": True, "name": name}
-
-
-@app.post("/api/admin/run_matches")
-def admin_run_matches(_=Depends(require_admin)):
-    global SS
-    if draw_locked():
-        raise HTTPException(403, "Draw locked by server configuration")
-    santa = SecretSanta(data_dir=get_data_dir())
-    santa.draw()
-    santa.save()
-    SS = santa
-    return {"success": True, "year": SS.year}
 
 
 @app.get("/api/admin/games")
@@ -377,6 +426,6 @@ def admin_restore_snapshot(body: SnapshotIn, _=Depends(require_admin)):
 
 
 if __name__ == "__main__":
-    import uvicorn
+    __NOPE__
 
     uvicorn.run("app:app", port=5000, reload=True)

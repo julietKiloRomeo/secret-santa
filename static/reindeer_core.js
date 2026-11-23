@@ -16,6 +16,7 @@ const DASH_BOOST = 2.2; // travel multiplier while dashing
 const INVULN_TIME = 0.24; // s of snowman immunity after a dash starts
 const FALL_MARGIN = 200; // px below the screen before a fall ends the run
 const SNOWMAN_DELAY = 4.8; // s of running before the first snowman
+const SNOWMAN_H = 40; // design px: lower than a standing reindeer, higher than a ducked one, so ducking is an answer
 const DISTANCE_SCALE = 0.02; // points per px travelled (0.02 = 1 point per 50px)
 export const LANDING_TOL = 6; // px: how far a foot may be below a platform top and still land
 
@@ -27,8 +28,7 @@ export const jumpHeight = (held) => (held ? -JUMP_HOLD : -JUMP_TAP);
 // Speed grows with distance and is capped; dashing multiplies it.
 export const speedFor = (distance) => 440 + Math.min(620, distance * 0.15);
 
-export function createRun({ width, height, rand = Math.random }) {
-  const scale = height / 260; // design height is 260px
+export function createRun({ width, height, scale = height / 260, rand = Math.random }) {
   const groundY = height * 0.7;
   const run = {
     width,
@@ -134,7 +134,7 @@ function spawnSnowman(run) {
   const gap = run.width * (1.5 + run.rand() * 0.5);
   const last = run.snowmen[run.snowmen.length - 1];
   const x = Math.max(run.width + 40, last ? last.x + gap : run.width + 40);
-  run.snowmen.push({ x, w: 40 * run.scale, h: 60 * run.scale, alive: true });
+  run.snowmen.push({ x, w: 40 * run.scale, h: SNOWMAN_H * run.scale, alive: true });
 }
 
 function scrollWorld(run, dx) {
@@ -152,8 +152,11 @@ function hitsSnowman(run, s) {
   const rh = hb.h * run.scale;
   const left = REINDEER_X - rw / 2;
   const top = run.y - rh;
+  // The box overlaps the snowman's band when it is horizontally across it and spans the snowman's top:
+  // its top is above that line and its foot is below it. A jump clears it (top and foot both above),
+  // a duck passes under it (top below the line), and a standing reindeer is hit.
   const snowTop = run.groundY - s.h;
-  return left < s.x + s.w && left + rw > s.x && top < run.groundY && run.y > snowTop;
+  return left < s.x + s.w && left + rw > s.x && top < snowTop && run.y > snowTop;
 }
 
 // Advance the simulation by dt seconds, in fixed steps of STEP.

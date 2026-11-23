@@ -67,3 +67,38 @@ test('eating a frightened ghost sends it home and scores 200', () => {
   expect(g.score).toBe(200);
   expect(g.ghosts[0].eaten).toBe(true);
 });
+
+test('a tunnel on the left edge wraps Santa to the right edge', () => {
+  const g = createGame();
+  g.ghosts = [];
+  const h = g.maze.length;
+  const w = g.maze[0].length;
+  const y = Math.floor(h / 2);
+  g.maze[y][0] = ' ';
+  g.maze[y][w - 1] = ' ';
+  g.santa = { x: 0, y, dir: 'left', next: null };
+  tick(g);
+  expect(g.santa.x).toBe(w - 1);
+});
+
+test('a tunnel on the top edge wraps Santa to the bottom edge', () => {
+  const g = createGame();
+  g.ghosts = [];
+  const h = g.maze.length;
+  const w = g.maze[0].length;
+  const x = Math.floor(w / 2);
+  g.maze[0][x] = ' ';
+  g.maze[h - 1][x] = ' ';
+  g.santa = { x, y: 0, dir: 'up', next: null };
+  tick(g);
+  expect(g.santa.y).toBe(h - 1);
+});
+
+test('createGame uses a maze passed in, so the view can play a generated maze', () => {
+  const rows = ['#####', '#S G#', '#...#', '#####'];
+  const g = createGame(rows);
+  expect(g.maze).toHaveLength(4);
+  expect(g.maze[0]).toHaveLength(5);
+  expect(g.santa).toEqual({ x: 1, y: 1, dir: 'left', next: null });
+  expect(g.ghosts).toHaveLength(1);
+});

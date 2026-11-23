@@ -48,9 +48,10 @@ test('qualifying score asks for a name, saves it and closes on Enter', async ({ 
   await page.keyboard.press('Enter');
   await expect.poll(() => scene(page)).toBe(null);
   // Resume lands on the next frame, so retry the key until the snake runs again.
+  // After a card or a shield wait, only a direction resumes the game (Space does not).
   await expect
     .poll(async () => {
-      await page.keyboard.press('Space');
+      await page.keyboard.press('ArrowRight');
       return page.evaluate(() => (window as any).__snakeDebug__.isRunning());
     })
     .toBe(true);
