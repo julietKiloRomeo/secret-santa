@@ -95,9 +95,10 @@ class SnakeScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', (e) => this.onKey(e));
     this.input.on('pointerdown', (p) => {
       if (this.cardOpen) return this.dismissCard();
+      // Record the start in every state, so a swipe made during the wait is read on release.
+      this.swipe = p.position.clone();
       if (this.waiting) return; // a tap during the wait does not reset the run
       if (!this.running() && !this.busy) this.restart();
-      this.swipe = p.position.clone();
     });
     this.input.on('pointerup', (p) => {
       const dir =
