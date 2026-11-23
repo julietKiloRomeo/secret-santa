@@ -11,8 +11,8 @@ def test_profile_page_shows_own_editor(client, appmod):
     r = client.get("/profil")
     assert r.status_code == 200
     html = r.text
-    assert 'id="wish-editor"' in html
-    assert 'id="avatar-input"' in html
+    assert 'id="wish-rows"' in html
+    assert 'id="avatar-modal"' in html
     assert 'data-player="ditte"' in html
 
 
@@ -26,9 +26,9 @@ def test_profile_page_has_ctrl_k_and_context_menu_hooks(client, appmod):
 def test_profile_page_saves_through_the_api_not_a_form(client, appmod):
     login(client, "ditte")
     html = client.get("/profil").text
-    # The wish editor itself is not inside a form: it saves with fetch to the JSON API.
-    editor_block = html.split('id="wish-editor"')[0].rsplit("<section", 1)[-1]
-    assert "<form" not in editor_block
+    # The wish rows are not inside a form: they save with fetch to the JSON API.
+    rows_block = html.split('id="wish-rows"')[0].rsplit("<section", 1)[-1]
+    assert "<form" not in rows_block
     assert "/api/profile/" in html
 
 
@@ -42,7 +42,7 @@ def test_avatar_picker_is_a_modal_behind_the_portrait(client, appmod):
     login(client, "ditte")
     html = client.get("/profil").text
     # The grid and the old "Vælg billede" button no longer sit on the page.
-    assert "Vælg billede" not in html
+    assert ">Vælg billede<" not in html.split('id="avatar-modal"')[0]
     assert 'id="avatar-modal"' in html
     assert 'id="avatar-open"' in html  # the clickable portrait with the hint icon
 

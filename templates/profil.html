@@ -7,31 +7,51 @@
       <h1 class="mt-1 text-4xl">Min profil</h1>
     </header>
 
-    <div class="mt-6 flex flex-col items-center gap-3">
-      <img id="avatar-preview" src="" alt="Dit profilbillede" class="h-32 w-32 rounded-full border border-gold-500/40 object-cover" hidden>
-      <label class="btn-gold cursor-pointer">
-        Vælg billede
-        <input id="avatar-input" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
-      </label>
-      <p id="avatar-status" class="text-sm text-snow-100/80" role="status" aria-live="polite"></p>
-      <p class="text-xs uppercase tracking-widest text-gold-300/80">Eller vælg et portræt</p>
-      <div id="preset-grid" class="grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Portrætter"></div>
+    <div class="mt-6 flex flex-col items-center gap-2">
+      <button id="avatar-open" type="button" class="relative rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-300"
+              aria-haspopup="dialog" aria-controls="avatar-modal" aria-label="Skift profilbillede">
+        <img id="avatar-preview" src="" alt="" class="h-32 w-32 rounded-full border border-gold-500/40 object-cover" hidden>
+        <span id="avatar-empty" class="flex h-32 w-32 items-center justify-center rounded-full border border-dashed border-gold-500/60 text-gold-300/80" hidden>
+          <svg viewBox="0 0 24 24" class="h-10 w-10" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </span>
+        <span class="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-gold-300 text-pine-950 shadow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+      </button>
+      <p class="text-xs text-snow-100/70">Tryk på billedet for at skifte</p>
     </div>
+
+    <dialog id="avatar-modal" class="xmas-card max-w-lg w-full" aria-labelledby="avatar-modal-title">
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center justify-between gap-2">
+          <h2 id="avatar-modal-title" class="text-2xl">Vælg billede</h2>
+          <button type="button" data-avatar-close class="btn-gold !px-3 !py-1 text-sm">Luk</button>
+        </div>
+        <label class="btn-primary cursor-pointer text-center">
+          Upload eget billede
+          <input id="avatar-input" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+        </label>
+        <p class="text-xs uppercase tracking-widest text-gold-300/80 text-center">Eller vælg et portræt</p>
+        <div id="preset-grid" class="grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Portrætter"></div>
+        <p id="avatar-status" class="text-sm text-snow-100/80 text-center" role="status" aria-live="polite"></p>
+      </div>
+    </dialog>
 
     <div class="mt-8">
       <div class="mb-2 flex items-center justify-between gap-2">
         <h2 class="text-2xl">Ønskeliste</h2>
-        <span class="text-xs text-snow-100/70">Ctrl+K eller marker og højreklik for at lave et link</span>
+        <span class="text-xs text-snow-100/70">Enter for ny række · Ctrl+K for link</span>
       </div>
       <div class="mb-2 flex flex-wrap gap-2" role="toolbar" aria-label="Formatering">
         <button type="button" data-cmd="bold" class="btn-gold !px-3 !py-1 text-sm"><b>B</b></button>
         <button type="button" data-cmd="italic" class="btn-gold !px-3 !py-1 text-sm"><i>I</i></button>
         <button type="button" data-cmd="underline" class="btn-gold !px-3 !py-1 text-sm"><u>U</u></button>
-        <button type="button" data-cmd="insertUnorderedList" class="btn-gold !px-3 !py-1 text-sm">• Liste</button>
         <button type="button" data-link-dialog class="btn-gold !px-3 !py-1 text-sm">Link</button>
       </div>
-      <div id="wish-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Ønskeliste"
-           class="field min-h-[10rem] whitespace-pre-wrap"></div>
+      <ol id="wish-rows" class="space-y-2" aria-label="Ønskeliste"></ol>
+      <button id="wish-add" type="button" class="btn-gold mt-3 w-full" aria-label="Tilføj ønske">
+        <span aria-hidden="true">+</span> Tilføj ønske
+      </button>
       <p id="wish-status" class="mt-2 text-sm text-snow-100/80" role="status" aria-live="polite"></p>
       <button id="wish-save" type="button" class="btn-primary mt-4 w-full">Gem ønskeliste</button>
     </div>
@@ -56,17 +76,55 @@
   <script>
     (function () {
       const player = {{ player|tojson }};
-      const editor = document.getElementById('wish-editor');
       const status = document.getElementById('wish-status');
       const avatarStatus = document.getElementById('avatar-status');
       const preview = document.getElementById('avatar-preview');
+      const emptyIcon = document.getElementById('avatar-empty');
+      const avatarModal = document.getElementById('avatar-modal');
+      const rowsEl = document.getElementById('wish-rows');
+      const MAX_ROWS = 50;
+
+      function showAvatar(url) {
+        preview.src = url;
+        preview.hidden = false;
+        emptyIcon.hidden = true;
+      }
+
+      // One wish per row. Each row is a single line; its text may carry bold, italic, underline and links.
+      function addRow(html, focus) {
+        if (rowsEl.children.length >= MAX_ROWS) { status.textContent = 'Der er nået den maksimale længde.'; return null; }
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-2';
+        li.innerHTML = `<span class="flex-1 field min-h-[2.5rem] whitespace-pre-wrap" contenteditable="true" role="textbox" aria-label="Ønske"></span>
+          <button type="button" data-remove class="btn-gold !px-2 !py-1 text-sm" aria-label="Fjern ønske">✕</button>`;
+        const field = li.querySelector('[contenteditable]');
+        field.innerHTML = html;
+        rowsEl.appendChild(li);
+        if (focus) field.focus();
+        return field;
+      }
+
+      function rowsToHtml() {
+        return '<ul>' + [...rowsEl.querySelectorAll('[contenteditable]')]
+          .map((f) => f.innerText.trim() ? `<li>${f.innerHTML}</li>` : '')
+          .join('') + '</ul>';
+      }
+
+      function htmlToRows(html) {
+        rowsEl.innerHTML = '';
+        const doc = new DOMParser().parseFromString(html || '', 'text/html');
+        const items = [...doc.querySelectorAll('li')];
+        if (!items.length && doc.body.textContent.trim()) items.push(doc.body);
+        items.forEach((li) => addRow(li.innerHTML, false));
+        if (!rowsEl.children.length) addRow('', false);
+      }
 
       async function load() {
         const r = await fetch('/api/profile/' + encodeURIComponent(player), { credentials: 'same-origin' });
         if (!r.ok) { status.textContent = 'Kunne ikke hente din profil.'; return; }
         const data = await r.json();
-        editor.innerHTML = data.wish_html || '';
-        if (data.avatar) { preview.src = data.avatar; preview.hidden = false; }
+        htmlToRows(data.wish_html);
+        if (data.avatar) showAvatar(data.avatar);
       }
 
       async function save() {
@@ -75,24 +133,52 @@
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ wish_html: editor.innerHTML }),
+          body: JSON.stringify({ wish_html: rowsToHtml() }),
         });
         status.textContent = r.ok ? 'Gemt.' : 'Kunne ikke gemme. Prøv igen.';
       }
 
-      document.querySelectorAll('[data-cmd]').forEach((b) =>
-        b.addEventListener('click', () => { editor.focus(); document.execCommand(b.dataset.cmd); }));
+      document.getElementById('wish-add').addEventListener('click', () => addRow('', true));
+      rowsEl.addEventListener('keydown', (ev) => {
+        const field = ev.target.closest('[contenteditable]');
+        if (!field) return;
+        if (ev.key === 'Enter') {
+          // A new row instead of a line break inside one row.
+          ev.preventDefault();
+          const next = addRow('', true);
+          if (!next) return;
+        }
+        if (ev.key === 'Backspace' && !field.innerText.trim()) {
+          const li = field.closest('li');
+          const prev = li.previousElementSibling && li.previousElementSibling.querySelector('[contenteditable]');
+          if (prev) { ev.preventDefault(); li.remove(); prev.focus(); }
+        }
+      });
+      rowsEl.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-remove]');
+        if (!btn) return;
+        btn.closest('li').remove();
+        if (!rowsEl.children.length) addRow('', true);
+      });
       document.getElementById('wish-save').addEventListener('click', save);
 
-      // Link dialog: Ctrl+K (Cmd+K on Mac), the toolbar button, or the right-click menu.
-      // The selection is saved when the dialog opens and restored before the link is inserted.
+      document.querySelectorAll('[data-cmd]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const sel = window.getSelection();
+          if (sel && sel.anchorNode && rowsEl.contains(sel.anchorNode)) document.execCommand(b.dataset.cmd);
+        }));
+
+      // Link dialog: Ctrl+K in a row, the toolbar button, or right-click on a selection.
       const dialog = document.getElementById('link-dialog');
       const linkText = document.getElementById('link-text');
       const linkUrl = document.getElementById('link-url');
       const linkErr = document.getElementById('link-error');
       let savedRange = null;
+      let activeField = null;
 
-      function openLinkDialog() {
+      function openLinkDialog(field) {
+        activeField = field || rowsEl.querySelector('[contenteditable]:focus');
+        if (!activeField) return;
         const sel = window.getSelection();
         savedRange = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
         linkText.value = savedRange ? savedRange.toString() : '';
@@ -108,7 +194,7 @@
         a.rel = 'nofollow noopener';
         a.target = '_blank';
         a.textContent = text;
-        editor.focus();
+        activeField.focus();
         const sel = window.getSelection();
         sel.removeAllRanges();
         if (savedRange) sel.addRange(savedRange);
@@ -116,32 +202,31 @@
           savedRange.deleteContents();
           savedRange.insertNode(a);
         } else {
-          // Nothing selected: put the link where the cursor was, or at the end.
           const r = document.createRange();
-          r.selectNodeContents(editor);
+          r.selectNodeContents(activeField);
           r.collapse(false);
           r.insertNode(a);
         }
       }
 
-      editor.addEventListener('keydown', (ev) => {
+      rowsEl.addEventListener('keydown', (ev) => {
         if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') {
           ev.preventDefault();
-          openLinkDialog();
+          openLinkDialog(ev.target.closest('[contenteditable]'));
         }
       });
-      editor.addEventListener('contextmenu', (ev) => {
+      rowsEl.addEventListener('contextmenu', (ev) => {
         const sel = window.getSelection();
-        if (sel && !sel.isCollapsed) {
+        const field = ev.target.closest('[contenteditable]');
+        if (field && sel && !sel.isCollapsed) {
           ev.preventDefault();
-          openLinkDialog();
+          openLinkDialog(field);
         }
       });
-      document.querySelector('[data-link-dialog]').addEventListener('click', openLinkDialog);
+      document.querySelector('[data-link-dialog]').addEventListener('click', () => openLinkDialog());
 
       document.getElementById('link-form').addEventListener('submit', (ev) => {
         const url = linkUrl.value.trim();
-        // Only web and mail links, as the server allows.
         if (!/^(https?:\/\/|mailto:)/i.test(url)) {
           ev.preventDefault();
           linkErr.textContent = 'Adressen skal starte med https:// eller mailto:.';
@@ -150,6 +235,13 @@
         }
         insertLink(linkText.value.trim() || url, url);
       });
+
+      // Avatar: the portrait opens the modal; upload and presets live inside it.
+      document.getElementById('avatar-open').addEventListener('click', () => {
+        avatarStatus.textContent = '';
+        avatarModal.showModal();
+      });
+      avatarModal.querySelector('[data-avatar-close]').addEventListener('click', () => avatarModal.close());
 
       document.getElementById('avatar-input').addEventListener('change', async (ev) => {
         const file = ev.target.files[0];
@@ -162,8 +254,7 @@
         });
         if (!r.ok) { avatarStatus.textContent = 'Billedet blev ikke godkendt.'; return; }
         const data = await r.json();
-        preview.src = data.avatar;
-        preview.hidden = false;
+        showAvatar(data.avatar);
         avatarStatus.textContent = 'Billede gemt.';
       });
 
@@ -189,9 +280,9 @@
         });
         if (!r.ok) { avatarStatus.textContent = 'Kunne ikke vælge portrættet.'; return; }
         const data = await r.json();
-        preview.src = data.avatar;
-        preview.hidden = false;
+        showAvatar(data.avatar);
         avatarStatus.textContent = 'Portræt valgt.';
+        avatarModal.close();
       });
 
       load();
