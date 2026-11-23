@@ -1,5 +1,6 @@
 """Secret Santa + advent mini-games. Run as a single process (state lives in module globals)."""
 
+import json
 import time
 import os
 import sqlite3
@@ -17,6 +18,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from secret_santa import SecretSanta
 from storage import (
+    archive_scores_path,
     create_snapshot,
     ensure_data_dir,
     env_file_path,
@@ -98,6 +100,9 @@ def init_db():
         con.execute(
             "CREATE TABLE IF NOT EXISTS logins (name TEXT PRIMARY KEY, hash TEXT NOT NULL)"
         )
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
         # Seed once from LOGIN_* env vars (first deploy only). After that the DB is the source.
         if con.execute("SELECT COUNT(*) FROM logins").fetchone()[0] == 0:
             con.executemany(
@@ -144,8 +149,16 @@ def http_error(request: Request, exc: HTTPException):
 DUMMY_RECIPIENT = "Buddy the Elf"
 
 
+def draw_live():
+    with db() as con:
+        row = con.execute("SELECT value FROM settings WHERE key = 'draw_live'").fetchone()
+    if row is not None:
+        return row[0] == "1"
+    return os.environ.get("DRAW_LIVE", "").lower() in ("1", "true", "yes", "on")
+
+
 def recipient_for(name):
-    if os.environ.get("DRAW_LIVE", "").lower() not in ("1", "true", "yes", "on"):
+    if not draw_live():
         return DUMMY_RECIPIENT
     return (SS.config.get(name) or "").capitalize()
 
@@ -406,6 +419,64 @@ def admin_set_game(body: GameIn, _=Depends(require_admin)):
             (body.game, int(body.enabled)),
         )
     return {"success": True, "game": body.game, "enabled": body.enabled}
+
+
+class LiveIn(BaseModel):
+    live: bool
+
+
+@app.get("/api/admin/draw_live")
+def admin_get_draw_live(_=Depends(require_admin)):
+    return {"live": draw_live()}
+
+
+@app.post("/api/admin/draw_live")
+def admin_set_draw_live(body: LiveIn, _=Depends(require_admin)):
+    with db() as con, con:
+        con.execute(
+            "INSERT INTO settings (key, value) VALUES ('draw_live', ?)"
+            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ("1" if body.live else "0",),
+        )
+    return {"success": True, "live": body.live}
+
+
+class ArchiveIn(BaseModel):
+    label: str = Field(pattern=r"^[A-Za-z0-9_-]{1,32}$")
+
+
+@app.post("/api/admin/archive_scores")
+def admin_archive_scores(body: ArchiveIn, _=Depends(require_admin)):
+    path = archive_scores_path(body.label)
+    if path.exists():
+        raise HTTPException(409, "Archive with this label already exists")
+    with db() as con:
+        rows = con.execute(
+            "SELECT id, game, name, score, created_at FROM scores ORDER BY game, score DESC, id"
+        ).fetchall()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = [
+        {"id": r[0], "game": r[1], "name": r[2], "score": r[3], "created_at": r[4]}
+        for r in rows
+    ]
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    return {"success": True, "label": body.label, "rows": len(data), "path": str(path)}
+
+
+@app.post("/api/admin/reset_all_scores")
+def admin_reset_all_scores(_=Depends(require_admin)):
+    with db() as con:
+        has_rows = con.execute("SELECT COUNT(*) FROM scores").fetchone()[0]
+    if has_rows and not any(archive_scores_path(lbl).exists() for lbl in ARCHIVE_LABELS()):
+        raise HTTPException(409, "Archive the scores before resetting")
+    with db() as con, con:
+        con.execute("DELETE FROM scores")
+    return {"success": True}
+
+
+def ARCHIVE_LABELS():
+    base = archive_scores_path("x").parent
+    return [p.stem.removeprefix("scores-") for p in base.glob("scores-*.json")] if base.exists() else []
 
 
 @app.post("/api/admin/reset_scores")
