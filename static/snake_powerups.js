@@ -1,6 +1,6 @@
 // Snake powerups: rules only. The floor holds one item at a time: a gift or a powerup.
 // Powerups time out and turn into a normal gift on the same cell. Pure, no Phaser.
-import { GIFT_MIN_Y, nextSkin } from './snake_core.js';
+import { GIFT_MIN_Y, nextSkin, tickMsFor } from './snake_core.js';
 
 export const POWERUP_CHANCE = 0.2; // share of floor spawns that are powerups
 export const POWERUP_KINDS = ['shield', 'ghost', 'trim'];
@@ -8,11 +8,17 @@ export const GHOST_TICKS = 10; // ticks the head may pass through its own body p
 export const TRIM_COUNT = 3; // tail segments removed by a trim pickup
 export const TRIM_HOLD_TICKS = 4; // cut pieces stay frozen in place for this many ticks (~1 s)
 export const TRIM_FADE_TICKS = 2; // then fade out over this many ticks (~0.5 s)
-const MIN_TIMER = 8; // ticks
-const TIMER_FACTOR = 1.5; // timer = path length x this
+const MIN_TIMER = 8; // ticks, a floor so a very close powerup still shows for a moment
+const TIMER_FACTOR = 1.5; // powerup time = path length x this
+const TIMER_EXTRA_MS = 1000; // plus a fixed second, so close powerups are not a snap decision
 
-// Ticks a powerup stays on the floor, from the shortest walk to it.
-export const powerupTimer = (pathLen) => Math.max(MIN_TIMER, Math.ceil(pathLen * TIMER_FACTOR));
+// Ticks a powerup stays on the floor. Time is set in real ms, then converted to ticks at the
+// current speed, so a fast snake does not get less time for the same walk.
+export const powerupTimer = (pathLen, score = 0) => {
+  const tick = tickMsFor(score);
+  const ms = TIMER_FACTOR * pathLen * tick + TIMER_EXTRA_MS;
+  return Math.max(MIN_TIMER, Math.ceil(ms / tick));
+};
 
 // Shortest walk from the head to a cell, around the body. Infinity when no path exists.
 export function pathLength(s, target) {
@@ -56,7 +62,7 @@ export function placeFloor(s, rand) {
     // After a loop, the next powerup is a ghost (guaranteed).
     const kind = s.loops > 0 ? 'ghost' : POWERUP_KINDS[Math.floor(rand() * POWERUP_KINDS.length)];
     const pathLen = pathLength(s, { x, y });
-    const ttl = Number.isFinite(pathLen) ? powerupTimer(pathLen) : MIN_TIMER;
+    const ttl = Number.isFinite(pathLen) ? powerupTimer(pathLen, s.score ?? 0) : MIN_TIMER;
     s.powerup = { x, y, kind, ttl, maxTtl: ttl };
   } else {
     s.gift = { x, y, skin: nextSkin(s, rand) };

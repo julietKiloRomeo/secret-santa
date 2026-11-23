@@ -7,7 +7,7 @@ export const SPEED_MIN_MS = 90;
 const QUEUE_MAX = 2; // buffered turns; a third quick press in one tick is dropped
 
 // Faster as the snake grows. Tick time in ms, never below SPEED_MIN_MS.
-export const tickMsFor = (score) => Math.max(SPEED_MIN_MS, SPEED_START_MS - score * 3);
+export const tickMsFor = (score) => Math.max(SPEED_MIN_MS, SPEED_START_MS - score * 2);
 
 // A queued turn steps the snake early once half a tick has passed, so a key press
 // lands within about half a tick instead of up to a full one.

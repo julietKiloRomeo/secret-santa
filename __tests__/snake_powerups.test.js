@@ -1,4 +1,4 @@
-import { createSnake, step, turn, placeGift, GIFT_MIN_Y } from '../static/snake_core';
+import { createSnake, step, turn, placeGift, GIFT_MIN_Y, tickMsFor } from '../static/snake_core';
 import {
   POWERUP_CHANCE,
   POWERUP_KINDS,
@@ -51,9 +51,25 @@ test('powerup kinds are shield, ghost and trim', () => {
   expect([...POWERUP_KINDS].sort()).toEqual(['ghost', 'shield', 'trim']);
 });
 
-test('the timer is the path length times 1.5, with a minimum of 8 ticks', () => {
-  expect(powerupTimer(2)).toBe(8);
-  expect(powerupTimer(20)).toBe(30);
+test('the timer is 1.5 x path plus 1 second, in real time at the current speed', () => {
+  // Score 0: tick is 220 ms. Path 2: 1.5 x 2 x 220 + 1000 = 1660 ms, so 8 ticks (1760 ms).
+  expect(powerupTimer(2, 0)).toBe(8);
+  // Path 20 at score 0: 1.5 x 20 x 220 + 1000 = 7600 ms, so 35 ticks.
+  expect(powerupTimer(20, 0)).toBe(35);
+});
+
+test('a close powerup keeps at least about a second at the fastest speed', () => {
+  const fast = tickMsFor(10_000); // SPEED_MIN_MS
+  expect(powerupTimer(1, 10_000) * fast).toBeGreaterThanOrEqual(1000);
+});
+
+test('the real time matches 1.5 x path + 1 s, within one tick of rounding', () => {
+  for (const [pathLen, score] of [[2, 0], [10, 0], [10, 33], [20, 33]]) {
+    const tick = tickMsFor(score);
+    const target = 1.5 * pathLen * tick + 1000;
+    const actual = powerupTimer(pathLen, score) * tick;
+    expect(Math.abs(actual - target)).toBeLessThanOrEqual(tick);
+  }
 });
 
 test('pathLength is the shortest walk around the body', () => {
