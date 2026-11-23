@@ -1,6 +1,7 @@
 """Secret Santa + advent mini-games. Run as a single process (state lives in module globals)."""
 
 import json
+import re
 import time
 import os
 import sqlite3
@@ -102,6 +103,10 @@ def init_db():
         )
         con.execute(
             "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS achievements (name TEXT NOT NULL, achievement_id TEXT NOT NULL,"
+            " unlocked_at TEXT NOT NULL, PRIMARY KEY (name, achievement_id))"
         )
         # Seed once from LOGIN_* env vars (first deploy only). After that the DB is the source.
         if con.execute("SELECT COUNT(*) FROM logins").fetchone()[0] == 0:
@@ -374,6 +379,30 @@ def post_score(
         con.execute(
             "INSERT INTO scores (game, name, score, created_at) VALUES (?, ?, ?, ?)",
             (game, name, int(body.score), datetime.now(timezone.utc).isoformat()),
+        )
+    return {"success": True}
+
+
+# Achievement ids are "<game>:<track>:<tier>", e.g. "snake:gifts:10". Games send the tier they reached.
+ACHIEVEMENT_ID = re.compile(r"^[a-z0-9-]+:[a-z0-9-]+:[0-9]+$")
+
+
+class AchievementIn(BaseModel):
+    achievement_id: str = Field(min_length=5, max_length=80)
+
+
+@app.post("/api/achievements")
+def post_achievement(body: AchievementIn, user=Depends(require_user)):
+    if not ACHIEVEMENT_ID.match(body.achievement_id):
+        raise HTTPException(400, "Bad achievement id")
+    game = body.achievement_id.split(":", 1)[0]
+    if game not in GAMES:
+        raise HTTPException(400, "Unknown game")
+    # Repeats are ignored: the first unlock time is kept.
+    with db() as con, con:
+        con.execute(
+            "INSERT OR IGNORE INTO achievements (name, achievement_id, unlocked_at) VALUES (?, ?, ?)",
+            (user, body.achievement_id, datetime.now(timezone.utc).isoformat()),
         )
     return {"success": True}
 

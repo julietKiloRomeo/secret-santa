@@ -23,15 +23,16 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
    - Each track has tiers in increasing order (e.g. 1 present, 10 presents, 25 presents).
    - A higher tier replaces the lower tier on the card. Only the highest reached tier per track is
      shown, so a card never has more than 3 badges per game.
-   - Achievement id format: `<game>:<track>:<tier>`, e.g. `snake:gifts:10`.
+   - Achievement id format: `<game>:<track>:<tier>`, where `<game>` is the server game id
+     (`advent-1` is Snake, the Første Advent game). Example: `advent-1:shield:3`.
 
    API: `POST /api/achievements` with `{achievement_id}`. The server stores the unlock for the
    session user and ignores repeats. The server does not decide tiers; games send the tier they reached.
 
    Snake tracks (proposed, 3 max; gifts track dropped, it correlates with score):
-   - `snake:ghost-cross`: cross your own body while ghosting (see below). Tiers TBD.
-   - Two more tracks TBD. Candidates from the existing code: shield saves (`snake:shield`),
-     save streak (`snake:lives`). Pick the two to keep, with their tiers.
+   - `advent-1:ghost-cross`: cross your own body while ghosting (see below). Tiers TBD.
+   - Two more tracks TBD. Candidates from the existing code: shield saves (`advent-1:shield`),
+     save streak (`advent-1:lives`). Pick the two to keep, with their tiers.
 
    Ghost loops (agreed rules):
    - Ghost gives 10 ticks of passing through the body (GHOST_TICKS = 10).
@@ -46,8 +47,8 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
 
    Snake tracks (3 max per game). Agreed:
    - Loops: Nidhogg, Ouroboros, Jormungandr (see above).
-   - `snake:shield`: most shields held at once. Tiers 3, 6, 10 (agreed).
-   - `snake:trim`: trim pickups in one run. Tiers 3, 6, 10 (agreed).
+   - `advent-1:shield`: most shields held at once. Tiers 3, 6, 10 (agreed).
+   - `advent-1:trim`: trim pickups in one run. Tiers 3, 6, 10 (agreed).
    Measured with the game's rules (2000 simulated runs, simple bot, 20x20 board):
    - Most shields held at once: best run 6. 5 reached by 1.7% of runs; 10 and 20 never.
    - Trims in one run: best run 8. 5 reached by 1.9% of runs; 10 and 20 never.
@@ -77,7 +78,7 @@ Each card: title, one snark line. Tooltip = snark. Title shown on hover.
 Each track has 3 tiers, each with its own name and text. Names agreed. Every tier ends with a
 REWARD line. Tone escalates: each tier is more impressed than the last.
 
-Loops (snake):
+Loops (advent-1, Snake):
 - Tier 1, Nidhogg (1 loop): "You bit your own tail. On purpose. The System AI has opened a file titled 'Hobbies, Concerning.' Somewhere a dragon is taking notes.
   REWARD: One loop you can call your own. Pity it is the only one."
 - Tier 2, Ouroboros (2 loops open at once): "Two loops, both open, both crossing. You are eating yourself in stereo, and the System AI is politely hoping you have a plan. It does not think you have a plan. Look at you, forming a circle of pure self-indulgence.
@@ -85,7 +86,7 @@ Loops (snake):
 - Tier 3, Jormungandr (3 loops open at once): "Three loops. You have wrapped the whole board around yourself like a scarf on a snake that should know better. Midgard is shaking. The gods are gathering. The System AI has stopped talking, which has never happened before. We are in awe. You are the end of days, and it suits you.
   REWARD: The World Serpent's Ring. Wear it and the sea rises to meet you."
 
-Shields held at once (snake):
+Shields held at once (advent-1, Snake):
 - Tier 3, Buckler: "Three shields. You collect protection the way other snakes collect regret. The System AI says prepared. The System AI also says hoarder. It is taking bets.
   REWARD: One Buckler, a small round shield with a rune that stings."
 - Tier 6, Aegis: "Six shields held at once. Insurance agents across the galaxy have started calling you back, and they are crying. You are no longer a snake. You are a fortress with a bad attitude.
@@ -93,7 +94,7 @@ Shields held at once (snake):
 - Tier 10, Aegishjalmur (the helm of awe, a protective rune): "Ten shields. The System AI has stopped reading the spreadsheet and is simply staring at you, with what can only be called reverence. Nothing can touch you. Nothing dares.
   REWARD: The Helm of Awe. Every wall on the board feels a little less certain of itself."
 
-Trims in one run (snake):
+Trims in one run (advent-1, Snake):
 - Tier 3, Snip of the Norns: "Three cuts. Clean, polite, and deeply unnecessary. Your tail did not ask for this and is still in shock. The Norns are watching with very sharp scissors.
   REWARD: The Snip, a pair of ribbon scissors. Decorate responsibly."
 - Tier 6, Shears of Atropos (Atropos cuts the thread of life): "Six trims. Your tail is a rumour now. Santa is asking where the ribbon went, and the elves have formed a committee. Atropos leans over your shoulder, impressed, which is terrifying.
