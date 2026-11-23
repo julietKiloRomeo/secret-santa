@@ -9,11 +9,11 @@
     <div data-js="form-message" class="mt-6 block">
     <p class="mb-6 text-snow-100/80">Skriv dit fornavn og din kode for at se, hvem du skal give gave til.</p>
       <form data-js="login-form" class="flex flex-col gap-4 text-left" onsubmit="handleSubmit(event)">
-        <label class="flex flex-col gap-1 text-sm text-snow-100/90">
+        <label class="flex flex-col gap-1 text-base text-snow-100/90">
           Fornavn
           <input class="field" type="text" id="name" autocomplete="username" required>
         </label>
-        <label class="flex flex-col gap-1 text-sm text-snow-100/90">
+        <label class="flex flex-col gap-1 text-base text-snow-100/90">
           Kode
           <input class="field" type="password" id="code" autocomplete="current-password" placeholder="fx horse-staple-orange" required>
         </label>
@@ -24,13 +24,13 @@
       </form>
     </div>
 
-    <div data-js="error" style="display:none" class="mt-6 rounded-2xl border border-cranberry-500/60 bg-cranberry-700/40 p-4">
+    <div data-js="error" role="alert" style="display:none" class="mt-6 rounded-2xl border border-cranberry-500/60 bg-cranberry-700/40 p-4">
       <div class="text-3xl">😈</div>
       <p class="mt-1 font-semibold">Hov hov! Ingen gaver til dig!</p>
       <p class="text-sm text-snow-100/80">Tjek dit fornavn og din kode, og prøv igen.</p>
     </div>
 
-    <div data-js="success" style="display:none" class="mt-6">
+    <div data-js="success" role="status" aria-live="polite" style="display:none" class="mt-6">
       <p class="text-snow-100/80">Du skal give gave til</p>
       <p class="mt-1 font-display text-5xl text-gold-300">🎁 <span id="result" data-js="result"></span></p>
       <div id="gif-container" data-js="gif-container" class="mt-4">
