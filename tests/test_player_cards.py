@@ -120,3 +120,20 @@ def test_players_api_never_returns_unsanitized_wish_html(client, appmod):
     by = {p["name"]: p for p in client.get("/api/players").json()["players"]}
     assert "<script" not in by["emma"]["wish_html"].lower()
     assert "<b>hi</b>" in by["emma"]["wish_html"]
+
+
+def test_every_badge_has_a_committed_image():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    for aid, entry in CATALOG.items():
+        assert entry.get("image"), aid
+        assert (root / "static" / entry["image"]).is_file(), entry["image"]
+
+
+def test_players_api_returns_badge_image_urls(client, appmod):
+    login(client, "ditte")
+    _unlock(appmod, "ditte", "advent-1:loops:3")
+    by = {p["name"]: p for p in client.get("/api/players").json()["players"]}
+    badge = by["ditte"]["badges"][0]
+    assert badge["image"] == "/static/badges/jormungandr.png"

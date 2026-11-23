@@ -541,7 +541,13 @@ def list_players(_=Depends(require_user)):
         badges = []
         for aid in highest_tiers(unlocked.get(name, [])):
             entry = CATALOG[aid]
-            badges.append({"id": aid, "name": entry["name"], "snark": entry["snark"], "reward": entry["reward"]})
+            badges.append({
+                "id": aid,
+                "name": entry["name"],
+                "snark": entry["snark"],
+                "reward": entry["reward"],
+                "image": f"/static/{entry['image']}",
+            })
         players.append(
             {
                 "name": name,

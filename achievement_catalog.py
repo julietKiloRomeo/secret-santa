@@ -8,6 +8,7 @@ GAME = "advent-1"
 
 CATALOG = {
     f"{GAME}:loops:1": {
+        "image": "badges/nidhogg.png",
         "track": "loops",
         "tier": 1,
         "name": "Nidhogg",
@@ -15,6 +16,7 @@ CATALOG = {
         "reward": "One loop you can call your own. Pity it is the only one.",
     },
     f"{GAME}:loops:2": {
+        "image": "badges/ouroboros.png",
         "track": "loops",
         "tier": 2,
         "name": "Ouroboros",
@@ -22,6 +24,7 @@ CATALOG = {
         "reward": "A gold serpent-scale hat. It fits, unfortunately.",
     },
     f"{GAME}:loops:3": {
+        "image": "badges/jormungandr.png",
         "track": "loops",
         "tier": 3,
         "name": "Jormungandr",
@@ -29,6 +32,7 @@ CATALOG = {
         "reward": "The World Serpent's Ring. Wear it and the sea rises to meet you.",
     },
     f"{GAME}:shield:3": {
+        "image": "badges/buckler.png",
         "track": "shield",
         "tier": 3,
         "name": "Buckler",
@@ -36,6 +40,7 @@ CATALOG = {
         "reward": "One Buckler, a small round shield with a rune that stings.",
     },
     f"{GAME}:shield:6": {
+        "image": "badges/aegis.png",
         "track": "shield",
         "tier": 6,
         "name": "Aegis",
@@ -43,6 +48,7 @@ CATALOG = {
         "reward": "The Aegis, six shields gleaming. Try not to be smug about it.",
     },
     f"{GAME}:shield:10": {
+        "image": "badges/aegishjalmur.png",
         "track": "shield",
         "tier": 10,
         "name": "Aegishjalmur",
@@ -50,6 +56,7 @@ CATALOG = {
         "reward": "The Helm of Awe. Every wall on the board feels a little less certain of itself.",
     },
     f"{GAME}:trim:3": {
+        "image": "badges/snip-of-the-norns.png",
         "track": "trim",
         "tier": 3,
         "name": "Snip of the Norns",
@@ -57,6 +64,7 @@ CATALOG = {
         "reward": "The Snip, a pair of ribbon scissors. Decorate responsibly.",
     },
     f"{GAME}:trim:6": {
+        "image": "badges/shears-of-atropos.png",
         "track": "trim",
         "tier": 6,
         "name": "Shears of Atropos",
@@ -64,6 +72,7 @@ CATALOG = {
         "reward": "The Shears of Atropos. Do not hold them near anything you care about.",
     },
     f"{GAME}:trim:10": {
+        "image": "badges/the-last-cut.png",
         "track": "trim",
         "tier": 10,
         "name": "The Last Cut",
