@@ -6,6 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from werkzeug.security import generate_password_hash
 
+from storage import encode_draw
+
 NAMES = [
     "jimmy",
     "camilla",
@@ -38,6 +40,7 @@ def appmod(tmp_path, monkeypatch):
     year = datetime.datetime.now().year
     rotation = {n: NAMES[(i + 1) % len(NAMES)] for i, n in enumerate(NAMES)}
     (tmp_path / f"secret-santa-{year}.json").write_text(json.dumps(rotation))
+    (tmp_path / f"secret-santa-{year}.enc").write_text(encode_draw(rotation))
     import app
 
     yield importlib.reload(app)

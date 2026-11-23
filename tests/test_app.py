@@ -180,9 +180,11 @@ def test_admin_snapshots(client, appmod, tmp_path):
     login(client, "jimmy")
     name = client.post("/api/admin/snapshots").json()["snapshot"]
     assert (tmp_path / "snapshots" / name).is_dir()
-    path = Path(appmod.SS.file_path)
+    # The server reads the encoded draw; the snapshot must carry it back.
+    path = Path(appmod.SS.encoded_path)
     original = path.read_text()
-    path.write_text("{}")
+    expected = dict(appmod.SS.config)
+    path.write_text("")
     assert (
         client.post("/api/admin/snapshots/restore", json={"name": name}).json()[
             "success"
@@ -190,7 +192,7 @@ def test_admin_snapshots(client, appmod, tmp_path):
         is True
     )
     assert path.read_text() == original
-    assert appmod.SS.config == json.loads(original)
+    assert appmod.SS.config == expected
     for bad in ["..", "../..", f"../snapshots/{name}"]:
         assert (
             client.post("/api/admin/snapshots/restore", json={"name": bad}).status_code

@@ -128,7 +128,7 @@ def snapshot_sources() -> list[str]:
     if os.path.exists(db_path):
         files.append(db_path)
     data_root = Path(get_data_dir())
-    for candidate in sorted(data_root.glob('secret-santa-*.json')):
+    for candidate in sorted([*data_root.glob('secret-santa-*.json'), *data_root.glob('secret-santa-*.enc')]):
         if candidate.is_file():
             files.append(str(candidate))
     return files
