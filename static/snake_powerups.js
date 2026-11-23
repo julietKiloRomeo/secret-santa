@@ -4,7 +4,7 @@ import { GIFT_MIN_Y, nextSkin } from './snake_core.js';
 
 export const POWERUP_CHANCE = 0.2; // share of floor spawns that are powerups
 export const POWERUP_KINDS = ['shield', 'ghost', 'trim'];
-export const GHOST_TICKS = 6; // ticks the head may pass through its own body per pickup
+export const GHOST_TICKS = 10; // ticks the head may pass through its own body per pickup
 export const TRIM_COUNT = 3; // tail segments removed by a trim pickup
 const MIN_TIMER = 8; // ticks
 const TIMER_FACTOR = 1.5; // timer = path length x this
@@ -50,8 +50,9 @@ export function placeFloor(s, rand) {
   s.powerup = null;
   if (!free.length) return;
   const { x, y } = free[Math.floor(rand() * free.length)];
-  if (rand() < POWERUP_CHANCE) {
-    const kind = POWERUP_KINDS[Math.floor(rand() * POWERUP_KINDS.length)];
+  if (s.loops > 0 || rand() < POWERUP_CHANCE) {
+    // After a loop, the next powerup is a ghost (guaranteed).
+    const kind = s.loops > 0 ? 'ghost' : POWERUP_KINDS[Math.floor(rand() * POWERUP_KINDS.length)];
     const pathLen = pathLength(s, { x, y });
     const ttl = Number.isFinite(pathLen) ? powerupTimer(pathLen) : MIN_TIMER;
     s.powerup = { x, y, kind, ttl, maxTtl: ttl };
@@ -79,7 +80,10 @@ export function tickFloor(s, rand) {
 export function eatPowerup(s, kind) {
   s.effects ??= { shield: 0, ghost: 0 };
   if (kind === 'shield') s.effects.shield += 1;
-  if (kind === 'ghost') s.effects.ghost += GHOST_TICKS;
+  if (kind === 'ghost') {
+    s.effects.ghost += GHOST_TICKS;
+    s.loops = 0; // the guaranteed ghost is spent
+  }
   if (kind === 'trim') {
     const keep = Math.max(s.body.length - TRIM_COUNT, 5);
     const drop = s.body.length - keep;
@@ -101,7 +105,7 @@ export const POWERUP_CARDS = {
   ghost: {
     name: 'Mistletoe Spectre',
     flavor: 'A bored elf\u2019s ghost, bound to a sprig. It has opinions about your tail.',
-    effect: 'Pass through your own body for 6 ticks. Stacks. Ends mid-loop, so plan the exit.',
+    effect: 'Pass through your own body for 10 ticks. Stacks. Ends mid-loop, so plan the exit.',
   },
   trim: {
     name: 'Shears of the Tidy Elf',

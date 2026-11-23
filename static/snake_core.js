@@ -84,6 +84,8 @@ export function step(s, rand) {
   const solid = eating ? s.body : s.body.slice(0, -1);
   const ghosting = (s.effects?.ghost ?? 0) > 0;
   if (ghosting) s.effects.ghost -= 1;
+  // Ghosting into the body counts as a loop: the next floor powerup is a guaranteed ghost.
+  if (ghosting && solid.some((p) => p.x === head.x && p.y === head.y)) s.loops = (s.loops ?? 0) + 1;
   const wall = head.x < 0 || head.x >= s.cols || head.y < 0 || head.y >= s.rows;
   const self = !ghosting && solid.some((p) => p.x === head.x && p.y === head.y);
   if (wall || self) {

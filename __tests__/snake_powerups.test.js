@@ -310,3 +310,43 @@ test('a shield-absorbed hit reports which kind it was, so the message fits', () 
   step(s, () => 0.5);
   expect(s.lastHit).toBe('body');
 });
+
+test('ghost lasts 10 ticks', () => {
+  expect(GHOST_TICKS).toBe(10);
+});
+
+test('a ghost crossing of the body while ghosting records a loop', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.body = [
+    { x: 5, y: 5 },
+    { x: 4, y: 5 },
+    { x: 4, y: 6 },
+    { x: 5, y: 6 },
+    { x: 6, y: 6 },
+    { x: 6, y: 5 },
+  ];
+  s.dir = 'down';
+  s.gift = { x: 0, y: 0, skin: '🍪' };
+  eatPowerup(s, 'ghost');
+  expect(step(s, () => 0.5)).toBe('moved');
+  expect(s.loops).toBe(1);
+});
+
+test('after a loop, the next floor item is always a ghost powerup, never a gift', () => {
+  // rand 0.99 would normally give a gift.
+  const s = createSnake(20, 20, () => 0.5);
+  s.loops = 1;
+  placeFloor(s, () => 0.99);
+  expect(s.gift).toBe(null);
+  expect(s.powerup).toMatchObject({ kind: 'ghost' });
+});
+
+test('the guaranteed ghost is spent: the pickup clears the loop flag', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.loops = 1;
+  s.powerup = { x: 11, y: 10, kind: 'ghost', ttl: 20 };
+  s.dir = 'right';
+  expect(step(s, () => 0.5)).toBe('powered');
+  eatPowerup(s, s.lastPowerup);
+  expect(s.loops).toBe(0);
+});
