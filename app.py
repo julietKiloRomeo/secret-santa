@@ -296,6 +296,14 @@ def spil(request: Request):
     return render(request, "spil.html", cards=cards)
 
 
+@app.get("/profil")
+def profile_page(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return to_login()
+    return render(request, "profil.html", player=user)
+
+
 @app.get("/high-scores")
 def high_scores(request: Request):
     if not request.session.get("user"):

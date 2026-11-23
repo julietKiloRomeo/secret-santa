@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Min profil{% endblock %}
+{% block content %}
+  <section class="xmas-card" data-player="{{ player }}">
+    <header class="text-center">
+      <p class="text-sm uppercase tracking-widest text-gold-300/80">Din side</p>
+      <h1 class="mt-1 text-4xl">Min profil</h1>
+    </header>
+
+    <div class="mt-6 flex flex-col items-center gap-3">
+      <img id="avatar-preview" src="" alt="Dit profilbillede" class="h-32 w-32 rounded-full border border-gold-500/40 object-cover" hidden>
+      <label class="btn-gold cursor-pointer">
+        Vælg billede
+        <input id="avatar-input" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+      </label>
+      <p id="avatar-status" class="text-sm text-snow-100/80" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="mt-8">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <h2 class="text-2xl">Ønskeliste</h2>
+        <span class="text-xs text-snow-100/70">Ctrl+K eller marker og højreklik for at lave et link</span>
+      </div>
+      <div class="mb-2 flex flex-wrap gap-2" role="toolbar" aria-label="Formatering">
+        <button type="button" data-cmd="bold" class="btn-gold !px-3 !py-1 text-sm"><b>B</b></button>
+        <button type="button" data-cmd="italic" class="btn-gold !px-3 !py-1 text-sm"><i>I</i></button>
+        <button type="button" data-cmd="underline" class="btn-gold !px-3 !py-1 text-sm"><u>U</u></button>
+        <button type="button" data-cmd="insertUnorderedList" class="btn-gold !px-3 !py-1 text-sm">• Liste</button>
+        <button type="button" data-link-dialog class="btn-gold !px-3 !py-1 text-sm">Link</button>
+      </div>
+      <div id="wish-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Ønskeliste"
+           class="field min-h-[10rem] whitespace-pre-wrap"></div>
+      <p id="wish-status" class="mt-2 text-sm text-snow-100/80" role="status" aria-live="polite"></p>
+      <button id="wish-save" type="button" class="btn-primary mt-4 w-full">Gem ønskeliste</button>
+    </div>
+
+    <dialog id="link-dialog" class="xmas-card max-w-md w-full">
+      <form method="dialog" class="flex flex-col gap-3" id="link-form">
+        <label class="flex flex-col gap-1 text-sm">Tekst
+          <input id="link-text" class="field" type="text" placeholder="Tom = bruger adressen">
+        </label>
+        <label class="flex flex-col gap-1 text-sm">Adresse (https://…)
+          <input id="link-url" class="field" type="url" required placeholder="https://">
+        </label>
+        <p id="link-error" class="text-sm text-cranberry-500" role="alert" hidden></p>
+        <div class="flex justify-end gap-2">
+          <button value="cancel" class="btn-gold">Annuller</button>
+          <button id="link-ok" value="ok" class="btn-primary">Indsæt link</button>
+        </div>
+      </form>
+    </dialog>
+  </section>
+
+  <script>
+    (function () {
+      const player = {{ player|tojson }};
+      const editor = document.getElementById('wish-editor');
+      const status = document.getElementById('wish-status');
+      const avatarStatus = document.getElementById('avatar-status');
+      const preview = document.getElementById('avatar-preview');
+
+      async function load() {
+        const r = await fetch('/api/profile/' + encodeURIComponent(player), { credentials: 'same-origin' });
+        if (!r.ok) { status.textContent = 'Kunne ikke hente din profil.'; return; }
+        const data = await r.json();
+        editor.innerHTML = data.wish_html || '';
+        if (data.avatar) { preview.src = data.avatar; preview.hidden = false; }
+      }
+
+      async function save() {
+        status.textContent = 'Gemmer…';
+        const r = await fetch('/api/profile/' + encodeURIComponent(player), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ wish_html: editor.innerHTML }),
+        });
+        status.textContent = r.ok ? 'Gemt.' : 'Kunne ikke gemme. Prøv igen.';
+      }
+
+      document.querySelectorAll('[data-cmd]').forEach((b) =>
+        b.addEventListener('click', () => { editor.focus(); document.execCommand(b.dataset.cmd); }));
+      document.getElementById('wish-save').addEventListener('click', save);
+
+      // Link dialog: Ctrl+K (Cmd+K on Mac), the toolbar button, or the right-click menu.
+      // The selection is saved when the dialog opens and restored before the link is inserted.
+      const dialog = document.getElementById('link-dialog');
+      const linkText = document.getElementById('link-text');
+      const linkUrl = document.getElementById('link-url');
+      const linkErr = document.getElementById('link-error');
+      let savedRange = null;
+
+      function openLinkDialog() {
+        const sel = window.getSelection();
+        savedRange = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+        linkText.value = savedRange ? savedRange.toString() : '';
+        linkUrl.value = '';
+        linkErr.hidden = true;
+        dialog.showModal();
+        linkText.focus();
+      }
+
+      function insertLink(text, url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.rel = 'nofollow noopener';
+        a.target = '_blank';
+        a.textContent = text;
+        editor.focus();
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        if (savedRange) sel.addRange(savedRange);
+        if (savedRange && !savedRange.collapsed) {
+          savedRange.deleteContents();
+          savedRange.insertNode(a);
+        } else {
+          // Nothing selected: put the link where the cursor was, or at the end.
+          const r = document.createRange();
+          r.selectNodeContents(editor);
+          r.collapse(false);
+          r.insertNode(a);
+        }
+      }
+
+      editor.addEventListener('keydown', (ev) => {
+        if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') {
+          ev.preventDefault();
+          openLinkDialog();
+        }
+      });
+      editor.addEventListener('contextmenu', (ev) => {
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed) {
+          ev.preventDefault();
+          openLinkDialog();
+        }
+      });
+      document.querySelector('[data-link-dialog]').addEventListener('click', openLinkDialog);
+
+      document.getElementById('link-form').addEventListener('submit', (ev) => {
+        const url = linkUrl.value.trim();
+        // Only web and mail links, as the server allows.
+        if (!/^(https?:\/\/|mailto:)/i.test(url)) {
+          ev.preventDefault();
+          linkErr.textContent = 'Adressen skal starte med https:// eller mailto:.';
+          linkErr.hidden = false;
+          return;
+        }
+        insertLink(linkText.value.trim() || url, url);
+      });
+
+      document.getElementById('avatar-input').addEventListener('change', async (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        avatarStatus.textContent = 'Uploader…';
+        const body = new FormData();
+        body.append('file', file);
+        const r = await fetch('/api/profile/' + encodeURIComponent(player) + '/avatar', {
+          method: 'POST', body, credentials: 'same-origin',
+        });
+        if (!r.ok) { avatarStatus.textContent = 'Billedet blev ikke godkendt.'; return; }
+        const data = await r.json();
+        preview.src = data.avatar;
+        preview.hidden = false;
+        avatarStatus.textContent = 'Billede gemt.';
+      });
+
+      load();
+    })();
+  </script>
+{% endblock %}
