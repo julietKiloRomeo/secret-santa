@@ -181,8 +181,9 @@
         });
         const resetBtn = document.createElement('button');
         resetBtn.className = 'rounded-full border border-white/20 px-4 py-1 text-sm font-semibold text-white transition hover:border-white/70';
-        resetBtn.textContent = 'Nulstil high scores';
+        resetBtn.textContent = 'Nulstil scores og badges';
         resetBtn.addEventListener('click', async () => {
+          if (!confirm(`Slet alle scores og badges for ${meta.title}? Det kan ikke fortrydes.`)) return;
           resetBtn.disabled = true;
           await resetScores(game.game);
           resetBtn.disabled = false;
@@ -216,7 +217,7 @@
         body: JSON.stringify({ game })
       });
       const data = await resp.json();
-      updateGamesMessage(data.success ? `High scores nulstillet for ${game}.` : (data.error || 'Fejl ved nulstilling.'), data.success);
+      updateGamesMessage(data.success ? `Scores og badges nulstillet for ${game}.` : (data.error || 'Fejl ved nulstilling.'), data.success);
       if (data.success) {
         await loadGames();
       }

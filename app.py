@@ -119,7 +119,8 @@ def init_db():
         # Seed once from LOGIN_* env vars (first deploy only). After that the DB is the source.
         if con.execute("SELECT COUNT(*) FROM logins").fetchone()[0] == 0:
             con.executemany(
-                "INSERT INTO logins (name, hash) VALUES (?, ?)", list(load_logins().items())
+                "INSERT INTO logins (name, hash) VALUES (?, ?)",
+                list(load_logins().items()),
             )
         con.executemany(
             "INSERT OR IGNORE INTO games (game, enabled) VALUES (?, 1)",
@@ -164,7 +165,9 @@ DUMMY_RECIPIENT = "Buddy the Elf"
 
 def draw_live():
     with db() as con:
-        row = con.execute("SELECT value FROM settings WHERE key = 'draw_live'").fetchone()
+        row = con.execute(
+            "SELECT value FROM settings WHERE key = 'draw_live'"
+        ).fetchone()
     if row is not None:
         return row[0] == "1"
     return os.environ.get("DRAW_LIVE", "").lower() in ("1", "true", "yes", "on")
@@ -256,20 +259,48 @@ def lodtraekning(request: Request):
 
 # Full-screen shell settings per game: stage/canvas ids, HUD title, hint line and Phaser script.
 GAME_SHELL = {
-    "advent-1": {"stage_id": "snake-stage", "canvas_wrap_id": "snake-wrap", "game_title": "Jule Snake",
-                 "game_hint": "Swipe eller piletaster for at styre", "game_script": "forste_advent.js"},
-    "advent-2": {"stage_id": "santa-stage", "canvas_wrap_id": "santa-canvas-wrap", "game_title": "Flappy Santa",
-                 "game_hint": "Tryk eller mellemrum for at flyve", "game_script": "anden_advent.js"},
-    "advent-3": {"stage_id": "bell-stage", "canvas_wrap_id": "jingle-bell-hero-root", "game_title": "Jingle Bell Hero",
-                 "game_hint": "D F J K eller tryk på linjerne", "game_script": "jingle_bell_hero.js"},
-    "advent-4": {"stage_id": "reindeer-stage", "canvas_wrap_id": "reindeer-canvas", "game_title": "Reindeer Rush",
-                 "game_hint": "Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe",
-                 "game_script": "reindeer_rush.js"},
-    "advent-6": {"stage_id": "bauble-stage", "canvas_wrap_id": "bauble-wrap", "game_title": "Nissen & Kuglen",
-                 "game_hint": "Træk, fjern eller drej klodserne, så kuglen falder i stjernen",
-                 "game_script": "bauble.js"},
-    "advent-5": {"stage_id": "pac-stage", "canvas_wrap_id": "pac-santa-canvas-wrap", "game_title": "Pac-Santa",
-                 "game_hint": "Swipe eller piletaster for at styre", "game_script": "pac_santa.js"},
+    "advent-1": {
+        "stage_id": "snake-stage",
+        "canvas_wrap_id": "snake-wrap",
+        "game_title": "Jule Snake",
+        "game_hint": "Swipe eller piletaster for at styre",
+        "game_script": "forste_advent.js",
+    },
+    "advent-2": {
+        "stage_id": "santa-stage",
+        "canvas_wrap_id": "santa-canvas-wrap",
+        "game_title": "Flappy Santa",
+        "game_hint": "Tryk eller mellemrum for at flyve",
+        "game_script": "anden_advent.js",
+    },
+    "advent-3": {
+        "stage_id": "bell-stage",
+        "canvas_wrap_id": "jingle-bell-hero-root",
+        "game_title": "Jingle Bell Hero",
+        "game_hint": "D F J K eller tryk på linjerne",
+        "game_script": "jingle_bell_hero.js",
+    },
+    "advent-4": {
+        "stage_id": "reindeer-stage",
+        "canvas_wrap_id": "reindeer-canvas",
+        "game_title": "Reindeer Rush",
+        "game_hint": "Tryk for at hoppe · swipe ned for at ducke · swipe højre for at dashe",
+        "game_script": "reindeer_rush.js",
+    },
+    "advent-6": {
+        "stage_id": "bauble-stage",
+        "canvas_wrap_id": "bauble-wrap",
+        "game_title": "Nissen & Kuglen",
+        "game_hint": "Træk, fjern eller drej klodserne, så kuglen falder i stjernen",
+        "game_script": "bauble.js",
+    },
+    "advent-5": {
+        "stage_id": "pac-stage",
+        "canvas_wrap_id": "pac-santa-canvas-wrap",
+        "game_title": "Pac-Santa",
+        "game_hint": "Swipe eller piletaster for at styre",
+        "game_script": "pac_santa.js",
+    },
 }
 
 # One-line promise shown on the games hub, per published game.
@@ -292,7 +323,13 @@ def spil(request: Request):
     if not request.session.get("user"):
         return to_login()
     cards = [
-        {"id": g, "title": GAMES[g][0], "name": GAMES[g][1], "blurb": GAME_BLURBS[g], "published": g in PUBLISHED}
+        {
+            "id": g,
+            "title": GAMES[g][0],
+            "name": GAMES[g][1],
+            "blurb": GAME_BLURBS[g],
+            "published": g in PUBLISHED,
+        }
         for g in GAMES
     ]
     return render(request, "spil.html", cards=cards)
@@ -423,7 +460,10 @@ def _profile_row(name):
 
 def _known_player(name):
     with db() as con:
-        return con.execute("SELECT 1 FROM logins WHERE name = ?", (name,)).fetchone() is not None
+        return (
+            con.execute("SELECT 1 FROM logins WHERE name = ?", (name,)).fetchone()
+            is not None
+        )
 
 
 @app.get("/api/profile/{name}")
@@ -461,7 +501,9 @@ AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
 
 @app.post("/api/profile/{name}/avatar")
-async def post_avatar(name: str, request: Request, file: UploadFile, user=Depends(require_user)):
+async def post_avatar(
+    name: str, request: Request, file: UploadFile, user=Depends(require_user)
+):
     if user != name and user not in ADMINS:
         raise HTTPException(403, "Only the owner or an admin can change this picture")
     if not _known_player(name):
@@ -489,7 +531,11 @@ class PresetIn(BaseModel):
 
 @app.get("/api/avatar-presets")
 def list_presets(_=Depends(require_user)):
-    return {"presets": [{"key": k, "name": v, "url": preset_url(k)} for k, v in PRESETS.items()]}
+    return {
+        "presets": [
+            {"key": k, "name": v, "url": preset_url(k)} for k, v in PRESETS.items()
+        ]
+    }
 
 
 @app.post("/api/profile/{name}/preset")
@@ -514,17 +560,24 @@ def get_avatar(filename: str, _=Depends(require_user)):
     path = avatar_dir() / filename
     if not path.is_file() or path.parent != avatar_dir():
         raise HTTPException(404, "No picture")
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
+    return FileResponse(
+        path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"}
+    )
 
 
 @app.get("/api/players")
 def list_players(_=Depends(require_user)):
     """Every player with profile, best score per game and the highest badge per track."""
     with db() as con:
-        names = [r[0] for r in con.execute("SELECT name FROM logins ORDER BY name").fetchall()]
+        names = [
+            r[0]
+            for r in con.execute("SELECT name FROM logins ORDER BY name").fetchall()
+        ]
         profiles = {
             r[0]: (r[1], r[2])
-            for r in con.execute("SELECT name, wish_html, avatar FROM profiles").fetchall()
+            for r in con.execute(
+                "SELECT name, wish_html, avatar FROM profiles"
+            ).fetchall()
         }
         best = {}
         for name, game, score in con.execute(
@@ -532,7 +585,9 @@ def list_players(_=Depends(require_user)):
         ).fetchall():
             best.setdefault(name, {})[game] = score
         unlocked = {}
-        for name, aid in con.execute("SELECT name, achievement_id FROM achievements").fetchall():
+        for name, aid in con.execute(
+            "SELECT name, achievement_id FROM achievements"
+        ).fetchall():
             unlocked.setdefault(name, []).append(aid)
     players = []
     for name in names:
@@ -541,13 +596,15 @@ def list_players(_=Depends(require_user)):
         badges = []
         for aid in highest_tiers(unlocked.get(name, [])):
             entry = CATALOG[aid]
-            badges.append({
-                "id": aid,
-                "name": entry["name"],
-                "snark": entry["snark"],
-                "reward": entry["reward"],
-                "image": f"/static/{entry['image']}",
-            })
+            badges.append(
+                {
+                    "id": aid,
+                    "name": entry["name"],
+                    "snark": entry["snark"],
+                    "reward": entry["reward"],
+                    "image": f"/static/{entry['image']}",
+                }
+            )
         players.append(
             {
                 "name": name,
@@ -673,7 +730,9 @@ def admin_archive_scores(body: ArchiveIn, _=Depends(require_admin)):
 def admin_reset_all_scores(_=Depends(require_admin)):
     with db() as con:
         has_rows = con.execute("SELECT COUNT(*) FROM scores").fetchone()[0]
-    if has_rows and not any(archive_scores_path(lbl).exists() for lbl in ARCHIVE_LABELS()):
+    if has_rows and not any(
+        archive_scores_path(lbl).exists() for lbl in ARCHIVE_LABELS()
+    ):
         raise HTTPException(409, "Archive the scores before resetting")
     with db() as con, con:
         con.execute("DELETE FROM scores")
@@ -682,14 +741,22 @@ def admin_reset_all_scores(_=Depends(require_admin)):
 
 def ARCHIVE_LABELS():
     base = archive_scores_path("x").parent
-    return [p.stem.removeprefix("scores-") for p in base.glob("scores-*.json")] if base.exists() else []
+    return (
+        [p.stem.removeprefix("scores-") for p in base.glob("scores-*.json")]
+        if base.exists()
+        else []
+    )
 
 
 @app.post("/api/admin/reset_scores")
 def admin_reset_scores(body: GameIn, _=Depends(require_admin)):
     known_game(body.game)
+    # Badges belong to the game, so a playtest reset clears them too.
     with db() as con, con:
         con.execute("DELETE FROM scores WHERE game = ?", (body.game,))
+        con.execute(
+            "DELETE FROM achievements WHERE achievement_id LIKE ?", (body.game + ":%",)
+        )
     return {"success": True, "game": body.game}
 
 

@@ -111,3 +111,34 @@ def test_admin_page_has_reset_all_and_archive(client):
     html = client.get("/admin").text
     assert 'data-js="reset-all-scores"' in html
     assert 'data-js="archive-scores"' in html
+
+
+# --- reset one game (scores + achievements) ----------------------------------
+
+
+def test_reset_game_clears_its_scores_and_achievements_only(client, appmod):
+    import sqlite3
+    from datetime import datetime, timezone
+
+    add_scores(appmod)
+    con = sqlite3.connect(appmod.DB_PATH)
+    now = datetime.now(timezone.utc).isoformat()
+    con.executemany(
+        "INSERT INTO achievements (name, achievement_id, unlocked_at) VALUES (?, ?, ?)",
+        [("emma", "advent-1:loops:1", now), ("emma", "advent-2:loops:1", now)],
+    )
+    con.commit()
+    con.close()
+    login(client, "jimmy")
+    r = client.post("/api/admin/reset_scores", json={"game": "advent-1"})
+    assert r.json()["success"] is True
+    assert all(row[1] != "advent-1" for row in scores_rows(appmod))
+    con = sqlite3.connect(appmod.DB_PATH)
+    left = con.execute("SELECT achievement_id FROM achievements").fetchall()
+    con.close()
+    assert left == [("advent-2:loops:1",)]
+
+
+def test_reset_game_requires_admin(client, appmod):
+    login(client, "emma")
+    assert client.post("/api/admin/reset_scores", json={"game": "advent-1"}).status_code == 403
