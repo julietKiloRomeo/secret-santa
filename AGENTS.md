@@ -27,3 +27,12 @@ least 80% test coverage for critical paths.
 Always run the tests after code changes, and commit after each change.
 
 Note: Commit each logical change as its own commit so it's easy to review and revert if needed.
+
+## Project facts (keep current)
+
+- Deploy: Render builds the `Dockerfile` from `main`. Set env vars in the Render dashboard, not in git.
+- Logins: `LOGIN_<name>` env values are Werkzeug hashes from `scripts/hash_password.py`. Never store or print plaintext passphrases. Login problems: check the Render env for the variable, `SECRET_KEY`, and a redeploy (see README "Set a user passphrase").
+- Draw: made locally with `uv run python scripts/draw.py --year <year>`. Commit only `secret-santa-<year>.enc` (base64, obfuscation only). The `.json` is gitignored. Do not redraw on the server.
+- `DRAW_LIVE=1` reveals real recipients. Unset or `0` shows a placeholder.
+- Before any push, run `uv run pytest` and `npx jest`. Do not chain the push after `| tail`; check the exit code.
+- Commit data files (draws, exports, DBs) only after asking the user.
