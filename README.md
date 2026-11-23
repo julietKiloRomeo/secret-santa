@@ -51,45 +51,31 @@ We use `uv` to manage Python environments. Do not activate virtualenvs manually;
 
 ### Environment configuration
 
-Create a `.env` file (use `.env.example` as a template) to configure secrets and login passphrases. Store HASHED values made by Werkzeug (`scripts/hash_password.py`). Do not write plaintext passphrases:
+Only `SECRET_KEY` and the path settings (`DATA_DIR`, `DRAW_LIVE`, etc.) come from the environment. Put them in `.env` locally (see `.env.example`) or in the host's environment.
 
 ```
 SECRET_KEY=<strong-random-hex>
-LOGIN_ditte=<hash from scripts/hash_password.py>
-LOGIN_camilla=<hash from scripts/hash_password.py>
-LOGIN_emma=<hash from scripts/hash_password.py>
-LOGIN_andreas=<hash from scripts/hash_password.py>
-LOGIN_jimmy=<hash from scripts/hash_password.py>
-LOGIN_sara=<hash from scripts/hash_password.py>
-LOGIN_mathias=<hash from scripts/hash_password.py>
-LOGIN_klaus=<hash from scripts/hash_password.py>
-LOGIN_tommy=<hash from scripts/hash_password.py>
-LOGIN_jonna=<hash from scripts/hash_password.py>
 ```
 
-The app loads `.env` on startup and builds logins from environment variables with the `LOGIN_` prefix. Passphrases can be any string; hyphenated multi‑word sequences are recommended for memorability. Values must be hashed (plaintext is not supported).
+Passwords are stored as Werkzeug hashes in the `logins` table of `scores.sqlite3`. On first start, an empty table is seeded from `LOGIN_<name>` env values (hashes from `scripts/hash_password.py`). After that the env values are ignored, so change passwords in the app (`/admin`). Plaintext is never stored.
 
-You can use the `DATA_DIR` environment variable to point the app at a persistent directory (for example `/var/data`). When set, `.env`, `scores.sqlite3`, and `secret-santa-<year>.json` live under that directory instead of the repo root, so deployments that replace the source tree keep your passwords, scores, and match files intact.
+You can use the `DATA_DIR` environment variable to point the app at a persistent directory (for example `/var/data`). When set, `.env`, `scores.sqlite3` (scores and login hashes), and the draw files live under that directory instead of the repo root.
 
 ### Set a user passphrase
 
-Generate a salted hash for a user’s passphrase and paste it into `.env`:
+Admins (`jimmy`, `ditte`) log in, open `/admin`, choose a participant, and enter a new passphrase. The hash is stored in the database right away, with no restart or redeploy.
 
-```
-uv run python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('horse-staple-orange'))"
-```
-
-Or use the helper script:
+To generate a hash by hand (for a first-deploy seed or a direct DB edit):
 
 ```
 uv run python scripts/hash_password.py horse-staple-orange
 ```
 
-Then set in `.env`:
+Login troubleshooting:
 
-```
-LOGIN_ditte=<hash from scripts/hash_password.py>
-```
+- **401 Invalid credentials:** the passphrase doesn't match. An admin can set a new one on `/admin`.
+- **Locked out of admin:** restore a snapshot from `/api/admin/snapshots/restore`, or on the server run a hash update against `logins` in `scores.sqlite3`.
+- **500 on login:** check `SECRET_KEY` is set. The app won't start without it.
 
 ### Prerequisites
 
@@ -184,7 +170,7 @@ Render automatically detects the `Dockerfile`, so no extra build scripts are req
    - `SECRET_KEY` (required, strong random string).
    - `ENV_FILE` if you keep credentials in a non-default path.
    - `DATA_DIR` to point writable files (env, scores, matches) at a persistent directory like `/var/data`.
-   - Any `LOGIN_*`, `DRAW_LIVE`, `SCORES_DB`, etc., values you need.
+   - `DRAW_LIVE`, `SCORES_DB`, and `LOGIN_*` (first deploy seed only) as needed.
    - `DRAW_LIVE` stays unset (or `0`) until the draw should be revealed. Set it to `1` to show real recipients.
 5. Expose port `5000` (Render auto-detects from the `EXPOSE 5000` directive). The Dockerfile starts uvicorn on port 5000.
 6. (Optional) Add a persistent disk and mount it at `/app` if you want SQLite files (`scores.sqlite3`, `secret-santa-<year>.json`) to survive deploys. Otherwise, keep those files in git or move to a managed database.
@@ -206,7 +192,7 @@ The draw is made locally and committed in encoded form. It is hidden from accide
 - Update `previous.yaml` with prior years’ draws.
 - Regenerate assignments with `secret_santa.py` and commit the new `secret-santa-<year>.json`.
 - Login codes live in `app.py` — avoid committing real codes; consider moving to env or a secure store.
-- Admins: `jimmy` and `ditte` are admins and can access `/admin` to manage passphrases and regenerate matches.
+- Admins: `jimmy` and `ditte` can access `/admin` to set passphrases and toggle games.
 - To target a specific env file (useful in tests), set `ENV_FILE` to the path of the `.env` you want the app to load/update.
 
 ## Notes
@@ -218,6 +204,6 @@ The draw is made locally and committed in encoded form. It is hidden from accide
 
 - Visit `/admin` after logging in as an admin (jimmy or ditte).
 - The top navigation shows an Admin link only for admins once logged in.
-- Set user passphrase: enter a first name and a new passphrase; the app stores a salted hash in the `.env` file and reloads logins immediately.
+- Set user passphrase: enter a first name and a new passphrase; the app stores a salted hash in the `logins` table immediately.
 - Run current year’s matches: generates and saves `secret-santa-<year>.json` and hot-reloads assignments so subsequent logins see the new matches.
-- Snapshot backups: use `/api/admin/snapshots` (GET/POST) to list or capture a date-stamped copy of `.env`, `scores.sqlite3`, and every `secret-santa-<year>.json` file; restore via `/api/admin/snapshots/restore` with the snapshot name to bring the app back to that state, including reloading logins, scores, and match data, and keeping the files under `$DATA_DIR/snapshots` when `DATA_DIR` is set.
+- Snapshot backups: use `/api/admin/snapshots` (GET/POST) to list or capture a date-stamped copy of `.env`, `scores.sqlite3` (includes login hashes), and every `secret-santa-<year>.json` file; restore via `/api/admin/snapshots/restore` with the snapshot name to bring the app back to that state, including reloading logins, scores, and match data, and keeping the files under `$DATA_DIR/snapshots` when `DATA_DIR` is set.

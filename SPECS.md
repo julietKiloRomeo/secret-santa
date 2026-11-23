@@ -20,7 +20,7 @@ API Endpoints
 
 - `POST /api/login`
   - Body: `{ "name": <fornavn>, "code": <passphrase> }`
-  - Auth: login values are supplied by environment variables with prefix `LOGIN_` (hashed). The server compares the provided code with the stored hashed value.
+  - Auth: login hashes live in the `logins` table of the scores database. The table is seeded once from `LOGIN_<name>` env values when empty. The server compares the provided code with the stored hash.
   - Success: 200 and JSON `{ "success": true, "name": name, "recipient": <recipient> }`.
   - Failure: 401 with `{ "success": false, "error": "Invalid credentials" }`.
 
@@ -38,7 +38,7 @@ Admin APIs (require admin login: `jimmy` or `ditte`)
 
 - `POST /api/admin/set_password`
   - Body: `{ "name": <fornavn>, "passphrase": <pass> }`.
-  - Stores a hashed passphrase in the configured `.env` file and re-loads the login env.
+  - Stores a Werkzeug hash of the passphrase in the `logins` table. Takes effect on the next login, no restart.
 
 - Draws are made locally with `uv run python scripts/draw.py --year <year>`, then `secret-santa-<year>.enc` is committed. The server has no redraw endpoint.
 
@@ -122,7 +122,7 @@ All four games are Phaser 4 scenes (`static/vendor/phaser-4.2.1.min.js`). The ru
 Authentication & Admins
 -----------------------
 
-- Login codes are stored as environment variables beginning with `LOGIN_` and should be generated using `werkzeug.security.generate_password_hash` (PBKDF2).
+- Login codes are stored as hashes in the `logins` table, made with `werkzeug.security.generate_password_hash`. Plaintext is never stored. Env `LOGIN_<name>` values only seed an empty table.
 - Admins are the users `jimmy` and `ditte` (hard-coded). Admins have additional privileges: access to `/admin`, ability to toggle game availability, reset scores, set passphrases, and generate matches.
 
 Testing / Guarantees
