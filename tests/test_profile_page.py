@@ -36,3 +36,19 @@ def test_profile_nav_link_is_present_for_logged_in_players(client, appmod):
     login(client, "ditte")
     html = client.get("/profil").text
     assert 'href="/profil"' in html
+
+
+def test_avatar_picker_is_a_modal_behind_the_portrait(client, appmod):
+    login(client, "ditte")
+    html = client.get("/profil").text
+    # The grid and the old "Vælg billede" button no longer sit on the page.
+    assert "Vælg billede" not in html
+    assert 'id="avatar-modal"' in html
+    assert 'id="avatar-open"' in html  # the clickable portrait with the hint icon
+
+
+def test_wish_list_is_a_list_of_rows_with_add_button(client, appmod):
+    login(client, "ditte")
+    html = client.get("/profil").text
+    assert 'id="wish-rows"' in html
+    assert 'id="wish-add"' in html
