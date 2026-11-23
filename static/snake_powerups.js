@@ -104,8 +104,8 @@ export const POWERUP_CARDS = {
   },
   ghost: {
     name: 'Mistletoe Spectre',
-    flavor: 'A bored elf\u2019s ghost, bound to a sprig. It has opinions about your tail.',
-    effect: 'Pass through your own body for 10 ticks. Stacks. Ends mid-loop, so plan the exit.',
+    flavor: 'A bored elf\u2019s ghost, bound to a sprig. It likes to coil, and it has opinions about your tail.',
+    effect: 'Pass through your own body for 10 ticks. Stacks. Ends mid-coil, so plan the exit.',
   },
   trim: {
     name: 'Shears of the Tidy Elf',

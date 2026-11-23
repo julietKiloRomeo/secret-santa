@@ -350,3 +350,11 @@ test('the guaranteed ghost is spent: the pickup clears the loop flag', () => {
   eatPowerup(s, s.lastPowerup);
   expect(s.loops).toBe(0);
 });
+
+test('the ghost card hints at looping without spelling out the mechanic', async () => {
+  const { POWERUP_CARDS } = await import('../static/snake_powerups');
+  const text = `${POWERUP_CARDS.ghost.flavor} ${POWERUP_CARDS.ghost.effect}`;
+  expect(POWERUP_CARDS.ghost.flavor + POWERUP_CARDS.ghost.effect).toMatch(/coil|coiled|circle/i);
+  expect(text).toMatch(/10 ticks/);
+  expect(text).not.toMatch(/loop/i); // hint only, not the mechanic's name
+});
