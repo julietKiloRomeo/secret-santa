@@ -20,6 +20,7 @@
         <a href="/lodtraekning" class="hover:text-gold-300">Lodtrækning</a>
         <a href="/spil" class="hover:text-gold-300">Spil</a>
         <a href="/high-scores" class="hover:text-gold-300">High Scores</a>
+        <a href="/profil" class="hover:text-gold-300">Min profil</a>
         {% if is_admin_user() %}<a id="admin-link" href="/admin" class="hover:text-gold-300">Admin</a>{% endif %}
       </div>
       <button id="nav-toggle" aria-label="Åbn menu" aria-controls="mobile-menu" aria-expanded="false" class="p-2 text-2xl md:hidden">☰</button>
@@ -30,6 +31,7 @@
       <a href="/lodtraekning" class="block py-2">Lodtrækning</a>
       <a href="/spil" class="block py-2">Spil</a>
       <a href="/high-scores" class="block py-2">High Scores</a>
+      <a href="/profil" class="block py-2">Min profil</a>
       {% if is_admin_user() %}<a id="admin-link" href="/admin" class="block py-2">Admin</a>{% endif %}
     </div>
     {% endif %}
