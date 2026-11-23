@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Spillere{% endblock %}
+{% block content %}
+  <section class="xmas-card" data-player="{{ player }}">
+    <header class="text-center">
+      <p class="text-sm uppercase tracking-widest text-gold-300/80">Julens spillere</p>
+      <h1 class="mt-1 text-4xl">Spillere</h1>
+    </header>
+    <div id="player-cards" class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+      <p id="players-status" class="text-snow-100/80">Henter…</p>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      const me = {{ player|tojson }};
+      const root = document.getElementById('player-cards');
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+      function badge(b) {
+        // Hover text: the name is the title, the snark and reward are the tooltip body.
+        const tip = `${b.snark}\n\n${b.reward}`;
+        return `<span class="rounded-full border border-gold-500/40 bg-pine-950/60 px-3 py-1 text-xs text-gold-300" title="${esc(tip)}" tabindex="0">${esc(b.name)}</span>`;
+      }
+
+      function card(p) {
+        const scores = Object.entries(p.best_scores)
+          .map(([game, s]) => `<li class="flex justify-between text-sm"><span>${esc(game)}</span><span class="font-semibold">${esc(s)}</span></li>`)
+          .join('');
+        const avatar = p.avatar
+          ? `<img src="${esc(p.avatar)}" alt="" class="h-20 w-20 rounded-full border border-gold-500/40 object-cover">`
+          : `<div class="flex h-20 w-20 items-center justify-center rounded-full border border-gold-500/40 bg-pine-950/60 font-display text-2xl text-gold-300">${esc(p.name[0].toUpperCase())}</div>`;
+        const badges = p.badges.map(badge).join('') || '<span class="text-xs text-snow-100/60">Ingen badges endnu</span>';
+        const wish = p.wish_html ? `<div class="mt-3 text-sm text-snow-100/90">${p.wish_html}</div>` : '';
+        return `
+          <article class="xmas-card flex flex-col gap-3 ${p.name === me ? 'ring-2 ring-gold-300/60' : ''}" data-card="${esc(p.name)}">
+            <div class="flex items-center gap-3">
+              ${avatar}
+              <h2 class="text-2xl">${esc(p.name)}</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">${badges}</div>
+            <ul class="space-y-1">${scores || '<li class="text-xs text-snow-100/60">Ingen scores endnu</li>'}</ul>
+            ${wish}
+          </article>`;
+      }
+
+      fetch('/api/players', { credentials: 'same-origin' })
+        .then((r) => r.json())
+        .then((data) => {
+          root.innerHTML = data.players.map(card).join('');
+        })
+        .catch(() => { root.innerHTML = '<p class="text-cranberry-500">Kunne ikke hente spillerne.</p>'; });
+    })();
+  </script>
+{% endblock %}
