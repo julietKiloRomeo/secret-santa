@@ -74,20 +74,22 @@ B. Wish list storage (agreed: sanitized HTML, allowlisted tags and URL schemes).
 
 Each card: title, one snark line. Tooltip = snark. Title shown on hover.
 
+Each track has 3 tiers, each with its own name and text. Tier names are proposals to confirm.
+
 Loops (snake):
-- Nidhogg (1 loop): "You ran into your own body on purpose. The System AI has filed it under hobbies."
-- Ouroboros (2 loops open at once): "Two loops, both open. You are now eating your own tail in stereo. Please stop before someone files a report."
-- Jormungandr (3 loops open at once): "Three loops. You have encircled the whole board. Midgard is in danger, and you are the cause. Reward: none. Enjoy your serpent."
+- Tier 1, Nidhogg (1 loop): "You ran into your own body on purpose. The System AI has filed it under hobbies."
+- Tier 2, Ouroboros (2 loops open at once): "Two loops, both open. You are now eating your own tail in stereo. Please stop before someone files a report."
+- Tier 3, Jormungandr (3 loops open at once): "Three loops. You have encircled the whole board. Midgard is in danger, and you are the cause. Reward: none. Enjoy your serpent."
 
 Shields held at once (snake):
-- Tier 3: "Three shields in your pocket. Either you are prepared or you are a hoarder. The shield has not decided."
-- Tier 6: "Six shields held at once. Insurance agents have started calling you back."
-- Tier 10: "Ten shields. The System AI has requested a meeting about your risk profile."
+- Tier 3, Buckler (proposed): "Three shields in your pocket. Either you are prepared or you are a hoarder. The shield has not decided."
+- Tier 6, Aegis (proposed): "Six shields held at once. Insurance agents have started calling you back."
+- Tier 10, Aegishjalmur (proposed; the helm of awe, a protective rune): "Ten shields. The System AI has requested a meeting about your risk profile."
 
 Trims in one run (snake):
-- Tier 3: "Three cuts. Clean, polite and deeply unnecessary. The tail did not ask for this."
-- Tier 6: "Six trims. The tail is now a rumour, and Santa is asking where the ribbon went."
-- Tier 10: "Ten trims. The elves will be talking about this haircut for a decade."
+- Tier 3, Snip of the Norns (proposed): "Three cuts. Clean, polite and deeply unnecessary. The tail did not ask for this."
+- Tier 6, Shears of Atropos (proposed; Atropos cuts the thread of life): "Six trims. The tail is now a rumour, and Santa is asking where the ribbon went."
+- Tier 10, The Last Cut (proposed): "Ten trims. The elves will be talking about this haircut for a decade."
 
 Tone reference: plans/reference/achievement-texts-dungeon-crawler-carl.md. Texts are original;
 do not reuse the reference lines.
