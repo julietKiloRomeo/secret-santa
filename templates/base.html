@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#06201a" />
   <title>{% block title %}Secret Santa{% endblock %}</title>
   <link rel="manifest" href="/static/manifest.json" />
@@ -12,8 +12,8 @@
   </style>
 </head>
 <body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
-  <nav class="fixed inset-x-0 top-0 z-50 border-b border-gold-500/30 bg-pine-950/90 backdrop-blur">
-    <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+  <nav class="fixed inset-x-0 top-0 z-50 border-b border-gold-500/30 bg-pine-950/90 backdrop-blur" style="padding-top:env(safe-area-inset-top,0px)">
+    <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4" style="padding-left:max(1rem,env(safe-area-inset-left));padding-right:max(1rem,env(safe-area-inset-right))">
       <a href="/" class="font-display text-xl text-gold-300">🎄 Secret Santa</a>
       {% if session.get('user') %}
       <div class="hidden items-center gap-5 text-sm md:flex">
@@ -35,7 +35,7 @@
     {% endif %}
   </nav>
 
-  <main class="px-4 pb-24 pt-20">
+  <main class="px-4 pb-24 pt-20" style="padding-top:calc(5rem + env(safe-area-inset-top,0px))">
     <div class="mx-auto max-w-3xl">
       {% block content %}{% endblock %}
     </div>
@@ -63,15 +63,19 @@
       }
     });
 
-    // Mobile menu toggle
+    // Mobile menu toggle; Escape closes it and returns focus to the button
     const toggle = document.getElementById('nav-toggle');
     if (toggle) {
-      toggle.addEventListener('click', function () {
-        const menu = document.getElementById('mobile-menu');
-        if (menu) {
-          const hidden = menu.classList.toggle('hidden');
-          // Update aria-expanded to reflect open state for screen readers
-          toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+      const menu = document.getElementById('mobile-menu');
+      const setOpen = (open) => {
+        menu.classList.toggle('hidden', !open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+      toggle.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !menu.classList.contains('hidden')) {
+          setOpen(false);
+          toggle.focus();
         }
       });
     }
