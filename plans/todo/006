@@ -16,13 +16,27 @@ Two new pages for logged-in players. Tests before code (AGENTS.md).
 
 ## Open questions
 
-A. Achievements (agreed, 1a): games call `POST /api/achievements` with an achievement id when a
-   player unlocks one. The server stores `(name, achievement_id, unlocked_at)` and ignores repeats.
-   Badges on the cards show the achievement name as a hover title and the snark as tooltip text.
-   Open point: achievement ids are not namespaced today (`first-present` could exist in two games).
-   Proposal: prefix with the game, e.g. `snake:first-present`.
-   Open point: unlocks already in localStorage are not sent to the server. Options: ignore them,
-   or let each game post its local set once on the next visit.
+A. Achievements (agreed: 1a, a POST endpoint that games call).
+
+   Tracks and tiers:
+   - Each game defines at most 3 tracks. A track is one kind of achievement (e.g. gifts collected).
+   - Each track has tiers in increasing order (e.g. 1 present, 10 presents, 25 presents).
+   - A higher tier replaces the lower tier on the card. Only the highest reached tier per track is
+     shown, so a card never has more than 3 badges per game.
+   - Achievement id format: `<game>:<track>:<tier>`, e.g. `snake:gifts:10`.
+
+   API: `POST /api/achievements` with `{achievement_id}`. The server stores the unlock for the
+   session user and ignores repeats. The server does not decide tiers; games send the tier they reached.
+
+   Proposed snake mapping (current 5 achievements become 3 tracks):
+   - `snake:gifts`: 1 Gift Receipt, 10 Chimney Inspector, 25 Santa Is Nervous
+   - `snake:lives`: 5 Five Lives, Zero Dignity
+   - `snake:shield`: 1 Insurance Claim
+   Open: `snake:lives` and `snake:shield` have one tier each. Fine as-is, or add tiers?
+
+   Badges show the name on hover (title) and the snark as tooltip text.
+
+   Existing unlocks: left in localStorage, not migrated (agreed: 2).
 
 B. Wish list storage (agreed: sanitized HTML, allowlisted tags and URL schemes).
    Options considered: Options:
