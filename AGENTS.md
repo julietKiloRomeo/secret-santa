@@ -31,7 +31,7 @@ Note: Commit each logical change as its own commit so it's easy to review and re
 ## Project facts (keep current)
 
 - Deploy: Render builds the `Dockerfile` from `main`. Set env vars in the Render dashboard, not in git.
-- Logins: `LOGIN_<name>` env values are Werkzeug hashes from `scripts/hash_password.py`. Never store or print plaintext passphrases. Login problems: check the Render env for the variable, `SECRET_KEY`, and a redeploy (see README "Set a user passphrase").
+- Logins: password hashes live in the `logins` table of `scores.sqlite3`. Admins change them at `/admin`. `LOGIN_<name>` env vars only seed an empty table on first start. Never store or print plaintext passphrases. Login problems: check `SECRET_KEY` on Render and the README "Set a user passphrase" section.
 - Draw: made locally with `uv run python scripts/draw.py --year <year>`. Commit only `secret-santa-<year>.enc` (base64, obfuscation only). The `.json` is gitignored. Do not redraw on the server.
 - `DRAW_LIVE=1` reveals real recipients. Unset or `0` shows a placeholder.
 - Before any push, run `uv run pytest` and `npx jest`. Do not chain the push after `| tail`; check the exit code.

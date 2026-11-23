@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 
-from dotenv import load_dotenv, set_key
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -95,6 +95,14 @@ def init_db():
         con.execute(
             "CREATE TABLE IF NOT EXISTS games (game TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1)"
         )
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS logins (name TEXT PRIMARY KEY, hash TEXT NOT NULL)"
+        )
+        # Seed once from LOGIN_* env vars (first deploy only). After that the DB is the source.
+        if con.execute("SELECT COUNT(*) FROM logins").fetchone()[0] == 0:
+            con.executemany(
+                "INSERT INTO logins (name, hash) VALUES (?, ?)", list(load_logins().items())
+            )
         con.executemany(
             "INSERT OR IGNORE INTO games (game, enabled) VALUES (?, 1)",
             [(g,) for g in GAMES],
@@ -114,7 +122,6 @@ def init_db():
 
 
 SS = load_draw()
-logins = load_logins()
 init_db()
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -314,7 +321,9 @@ def _check(stored, code):
 @app.post("/api/login")
 def login(body: LoginIn, request: Request):
     name = body.name.strip().lower()
-    stored = logins.get(name)
+    with db() as con:
+        row = con.execute("SELECT hash FROM logins WHERE name = ?", (name,)).fetchone()
+    stored = row[0] if row else None
     if not stored or not _check(stored, body.code):
         raise HTTPException(401, "Invalid credentials")
     request.session["user"] = name
@@ -363,13 +372,15 @@ class PasswordIn(BaseModel):
 
 @app.post("/api/admin/set_password")
 def admin_set_password(body: PasswordIn, _=Depends(require_admin)):
-    global logins
     name = body.name.strip().lower()
     if name not in SS.config:
         raise HTTPException(400, "Unknown user")
-    set_key(ENV_FILE, f"LOGIN_{name}", generate_password_hash(body.passphrase))
-    load_dotenv(ENV_FILE, override=True)
-    logins = load_logins()
+    with db() as con, con:
+        con.execute(
+            "INSERT INTO logins (name, hash) VALUES (?, ?)"
+            " ON CONFLICT(name) DO UPDATE SET hash = excluded.hash",
+            (name, generate_password_hash(body.passphrase)),
+        )
     return {"success": True, "name": name}
 
 
@@ -422,13 +433,11 @@ class SnapshotIn(BaseModel):
 
 @app.post("/api/admin/snapshots/restore")
 def admin_restore_snapshot(body: SnapshotIn, _=Depends(require_admin)):
-    global SS, logins
+    global SS
     try:
         restore_snapshot(body.name)
     except FileNotFoundError:
         raise HTTPException(404, "Snapshot not found")
-    load_dotenv(ENV_FILE, override=True)
-    logins = load_logins()
     SS = load_draw()
     init_db()
     return {"success": True, "snapshot": body.name}
