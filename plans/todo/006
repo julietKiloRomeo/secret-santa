@@ -44,6 +44,17 @@ A. Achievements (agreed: 1a, a POST endpoint that games call).
    - Tier 2, two loops at once: Ouroboros.
    - Tier 3, three loops at once: Jormungandr (spelling Jörmungandr if the card font supports it).
 
+   Snake tracks (3 max per game). Agreed:
+   - Loops: Nidhogg, Ouroboros, Jormungandr (see above).
+   - `snake:shield`: most shields held at once. Proposed 5, 10, 20.
+   - `snake:trim`: trim pickups in one run. Proposed 5, 10, 20.
+   Measured with the game's rules (2000 simulated runs, simple bot, 20x20 board):
+   - Most shields held at once: best run 6. 5 reached by 1.7% of runs; 10 and 20 never.
+   - Trims in one run: best run 8. 5 reached by 1.9% of runs; 10 and 20 never.
+   Open: 10 and 20 are unreachable with the current spawn rates. Options: lower thresholds,
+   or raise the shield/trim share of spawns, or keep them as aspirational tiers.
+   Trim rule: removes 3 tail segments, never below 5 segments. Score is kept.
+
    Badges show the name on hover (title) and the snark as tooltip text.
 
    Existing unlocks: left in localStorage, not migrated (agreed: 2).
