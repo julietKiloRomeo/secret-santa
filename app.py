@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from profile_sanitize import sanitize_wish
 from secret_santa import SecretSanta
 from storage import (
     archive_scores_path,
@@ -103,6 +104,10 @@ def init_db():
         )
         con.execute(
             "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS profiles (name TEXT PRIMARY KEY, wish_html TEXT NOT NULL DEFAULT '',"
+            " avatar TEXT, updated_at TEXT)"
         )
         con.execute(
             "CREATE TABLE IF NOT EXISTS achievements (name TEXT NOT NULL, achievement_id TEXT NOT NULL,"
@@ -379,6 +384,51 @@ def post_score(
         con.execute(
             "INSERT INTO scores (game, name, score, created_at) VALUES (?, ?, ?, ?)",
             (game, name, int(body.score), datetime.now(timezone.utc).isoformat()),
+        )
+    return {"success": True}
+
+
+WISH_MAX = 4000  # characters of wish HTML, after sanitizing
+
+
+class WishIn(BaseModel):
+    wish_html: str = Field(max_length=WISH_MAX * 4)
+
+
+def _profile_row(name):
+    with db() as con:
+        return con.execute(
+            "SELECT wish_html, avatar FROM profiles WHERE name = ?", (name,)
+        ).fetchone()
+
+
+def _known_player(name):
+    with db() as con:
+        return con.execute("SELECT 1 FROM logins WHERE name = ?", (name,)).fetchone() is not None
+
+
+@app.get("/api/profile/{name}")
+def get_profile(name: str, _=Depends(require_user)):
+    if not _known_player(name):
+        raise HTTPException(404, "Unknown player")
+    row = _profile_row(name)
+    return {"name": name, "wish_html": row[0] if row else "", "avatar": row[1] if row else None}
+
+
+@app.put("/api/profile/{name}")
+def put_profile(name: str, body: WishIn, user=Depends(require_user)):
+    if user != name and user not in ADMINS:
+        raise HTTPException(403, "Only the owner or an admin can edit this profile")
+    if not _known_player(name):
+        raise HTTPException(404, "Unknown player")
+    wish = sanitize_wish(body.wish_html)
+    if len(wish) > WISH_MAX:
+        raise HTTPException(422, "Wish list is too long")
+    with db() as con, con:
+        con.execute(
+            "INSERT INTO profiles (name, wish_html, updated_at) VALUES (?, ?, ?)"
+            " ON CONFLICT(name) DO UPDATE SET wish_html = excluded.wish_html, updated_at = excluded.updated_at",
+            (name, wish, datetime.now(timezone.utc).isoformat()),
         )
     return {"success": True}
 
