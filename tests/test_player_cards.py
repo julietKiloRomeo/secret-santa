@@ -145,3 +145,12 @@ def test_badge_images_are_clipped_to_a_circle():
 
     template = Path(__file__).resolve().parent.parent / "templates" / "spillere.html"
     assert "rounded-full object-cover" in template.read_text()
+
+
+def test_player_cards_show_badges_not_scores():
+    from pathlib import Path
+
+    template = Path(__file__).resolve().parent.parent / "templates" / "spillere.html"
+    text = template.read_text()
+    assert "best_scores" not in text
+    assert "Ingen scores" not in text

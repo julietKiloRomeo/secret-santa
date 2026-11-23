@@ -27,9 +27,6 @@
       }
 
       function card(p) {
-        const scores = Object.entries(p.best_scores)
-          .map(([game, s]) => `<li class="flex justify-between text-sm"><span>${esc(game)}</span><span class="font-semibold">${esc(s)}</span></li>`)
-          .join('');
         const avatar = p.avatar
           ? `<img src="${esc(p.avatar)}" alt="" class="h-20 w-20 rounded-full border border-gold-500/40 object-cover">`
           : `<div class="flex h-20 w-20 items-center justify-center rounded-full border border-gold-500/40 bg-pine-950/60 font-display text-2xl text-gold-300">${esc(p.name[0].toUpperCase())}</div>`;
@@ -42,7 +39,6 @@
               <h2 class="text-2xl">${esc(p.name)}</h2>
             </div>
             <div class="flex flex-wrap gap-2">${badges}</div>
-            <ul class="space-y-1">${scores || '<li class="text-xs text-snow-100/60">Ingen scores endnu</li>'}</ul>
             ${wish}
           </article>`;
       }
