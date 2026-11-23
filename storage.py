@@ -183,3 +183,9 @@ def decode_draw(text: str) -> dict:
     if not isinstance(data, dict):
         raise ValueError("Draw file is not a valid encoded draw")
     return data
+
+
+def archive_scores_path(label: str, data_dir: str | None = None) -> Path:
+    """Where a labelled score archive lives. Label is a plain word such as 2025."""
+    base = Path(data_dir or get_data_dir()) / "archives"
+    return base / f"scores-{label}.json"
