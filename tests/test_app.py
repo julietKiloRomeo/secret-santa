@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 from conftest import NAMES, login
 
+DUMMY_RECIPIENT = "Buddy the Elf"
+
 GAMES = [f"advent-{n}" for n in range(1, 11)]
 # Candidates with no game built yet render a placeholder for everyone, admins included.
 BUILT = ["advent-1", "advent-2", "advent-3", "advent-4", "advent-5", "advent-6"]
@@ -31,7 +33,8 @@ def test_no_cors_headers(client):
 # --- login -------------------------------------------------------------------
 
 
-def test_login_ok_and_wrong(client, appmod):
+def test_login_ok_and_wrong(client, appmod, monkeypatch):
+    monkeypatch.setenv("DRAW_LIVE", "1")
     r = login(client, "ditte")
     assert r.status_code == 200
     data = r.json()
@@ -62,9 +65,28 @@ def test_pages_redirect_when_logged_out(client):
     assert client.get("/admin").status_code == 401
 
 
-def test_lodtraekning_shows_recipient(client, appmod):
+def test_lodtraekning_shows_recipient(client, appmod, monkeypatch):
+    monkeypatch.setenv("DRAW_LIVE", "1")
     login(client, "jimmy")
     assert appmod.SS.config["jimmy"].capitalize() in client.get("/lodtraekning").text
+
+
+@pytest.mark.parametrize("flag", [None, "", "0", "false", "no"])
+def test_draw_hidden_until_live(client, appmod, monkeypatch, flag):
+    if flag is not None:
+        monkeypatch.setenv("DRAW_LIVE", flag)
+    real = appmod.SS.config["jimmy"].capitalize()
+    r = login(client, "jimmy")
+    assert r.json()["recipient"] == DUMMY_RECIPIENT
+    page = client.get("/lodtraekning").text
+    assert DUMMY_RECIPIENT in page
+    assert real not in page
+
+
+def test_admin_also_sees_dummy_until_live(client, appmod):
+    login(client, "jimmy")
+    assert DUMMY_RECIPIENT in client.get("/lodtraekning").text
+    assert appmod.SS.config["jimmy"].capitalize() not in client.get("/lodtraekning").text
 
 
 def test_navbar(client):
@@ -98,10 +120,10 @@ def test_unknown_game_404(client):
 def test_admin_forbidden_for_non_admin(client):
     login(client, "emma")
     assert client.get("/admin").status_code == 403
-    assert client.post("/api/admin/run_matches").status_code == 403
+    assert client.post("/api/admin/run_matches").status_code == 404
 
 
-def test_admin_set_password_and_run_matches(client, appmod):
+def test_admin_set_password(client, appmod):
     login(client, "jimmy")
     assert client.get("/admin").status_code == 200
     r = client.post(
@@ -111,11 +133,6 @@ def test_admin_set_password_and_run_matches(client, appmod):
     assert r.json()["success"] is True
     assert login(client, "sara", "happy-snow-ember").status_code == 200
 
-    login(client, "jimmy")
-    r = client.post("/api/admin/run_matches")
-    assert r.json()["success"] is True
-    saved = json.loads(Path(appmod.SS.file_path).read_text())
-    assert saved == appmod.SS.config and set(saved) == set(NAMES)
 
 
 def test_admin_set_password_rejects_unknown(client):
@@ -126,14 +143,10 @@ def test_admin_set_password_rejects_unknown(client):
     assert r.status_code == 400 and r.json()["success"] is False
 
 
-def test_draw_locked(client, monkeypatch):
-    monkeypatch.setenv("DRAW_LOCKED", "1")
+def test_admin_page_has_no_redraw_button(client):
     login(client, "jimmy")
-    r = client.post("/api/admin/run_matches")
-    assert r.status_code == 403 and r.json()["error"]
     html = client.get("/admin").text
-    i = html.index('id="runMatchesBtn"')
-    assert "disabled" in html[i : html.index(">", i)]
+    assert "runMatches" not in html and "run_matches" not in html
 
 
 def test_admin_game_toggle(client):

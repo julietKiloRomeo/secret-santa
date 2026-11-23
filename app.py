@@ -132,8 +132,14 @@ def http_error(request: Request, exc: HTTPException):
 # --- helpers ---------------------------------------------------------------
 
 
-def draw_locked():
-    return os.environ.get("DRAW_LOCKED", "").lower() in ("1", "true", "yes", "on")
+# Shown instead of a real recipient until DRAW_LIVE is set. Testing only; not a security control.
+DUMMY_RECIPIENT = "Buddy the Elf"
+
+
+def recipient_for(name):
+    if os.environ.get("DRAW_LIVE", "").lower() not in ("1", "true", "yes", "on"):
+        return DUMMY_RECIPIENT
+    return (SS.config.get(name) or "").capitalize()
 
 
 def is_game_enabled(game):
@@ -210,7 +216,7 @@ def lodtraekning(request: Request):
         request,
         "lodtraekning.html",
         name=user,
-        recipient=(SS.config.get(user) or "").capitalize(),
+        recipient=recipient_for(user),
     )
 
 
@@ -272,7 +278,6 @@ def admin_page(request: Request, user=Depends(require_admin)):
         request,
         "admin.html",
         year=SS.year,
-        draw_locked=draw_locked(),
         users=sorted(SS.config),
     )
 
@@ -307,7 +312,7 @@ def login(body: LoginIn, request: Request):
     return {
         "success": True,
         "name": name,
-        "recipient": (SS.config.get(name) or "").capitalize(),
+        "recipient": recipient_for(name),
     }
 
 
@@ -357,18 +362,6 @@ def admin_set_password(body: PasswordIn, _=Depends(require_admin)):
     load_dotenv(ENV_FILE, override=True)
     logins = load_logins()
     return {"success": True, "name": name}
-
-
-@app.post("/api/admin/run_matches")
-def admin_run_matches(_=Depends(require_admin)):
-    global SS
-    if draw_locked():
-        raise HTTPException(403, "Draw locked by server configuration")
-    santa = SecretSanta(data_dir=get_data_dir())
-    santa.draw()
-    santa.save()
-    SS = santa
-    return {"success": True, "year": SS.year}
 
 
 @app.get("/api/admin/games")
