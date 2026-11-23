@@ -14,6 +14,8 @@
         <input id="avatar-input" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
       </label>
       <p id="avatar-status" class="text-sm text-snow-100/80" role="status" aria-live="polite"></p>
+      <p class="text-xs uppercase tracking-widest text-gold-300/80">Eller vælg et portræt</p>
+      <div id="preset-grid" class="grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Portrætter"></div>
     </div>
 
     <div class="mt-8">
@@ -163,6 +165,33 @@
         preview.src = data.avatar;
         preview.hidden = false;
         avatarStatus.textContent = 'Billede gemt.';
+      });
+
+      // Festive presets: one tap sets the picture, and the server accepts only known keys.
+      const presetGrid = document.getElementById('preset-grid');
+      fetch('/api/avatar-presets', { credentials: 'same-origin' })
+        .then((r) => r.json())
+        .then((data) => {
+          presetGrid.innerHTML = data.presets.map((p) =>
+            `<button type="button" data-preset="${p.key}" class="rounded-full border border-gold-500/40 p-1 hover:border-gold-300" aria-label="${p.name}" title="${p.name}">
+               <img src="${p.url}" alt="" class="h-14 w-14 rounded-full object-cover">
+             </button>`).join('');
+        });
+      presetGrid.addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('[data-preset]');
+        if (!btn) return;
+        avatarStatus.textContent = 'Gemmer…';
+        const r = await fetch('/api/profile/' + encodeURIComponent(player) + '/preset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ preset: btn.dataset.preset }),
+        });
+        if (!r.ok) { avatarStatus.textContent = 'Kunne ikke vælge portrættet.'; return; }
+        const data = await r.json();
+        preview.src = data.avatar;
+        preview.hidden = false;
+        avatarStatus.textContent = 'Portræt valgt.';
       });
 
       load();

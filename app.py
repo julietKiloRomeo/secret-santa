@@ -19,6 +19,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from profile_sanitize import sanitize_wish
 from achievement_catalog import CATALOG, highest_tiers, tier_for
+from avatar_presets import PRESETS, preset_url
 from avatars import save_avatar, AvatarError, avatar_dir
 from secret_santa import SecretSanta
 from storage import (
@@ -480,6 +481,32 @@ async def post_avatar(name: str, request: Request, file: UploadFile, user=Depend
             (name, url, datetime.now(timezone.utc).isoformat()),
         )
     return {"success": True, "avatar": url}
+
+
+class PresetIn(BaseModel):
+    preset: str = Field(max_length=40)
+
+
+@app.get("/api/avatar-presets")
+def list_presets(_=Depends(require_user)):
+    return {"presets": [{"key": k, "name": v, "url": preset_url(k)} for k, v in PRESETS.items()]}
+
+
+@app.post("/api/profile/{name}/preset")
+def pick_preset(name: str, body: PresetIn, user=Depends(require_user)):
+    if user != name and user not in ADMINS:
+        raise HTTPException(403, "Only the owner or an admin can change this picture")
+    if not _known_player(name):
+        raise HTTPException(404, "Unknown player")
+    if body.preset not in PRESETS:
+        raise HTTPException(400, "Unknown preset")
+    with db() as con, con:
+        con.execute(
+            "INSERT INTO profiles (name, avatar, updated_at) VALUES (?, ?, ?)"
+            " ON CONFLICT(name) DO UPDATE SET avatar = excluded.avatar, updated_at = excluded.updated_at",
+            (name, preset_url(body.preset), datetime.now(timezone.utc).isoformat()),
+        )
+    return {"success": True, "avatar": preset_url(body.preset)}
 
 
 @app.get("/avatars/{filename}")
