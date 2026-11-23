@@ -136,3 +136,6 @@ export const markCardSeen = (seen, kind) => seen.add(kind);
 
 // Opacity of a frozen trim piece from its remaining ticks: full during the hold, then a linear fade.
 export const trimAlpha = (ttl) => Math.max(0, Math.min(1, ttl / TRIM_FADE_TICKS));
+
+// Body opacity: see-through while a ghost is active, solid otherwise. Visual only.
+export const ghostAlpha = (s) => ((s.effects?.ghost ?? 0) > 0 ? 0.45 : 1);

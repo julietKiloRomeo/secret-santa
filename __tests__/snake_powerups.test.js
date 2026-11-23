@@ -410,3 +410,47 @@ test('trim piece opacity holds at 1 during the hold, then fades to 0', async () 
   expect(trimAlpha(1)).toBeCloseTo(0.5);
   expect(trimAlpha(0)).toBe(0);
 });
+
+test('the snake is see-through while a ghost is active, and solid otherwise', async () => {
+  const { ghostAlpha } = await import('../static/snake_powerups');
+  expect(ghostAlpha({ effects: { ghost: 3 } })).toBeLessThan(1);
+  expect(ghostAlpha({ effects: { ghost: 3 } })).toBeGreaterThan(0.2);
+  expect(ghostAlpha({ effects: { ghost: 0 } })).toBe(1);
+  expect(ghostAlpha({})).toBe(1);
+});
+
+test('open loops count body cells crossed while ghosting that are still in the body', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.body = [
+    { x: 5, y: 5 },
+    { x: 4, y: 5 },
+    { x: 4, y: 6 },
+    { x: 5, y: 6 },
+    { x: 6, y: 6 },
+    { x: 6, y: 5 },
+  ];
+  s.dir = 'down';
+  s.gift = { x: 0, y: 0, skin: '🍪' };
+  eatPowerup(s, 'ghost');
+  step(s, () => 0.5); // crosses (5,6)
+  expect(s.openLoops).toBe(1);
+});
+
+test('a crossed cell that has left the body no longer counts as an open loop', () => {
+  const s = createSnake(20, 20, () => 0.5);
+  s.body = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 4, y: 6 }, { x: 5, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 5 }];
+  s.dir = 'down';
+  s.gift = { x: 0, y: 0, skin: '🍪' };
+  eatPowerup(s, 'ghost');
+  step(s, () => 0.5); // the head is now on (5,6), a body cell
+  expect(s.openLoops).toBe(1);
+  // Keep moving away on open cells until the crossed segment has left the body.
+  s.gift = { x: 19, y: 19, skin: '🍪' };
+  const path = ['right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
+  for (const d of path) {
+    turn(s, d);
+    expect(step(s, () => 0.5)).not.toBe('dead');
+  }
+  expect(s.body.some((p) => p.x === 5 && p.y === 6)).toBe(false);
+  expect(s.openLoops).toBe(0);
+});

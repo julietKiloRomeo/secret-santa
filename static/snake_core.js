@@ -85,7 +85,11 @@ export function step(s, rand) {
   const ghosting = (s.effects?.ghost ?? 0) > 0;
   if (ghosting) s.effects.ghost -= 1;
   // Ghosting into the body counts as a loop: the next floor powerup is a guaranteed ghost.
-  if (ghosting && solid.some((p) => p.x === head.x && p.y === head.y)) s.loops = (s.loops ?? 0) + 1;
+  if (ghosting && solid.some((p) => p.x === head.x && p.y === head.y)) {
+    s.loops = (s.loops ?? 0) + 1;
+    // Remember the crossed cell. It is an open loop while that cell is still part of the body.
+    s.crossed = [...(s.crossed ?? []), { x: head.x, y: head.y }];
+  }
   const wall = head.x < 0 || head.x >= s.cols || head.y < 0 || head.y >= s.rows;
   const self = !ghosting && solid.some((p) => p.x === head.x && p.y === head.y);
   if (wall || self) {
@@ -100,6 +104,9 @@ export function step(s, rand) {
     return 'absorbed';
   }
   s.body.unshift(head);
+  // Open loops: crossed cells that are still in the body. A cell leaves the list once the tail passes it.
+  s.crossed = (s.crossed ?? []).filter((c) => s.body.some((p) => p.x === c.x && p.y === c.y));
+  s.openLoops = s.crossed.length;
   if (s.powerup && head.x === s.powerup.x && head.y === s.powerup.y) {
     s.lastPowerup = s.powerup.kind; // the caller applies it with eatPowerup (see snake_powerups)
     s.powerup = null;
