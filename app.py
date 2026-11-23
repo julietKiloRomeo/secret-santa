@@ -61,8 +61,9 @@ DB_PATH = scores_db_path()
 
 
 def load_logins():
+    # Strip quotes and whitespace that paste into Render's env UI or .env files.
     return {
-        k[len("LOGIN_") :].lower(): v
+        k[len("LOGIN_") :].lower(): v.strip().strip("'\"").strip()
         for k, v in os.environ.items()
         if k.startswith("LOGIN_")
     }
@@ -302,11 +303,19 @@ class LoginIn(BaseModel):
     code: str = ""
 
 
+def _check(stored, code):
+    # A malformed stored hash is a config error; treat it as a failed login, not a 500.
+    try:
+        return check_password_hash(stored, code)
+    except ValueError:
+        return False
+
+
 @app.post("/api/login")
 def login(body: LoginIn, request: Request):
     name = body.name.strip().lower()
     stored = logins.get(name)
-    if not stored or not check_password_hash(stored, body.code):
+    if not stored or not _check(stored, body.code):
         raise HTTPException(401, "Invalid credentials")
     request.session["user"] = name
     return {
