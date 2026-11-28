@@ -4,9 +4,7 @@ const GAME = 'advent-1';
 
 // Each track: the tier thresholds and the stat it reads. Loop tiers are "open loops at once".
 export const SNAKE_TRACKS = {
-  loops: { stat: 'maxLoops', tiers: [{ n: 1, name: 'Nidhogg' }, { n: 2, name: 'Ouroboros' }, { n: 3, name: 'Jormungandr' }] },
-  shield: { stat: 'maxShields', tiers: [{ n: 3, name: 'Buckler' }, { n: 6, name: 'Aegis' }, { n: 10, name: 'Aegishjalmur' }] },
-  trim: { stat: 'trims', tiers: [{ n: 3, name: 'Snip of the Norns' }, { n: 6, name: 'Shears of Atropos' }, { n: 10, name: 'The Last Cut' }] },
+  loops: { stat: 'maxLoops', tiers: [{ n: 1, name: 'Nidhogg' }, { n: 2, name: 'Ouroboros' }, { n: 3, name: 'Midgårdsormen' }] },
 };
 
 // Every tier the stats have reached, as ids. Repeats are harmless: the server keeps the first.

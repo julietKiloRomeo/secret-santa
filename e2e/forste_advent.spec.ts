@@ -8,7 +8,7 @@ test.describe('Første Advent - Snake', () => {
     const canvas = page.locator('#snake-canvas');
     await expect(canvas).toBeVisible();
     const score = page.locator('#score');
-    await expect(score).toHaveText(/Score:\s*0/);
+    await expect(score).toHaveText(/Point:\s*0/);
 
     // Position gift one cell to the right of the head and set direction to right
     await page.evaluate(() => {
@@ -24,7 +24,7 @@ test.describe('Første Advent - Snake', () => {
     // Wait a moment for the game tick to process
     await page.waitForTimeout(300);
 
-    await expect(score).toHaveText(/Score:\s*1/);
+    await expect(score).toHaveText(/Point:\s*1/);
 
     // Verify snake length increased via debug API
     const length = await page.evaluate(() => {
@@ -34,4 +34,3 @@ test.describe('Første Advent - Snake', () => {
     expect(length).toBeGreaterThan(1);
   });
 });
-

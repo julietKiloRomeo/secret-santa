@@ -33,14 +33,14 @@ test('the modal shows the wish list the player saved', async ({ page }) => {
 });
 
 test('a badge in the modal carries the snark and reward as hover text', async ({ page }) => {
-  await page.request.post('/api/achievements', { data: { achievement_id: 'advent-1:shield:3' } });
+  await page.request.post('/api/achievements', { data: { achievement_id: 'advent-1:loops:3' } });
   await page.goto('/spillere');
   await page.locator('[data-card-open="playwright"]').click();
-  const badge = page.locator('#player-modal [data-badge="advent-1:shield:3"]');
+  const badge = page.locator('#player-modal [data-badge="advent-1:loops:3"]');
   await expect(badge).toBeVisible();
   const tip = await badge.getAttribute('title');
-  expect(tip).toContain('Three shields');
-  expect(tip).toContain('One Buckler');
+  expect(tip).toContain('Tre løkker');
+  expect(tip).toContain('Belønning: Midgårdsormens ring');
 });
 
 test('badges show as their picture, with the name as label, and the picture loads', async ({ page }) => {
@@ -51,7 +51,7 @@ test('badges show as their picture, with the name as label, and the picture load
   await expect(fig).toBeVisible();
   await expect(fig.locator('img')).toHaveAttribute('src', '/static/badges/jormungandr.png');
   await expect.poll(() => fig.locator('img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
-  expect(await fig.getAttribute('title')).toContain('World Serpent');
+  expect(await fig.getAttribute('title')).toContain('Midgårdsormens ring');
 });
 
 test('Escape closes the modal and focus returns to the card', async ({ page }) => {

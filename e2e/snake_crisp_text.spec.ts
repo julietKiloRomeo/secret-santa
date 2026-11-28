@@ -28,7 +28,7 @@ test('loot card text is DOM and laid out with real size', async ({ page }) => {
   await expect.poll(() => boxed(page, '.arcade-card-title')).not.toBeNull();
   const title = await boxed(page, '.arcade-card-title');
   expect(title!.w).toBeGreaterThan(0);
-  expect(title!.text).toContain('Ward of the Frost Hearth');
+  expect(title!.text).toContain('Frostildstedets skjold');
 });
 
 test('score screen title and rows are DOM text', async ({ page }) => {

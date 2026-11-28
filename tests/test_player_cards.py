@@ -31,15 +31,13 @@ def _unlock(appmod, name, achievement_id):
 
 # --- catalogue ---------------------------------------------------------------
 
-def test_catalogue_has_nine_tiers_in_three_tracks_of_three():
-    assert len(CATALOG) == 9
+def test_catalogue_has_only_three_ghost_loop_tiers():
+    assert len(CATALOG) == 3
     tracks = {}
     for entry in CATALOG.values():
         tracks.setdefault(entry["track"], []).append(entry["tier"])
-    assert sorted(tracks) == ["loops", "shield", "trim"]
+    assert sorted(tracks) == ["loops"]
     assert sorted(tracks["loops"]) == [1, 2, 3]
-    assert sorted(tracks["shield"]) == [3, 6, 10]
-    assert sorted(tracks["trim"]) == [3, 6, 10]
 
 
 def test_every_entry_has_a_name_snark_and_reward():
@@ -50,9 +48,9 @@ def test_every_entry_has_a_name_snark_and_reward():
 
 
 def test_highest_tier_per_track_only():
-    ids = ["advent-1:shield:3", "advent-1:shield:6", "advent-1:trim:3"]
+    ids = ["advent-1:loops:1", "advent-1:loops:2", "advent-1:shield:3", "advent-1:trim:3"]
     picked = highest_tiers(ids)
-    assert picked == ["advent-1:shield:6", "advent-1:trim:3"]
+    assert picked == ["advent-1:loops:2"]
 
 
 def test_unknown_achievement_ids_are_ignored():
@@ -73,13 +71,16 @@ def test_players_lists_every_player_with_profile_scores_and_badges(client, appmo
     _insert_score(appmod, "advent-2", "ditte", 7)
     _unlock(appmod, "ditte", "advent-1:shield:3")
     _unlock(appmod, "ditte", "advent-1:shield:6")
+    _unlock(appmod, "ditte", "advent-1:trim:10")
+    _unlock(appmod, "ditte", "advent-1:loops:1")
+    _unlock(appmod, "ditte", "advent-1:loops:2")
     r = client.get("/api/players")
     assert r.status_code == 200
     by = {p["name"]: p for p in r.json()["players"]}
     assert "ditte" in by and "emma" in by
     assert by["ditte"]["best_scores"] == {"advent-1": 12, "advent-2": 7}
-    assert [b["id"] for b in by["ditte"]["badges"]] == ["advent-1:shield:6"]
-    assert by["ditte"]["badges"][0]["name"] == "Aegis"
+    assert [b["id"] for b in by["ditte"]["badges"]] == ["advent-1:loops:2"]
+    assert by["ditte"]["badges"][0]["name"] == "Ouroboros"
 
 
 def test_players_shows_wish_and_avatar_when_set(client, appmod):

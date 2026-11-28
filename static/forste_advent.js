@@ -168,8 +168,8 @@ class SnakeScene extends Phaser.Scene {
     this.paused = false;
     this.acc = 0;
     this.stopLeft = 0;
-    scoreEl.textContent = 'Score: 0';
-    setStatus('Klar! Tap eller brug piletasterne.');
+    scoreEl.textContent = 'Point: 0';
+    setStatus('Klar! Stryg eller brug piletasterne.');
     this.drawFrame(1);
   }
 
@@ -268,7 +268,7 @@ class SnakeScene extends Phaser.Scene {
       <div class="arcade-card-title">${c.name}</div>
       <div class="arcade-card-flavor">${c.flavor}</div>
       <div class="arcade-card-effect">${c.effect}</div>
-      <div class="arcade-card-hint">[ tap or press a key ]</div>`;
+      <div class="arcade-card-hint">[ Tryk på skærmen eller en tast ]</div>`;
     const dom = this.add.dom(W / 2, H / 2, el);
     const title = dom;
     const flavor = dom;
@@ -296,7 +296,7 @@ class SnakeScene extends Phaser.Scene {
     this.cardOpen = false;
     this.cardReady = false;
     this.waiting = true;
-    setStatus('Good luck. Press a direction to start again');
+    setStatus('Held og lykke! Vælg en retning for at fortsætte.');
   }
 
   // In the waiting state only a direction (key or swipe) resumes the game.
@@ -320,7 +320,7 @@ class SnakeScene extends Phaser.Scene {
   }
 
   onPickup() {
-    scoreEl.textContent = `Score: ${this.s.score}`;
+    scoreEl.textContent = `Point: ${this.s.score}`;
     beep(this, 880, 120, 'sine', 0.03);
     this.time.delayedCall(120, () => beep(this, 1320, 120, 'sine', 0.02));
     if (REDUCE_MOTION) return;
@@ -388,7 +388,7 @@ class SnakeScene extends Phaser.Scene {
 
   async gameOver() {
     this.paused = true;
-    setStatus('Game Over! Tryk Space, pil eller tap for at prøve igen 🎅');
+    setStatus('Spillet er slut! Tryk på mellemrum, en piletast eller skærmen for at prøve igen 🎅');
     beep(this, 220, 400, 'sawtooth', 0.03);
     if (!REDUCE_MOTION) {
       this.stopLeft = FEEL.death.stopMs;

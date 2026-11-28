@@ -72,7 +72,7 @@ class ScoresScene extends Phaser.Scene {
       fontSize: this.u * 1.2,
       color: '#fde68a',
     }).setOrigin(0.5);
-    this.msg = this.text(W / 2, this.u * 2.8, `${message ? message + '  ' : ''}Din score: ${score} pts`, {
+    this.msg = this.text(W / 2, this.u * 2.8, `${message ? message + '  ' : ''}Dine point: ${score}`, {
       fontFamily: FONT,
       fontSize: this.u * 0.6,
       color: '#e2e8f0',
@@ -113,7 +113,7 @@ class ScoresScene extends Phaser.Scene {
     const at = rankFor(scores, score);
     const list = [...scores.slice(0, at), { name: '', score }, ...scores.slice(at)];
     const yFor = this.rows(list, at);
-    this.msg.setText('Ny high score! Skriv dit navn til julemandens liste.');
+    this.msg.setText('Ny rekord! Skriv dit navn til julemandens liste.');
     this.input.keyboard.disableGlobalCapture(); // let space/arrows reach the input
     const u = this.u;
     const input = this.add
@@ -141,7 +141,7 @@ class ScoresScene extends Phaser.Scene {
       const ok = await submitScore(gameId, el.value.trim(), score);
       input.destroy();
       this.input.keyboard.enableGlobalCapture();
-      if (!ok) this.msg.setText('Kunne ikke gemme scoren.');
+      if (!ok) this.msg.setText('Kunne ikke gemme dine point.');
       this.showList(ok ? await fetchScores(gameId) : list.filter((_, i) => i !== at));
     });
   }
@@ -150,7 +150,7 @@ class ScoresScene extends Phaser.Scene {
     this.rows(scores);
     if (!scores.length)
       this.rowTexts.push(
-        this.text(this.scale.width / 2, this.u * 5, 'Ingen scores endnu.', {
+        this.text(this.scale.width / 2, this.u * 5, 'Ingen resultater endnu.', {
           fontFamily: FONT,
           fontSize: this.u * 0.7,
         }).setOrigin(0.5),

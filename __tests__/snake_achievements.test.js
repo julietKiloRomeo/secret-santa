@@ -9,9 +9,9 @@ test('a loop tier is sent for every loop count reached', () => {
   expect(reachedSnakeIds({ maxLoops: 3 })).toContain('advent-1:loops:3');
 });
 
-test('shield and trim tiers unlock at 3, 6 and 10', () => {
-  expect(reachedSnakeIds({ maxShields: 5 })).toEqual(['advent-1:shield:3']);
-  expect(reachedSnakeIds({ trims: 6 })).toEqual(['advent-1:trim:3', 'advent-1:trim:6']);
+test('only ghost loops unlock achievements, even with many shields and trims', () => {
+  expect(Object.keys(SNAKE_TRACKS)).toEqual(['loops']);
+  expect(reachedSnakeIds({ maxShields: 100, trims: 100 })).toEqual([]);
 });
 
 test('the track ids match the server id format and the spec tier counts', () => {

@@ -118,19 +118,19 @@ export const activeEffects = (s) => ({ shield: s.effects?.shield ?? 0, ghost: s.
 // and a plain effect line. Shown once per kind, on the first pickup.
 export const POWERUP_CARDS = {
   shield: {
-    name: 'Ward of the Frost Hearth',
-    flavor: 'Forged from the last warm ember in the North Pole. It remembers every wall it has met.',
-    effect: 'Absorbs one collision. Stacks. A wall hit stops you; a body hit still lets you through.',
+    name: 'Frostildstedets skjold',
+    flavor: 'Smedet af Nordpolens sidste varme glød. Det husker hver eneste mur, det har mødt.',
+    effect: 'Beskytter mod ét sammenstød. Flere skjolde kan samles. En mur stopper dig; din egen krop kan du passere igennem.',
   },
   ghost: {
-    name: 'Mistletoe Spectre',
-    flavor: 'A bored elf\u2019s ghost, bound to a sprig. It likes to coil, and it has opinions about your tail.',
-    effect: 'Pass through your own body for 10 ticks. Stacks. Ends mid-coil, so plan the exit.',
+    name: 'Misteltenens spøgelse',
+    flavor: 'En træt nisses spøgelse, bundet til en kvist. Det elsker løkker og har holdninger til din hale.',
+    effect: 'Gå gennem din egen krop i 10 træk. Flere spøgelser giver mere tid. Effekten kan slutte midt i en løkke, så planlæg en vej ud.',
   },
   trim: {
-    name: 'Shears of the Tidy Elf',
-    flavor: 'Used for cutting ribbon and reputations. Clean cuts, no hard feelings.',
-    effect: 'Removes 3 tail segments and their presents. Score is kept. Never drops below 5.',
+    name: 'Den ordentlige nisses saks',
+    flavor: 'Bruges til at klippe gavebånd og omdømme. Rene snit, ingen sure miner.',
+    effect: 'Fjerner 3 haleled og deres gaver. Du beholder dine point. Slangen beholder altid mindst 5 led.',
   },
 };
 

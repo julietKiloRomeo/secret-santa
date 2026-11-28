@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => loginAsPlaywright(page));
 
 const dbg = (page) => page.waitForFunction(() => Boolean((window as any).__snakeDebug__));
 
-test('an achievement tier is posted to the server and no achievement card opens', async ({ page }) => {
+test('shield pickups no longer post achievement tiers', async ({ page }) => {
   const posted: string[] = [];
   page.on('request', (r) => {
     if (r.url().endsWith('/api/achievements') && r.method() === 'POST')
@@ -24,7 +24,7 @@ test('an achievement tier is posted to the server and no achievement card opens'
     }
   });
   await page.waitForTimeout(600);
-  expect(posted).toContain('advent-1:shield:3');
+  expect(posted).toEqual([]);
   const card = await page.evaluate(() => (window as any).__snakeDebug__.getCard());
   expect(card.name).not.toBe('Insurance Claim');
 });

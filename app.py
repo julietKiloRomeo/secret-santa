@@ -263,7 +263,7 @@ GAME_SHELL = {
         "stage_id": "snake-stage",
         "canvas_wrap_id": "snake-wrap",
         "game_title": "Jule Snake",
-        "game_hint": "Swipe eller piletaster for at styre",
+        "game_hint": "Stryg eller brug piletasterne for at styre",
         "game_script": "forste_advent.js",
     },
     "advent-2": {

@@ -33,11 +33,11 @@ test('first shield pickup pauses the game with a card; a key dismisses it', asyn
   await expect.poll(() => page.evaluate(() => (window as any).__snakeDebug__.isRunning())).toBe(false);
   expect(await page.evaluate(() => (window as any).__snakeDebug__.getCard())).toEqual({
     open: true,
-    name: 'Ward of the Frost Hearth',
+    name: 'Frostildstedets skjold',
   });
   await page.waitForTimeout(400);
   await page.keyboard.press('Space'); // dismisses the card only
-  await expect(page.locator('#status')).toContainText('Good luck. Press a direction to start again');
+  await expect(page.locator('#status')).toContainText('Held og lykke! Vælg en retning for at fortsætte.');
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isRunning())).toBe(false);
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isWaiting())).toBe(true);
   // Space is not a direction: the game stays waiting.
