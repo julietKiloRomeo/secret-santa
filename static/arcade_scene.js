@@ -31,13 +31,13 @@ class ScoresScene extends Phaser.Scene {
       </header>
       <div class="arcade-ranking" role="region" aria-label="Placeringer" tabindex="0"><ol role="list"></ol></div>
       <p id="arcade-score-message" class="arcade-score-message" role="status">Henter resultater …</p>
-      <form class="arcade-score-form" hidden>
+      <form class="arcade-score-form" autocomplete="off" hidden>
         <div class="arcade-form-heading">
           <label for="arcade-score-name">Dit navn på julemandens liste</label>
           <button class="arcade-skip" type="button">Spring over</button>
         </div>
         <div class="arcade-entry">
-          <input id="arcade-score-name" class="arcade-input" name="name" autocomplete="nickname" required>
+          <input id="arcade-score-name" class="arcade-input" name="name" autocomplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" required>
           <button class="arcade-action" type="submit">Gem point</button>
         </div>
       </form>

@@ -30,6 +30,11 @@ test('qualifying score asks for a name, saves it and closes on Enter', async ({ 
   await expect(input).toBeVisible();
   await expect(input).toBeFocused();
   await expect(input).toHaveValue('playwright');
+  await expect(page.locator('form.arcade-score-form')).toHaveAttribute('autocomplete', 'off');
+  await expect(input).toHaveAttribute('autocomplete', 'off');
+  await expect(input).toHaveAttribute('data-1p-ignore', 'true');
+  await expect(input).toHaveAttribute('data-lpignore', 'true');
+  await expect(input).toHaveAttribute('data-bwignore', 'true');
 
   // Arrows must not restart the snake while typing.
   await page.keyboard.press('ArrowRight');
