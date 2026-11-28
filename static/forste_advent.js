@@ -93,6 +93,7 @@ class SnakeScene extends Phaser.Scene {
     this.headPop = 1;
     this.marks = []; // reusable sprite objects for the gift and the body skins
     this.input.keyboard.on('keydown', (e) => this.onKey(e));
+    this.events.once('shutdown', () => this.card?.remove());
     this.input.on('pointerdown', (p) => {
       if (this.cardOpen) return this.dismissCard();
       // Record the start in every state, so a swipe made during the wait is read on release.
@@ -251,37 +252,45 @@ class SnakeScene extends Phaser.Scene {
     this.showCard(kind);
   }
 
-  // A loot card: either a powerup kind, or an ready-made card object (achievements).
+  // The artwork and text share a responsive HTML panel, independent of the board's scale.
   showCard(kind) {
-    const c = typeof kind === 'string' ? cardFor(kind) : kind;
-    this.card?.destroy();
-    this.cardDom?.destroy();
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const box = this.add.container(W / 2, H / 2).setDepth(20);
-    const panel = this.add.rectangle(0, 0, W * 0.8, H * 0.5, 0x0b1020, 0.96).setStrokeStyle(2, 0xfbbf24, 0.9);
-    // The card text is DOM, so it is crisp at any scale (same as the score screen and name input).
-    const el = document.createElement('div');
-    el.className = 'arcade-card';
-    el.style.width = `${W * 0.72}px`;
-    el.innerHTML = `
-      <div class="arcade-card-title">${c.name}</div>
-      <div class="arcade-card-flavor">${c.flavor}</div>
-      <div class="arcade-card-effect">${c.effect}</div>
-      <div class="arcade-card-hint">[ Tryk på skærmen eller en tast ]</div>`;
-    const dom = this.add.dom(W / 2, H / 2, el);
-    const title = dom;
-    const flavor = dom;
-    const effect = dom;
-    const hint = dom;
-    box.add([panel]);
-    // DOM text sits above the canvas (like the name input), so it is not hidden by the panel.
-    dom.node.parentElement.style.zIndex = '10';
-    this.cardDom = dom;
-    this.card = box;
+    const c = cardFor(kind);
+    this.card?.remove();
+    this.cardTimer?.remove();
+    const panel = document.createElement('dialog');
+    panel.className = 'arcade-panel arcade-card';
+    panel.setAttribute('aria-labelledby', 'arcade-card-title');
+    panel.innerHTML = `
+      <img class="arcade-card-art" alt="">
+      <header>
+        <p class="arcade-kicker">Du fandt</p>
+        <h2 id="arcade-card-title" class="arcade-card-title" tabindex="-1" autofocus></h2>
+        <p class="arcade-card-flavor"></p>
+      </header>
+      <div class="arcade-card-effect"><p class="arcade-kicker">Virkning</p><p></p></div>
+      <button class="arcade-action" type="button">Fortsæt</button>`;
+    panel.querySelector('img').src = `/static/sprites/snake/pu-${kind}.png`;
+    panel.querySelector('h2').textContent = c.name;
+    panel.querySelector('.arcade-card-flavor').textContent = c.flavor;
+    panel.querySelector('.arcade-card-effect p:last-child').textContent = c.effect;
+    panel.querySelector('button').addEventListener('click', () => this.dismissCard());
+    panel.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.repeat || ['Tab', 'Shift', 'Alt', 'Control', 'Meta'].includes(e.key)) return;
+      e.preventDefault();
+      this.dismissCard();
+    });
+    panel.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      this.dismissCard();
+    });
+    this.card = panel;
     this.cardOpen = true;
+    this.cardReady = false;
     this.paused = true; // the card holds the game until the player dismisses it
-    this.time.delayedCall(250, () => {
+    document.body.append(panel);
+    panel.showModal();
+    this.cardTimer = this.time.delayedCall(250, () => {
       this.cardReady = true; // ignore the key or tap that picked the powerup up
     });
   }
@@ -289,9 +298,8 @@ class SnakeScene extends Phaser.Scene {
   // Closing the card leaves the game waiting, paused, until a direction is pressed.
   dismissCard() {
     if (!this.cardOpen || !this.cardReady) return;
-    this.card?.destroy();
-    this.cardDom?.destroy();
-    this.cardDom = null;
+    this.card.close();
+    this.card.remove();
     this.card = null;
     this.cardOpen = false;
     this.cardReady = false;

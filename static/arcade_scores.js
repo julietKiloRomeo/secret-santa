@@ -14,9 +14,11 @@ export const rankFor = (scores, score) => {
 export async function fetchScores(gameId) {
   try {
     const resp = await fetch(`/api/scores/${gameId}`);
-    return resp.ok ? (await resp.json()).scores || [] : [];
+    if (!resp.ok) return null;
+    const { scores } = await resp.json();
+    return Array.isArray(scores) ? scores : null;
   } catch {
-    return [];
+    return null;
   }
 }
 

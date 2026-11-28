@@ -94,33 +94,349 @@
   .game-score {
     @apply pointer-events-none font-semibold text-snow-50 drop-shadow;
   }
-  /* DOM text for the score screen and loot cards: native resolution, so it stays sharp. */
-  .arcade-text {
-    @apply pointer-events-none whitespace-pre text-snow-50;
-    line-height: 1.3;
-  }
-  .arcade-title {
-    @apply text-gold-300;
-  }
-  .arcade-card {
-    @apply pointer-events-none flex flex-col items-center gap-3 text-center;
-  }
-  .arcade-card-title {
-    @apply font-display text-2xl text-gold-300;
-  }
-  .arcade-card-flavor {
-    @apply text-base italic text-snow-100/80;
-  }
-  .arcade-card-effect {
-    @apply font-mono text-sm text-snow-50;
-  }
-  .arcade-card-hint {
-    @apply font-mono text-xs text-gold-300;
-  }
   .game-status {
     @apply pointer-events-none absolute inset-x-0 top-16 text-center text-sm text-snow-100/80;
   }
   .game-hint {
     @apply pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-snow-100/70;
+  }
+}
+
+/* Winter arcade: a score ledger and a stamped reliquary for found objects. */
+.arcade-panel {
+  --arcade-edge: 12px;
+  --arcade-top: max(var(--arcade-edge), env(safe-area-inset-top, 0px));
+  --arcade-right: max(var(--arcade-edge), env(safe-area-inset-right, 0px));
+  --arcade-bottom: max(var(--arcade-edge), env(safe-area-inset-bottom, 0px));
+  --arcade-left: max(var(--arcade-edge), env(safe-area-inset-left, 0px));
+  --arcade-ink: #06201a;
+  --arcade-pine: #0b2e26;
+  --arcade-gold: #f9c94a;
+  --arcade-light-gold: #ffe27a;
+  --arcade-snow: #fffdf6;
+  --arcade-muted: #c5d6cc;
+  --arcade-rule: rgb(249 201 74 / 25%);
+  --arcade-display: Georgia, serif;
+  position: fixed;
+  inset: var(--arcade-top) var(--arcade-right) var(--arcade-bottom) var(--arcade-left);
+  margin: auto;
+  width: min(var(--arcade-width, 29rem), calc(100% - var(--arcade-left) - var(--arcade-right)));
+  max-width: none;
+  max-height: calc(100vh - var(--arcade-top) - var(--arcade-bottom));
+  max-height: calc(100dvh - var(--arcade-top) - var(--arcade-bottom));
+  padding: clamp(0.875rem, 4vw, 1.625rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--arcade-rule);
+  border-radius: 1.125rem;
+  background: radial-gradient(ellipse at top, #184238, transparent 68%), var(--arcade-ink);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 50%), inset 0 2px var(--arcade-rule);
+  color: var(--arcade-snow);
+  font-family: system-ui, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.arcade-panel[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.arcade-panel[open] > :not(.arcade-ranking) {
+  flex: none;
+}
+
+.arcade-panel::backdrop {
+  background: rgb(3 16 13 / 87%);
+}
+
+.arcade-panel > header {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.arcade-panel :is(.arcade-title, .arcade-card-title) {
+  color: var(--arcade-snow);
+  font-family: var(--arcade-display);
+  font-size: clamp(1.625rem, 5.6vw, 2.375rem);
+  font-weight: 700;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+/* These headings receive initial dialog focus for reading, not as controls. */
+.arcade-panel h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* The title receives initial programmatic focus; only controls need a focus ring. */
+.arcade-panel h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.arcade-kicker {
+  color: var(--arcade-light-gold);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.arcade-score-summary {
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 2px solid var(--arcade-gold);
+  background: rgb(249 201 74 / 8%);
+  color: var(--arcade-muted);
+}
+
+.arcade-score-summary strong {
+  color: var(--arcade-light-gold);
+  font-family: var(--arcade-display);
+  font-size: 1.375rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.arcade-score-message {
+  color: var(--arcade-muted);
+  font-size: 0.8125rem;
+}
+
+.arcade-score-message:empty {
+  margin: 0;
+  padding: 0;
+  /* Keep the live region present without inserting a flex gap. */
+  position: absolute;
+}
+
+.arcade-ranking {
+  min-height: 2rem;
+  min-width: 0;
+  max-height: min(22rem, 45dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #958152 var(--arcade-ink);
+  border: 1px solid var(--arcade-rule);
+  border-radius: 0.625rem;
+  background: rgb(3 16 13 / 48%);
+}
+
+.arcade-ranking ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arcade-score-row {
+  display: grid;
+  grid-template-columns: 2ch minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 0.625rem;
+  padding: 0.375rem 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.arcade-score-row + .arcade-score-row {
+  border-block-start: 1px solid var(--arcade-rule);
+}
+
+.arcade-score-row:first-child {
+  background: rgb(249 201 74 / 8%);
+}
+
+.arcade-rank {
+  color: var(--arcade-muted);
+  font-size: 0.8125rem;
+}
+
+.arcade-points {
+  color: var(--arcade-light-gold);
+  font-weight: 700;
+  text-align: end;
+}
+
+.arcade-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-block-end: 0.25rem;
+}
+
+.arcade-score-form label {
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.arcade-skip {
+  min-height: 24px;
+  flex: none;
+  color: var(--arcade-muted);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.arcade-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.arcade-action,
+.arcade-input {
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+}
+
+.arcade-input {
+  width: 100%;
+  padding: 0.375rem 0.625rem;
+  background: var(--arcade-snow);
+  color: var(--arcade-ink);
+  font-size: 1rem; /* Avoid iOS zoom on focus. */
+}
+
+.arcade-action {
+  padding: 0.375rem 0.875rem;
+  border-color: var(--arcade-gold);
+  background: var(--arcade-gold);
+  color: var(--arcade-ink);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 750;
+}
+
+.arcade-leaderboard > .arcade-action {
+  border-color: var(--arcade-rule);
+  background: transparent;
+  color: var(--arcade-light-gold);
+}
+
+.arcade-action:hover:not(:disabled) {
+  border-color: var(--arcade-light-gold);
+  background: var(--arcade-light-gold);
+  color: var(--arcade-ink);
+}
+
+:is(.arcade-action, .arcade-skip):disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.arcade-panel :is(.arcade-action, .arcade-skip, .arcade-input, .arcade-ranking):focus-visible {
+  outline: 2px solid var(--arcade-light-gold);
+  outline-offset: 2px;
+}
+
+.arcade-card {
+  --arcade-width: 26rem;
+  text-align: center;
+}
+
+.arcade-card-art {
+  display: block;
+  align-self: center;
+  width: clamp(5.5rem, 24vw, 8.5rem);
+  aspect-ratio: 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: pixelated;
+  padding: 0.875rem;
+  border: 1px solid var(--arcade-rule);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    #214f41 0 58%, var(--arcade-rule) 59% 60%, var(--arcade-pine) 61%);
+  box-shadow: 0 0.375rem 1rem rgb(0 0 0 / 30%);
+}
+
+.arcade-card-flavor {
+  color: var(--arcade-muted);
+  font-family: var(--arcade-display);
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.arcade-card-effect {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.625rem 0.75rem;
+  margin-block: 0.25rem;
+  border-block: 1px solid var(--arcade-rule);
+  background: rgb(3 16 13 / 36%);
+  font-size: 0.875rem;
+  text-align: start;
+}
+
+@media (max-height: 31rem) {
+  .arcade-panel[open] {
+    gap: 0.375rem;
+    padding: 0.75rem 0.875rem;
+  }
+
+  .arcade-leaderboard {
+    --arcade-width: 32rem;
+  }
+
+  .arcade-panel :is(.arcade-title, .arcade-card-title) {
+    font-size: 1.5rem;
+  }
+
+  .arcade-score-summary,
+  .arcade-score-row {
+    padding-block: 0.25rem;
+  }
+
+  .arcade-card-art {
+    width: 4rem;
+    padding: 0.5rem;
+  }
+}
+
+@media (min-width: 32rem) and (max-height: 31rem) {
+  .arcade-leaderboard[open]:has(.arcade-ranking:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: repeat(4, auto);
+    align-items: start;
+    column-gap: 1rem;
+  }
+
+  .arcade-leaderboard > .arcade-ranking {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: stretch;
+  }
+
+  .arcade-leaderboard > :not(.arcade-ranking) {
+    grid-column: 1;
+  }
+
+  /* Set the object beside its inscription when vertical space is scarce. */
+  .arcade-card[open] {
+    --arcade-width: 34rem;
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    align-items: start;
+    column-gap: 1rem;
+    text-align: start;
+  }
+
+  .arcade-card-art {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    align-self: center;
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  .arcade-card > :not(.arcade-card-art) {
+    grid-column: 2;
   }
 }

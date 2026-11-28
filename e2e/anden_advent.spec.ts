@@ -36,7 +36,7 @@ test.describe('Flappy Santa', () => {
     // Fly into the floor: the run ends with score 0, which must not qualify.
     await tap(page);
     await expect.poll(async () => (await snap(page))?.state, { timeout: 8000 }).toBe('dead');
-    await expect(page.locator('input.arcade-input')).toHaveCount(0);
+    await expect(page.locator('input.arcade-input')).toBeHidden();
     await expect
       .poll(() => page.evaluate(() => (window as any).__arcadeScores__?.state), { timeout: 5000 })
       .toBe('list');
