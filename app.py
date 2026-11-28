@@ -1,10 +1,10 @@
 """Secret Santa + advent mini-games. Run as a single process (state lives in module globals)."""
 
 import json
-import re
-import time
 import os
+import re
 import sqlite3
+import time
 from contextlib import closing
 from datetime import datetime, timezone
 
@@ -17,10 +17,10 @@ from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from profile_sanitize import sanitize_wish
-from achievement_catalog import CATALOG, highest_tiers, tier_for
+from achievement_catalog import CATALOG, highest_tiers
 from avatar_presets import PRESETS, preset_url
-from avatars import save_avatar, AvatarError, avatar_dir
+from avatars import AvatarError, avatar_dir, save_avatar
+from profile_sanitize import sanitize_wish
 from secret_santa import SecretSanta
 from storage import (
     archive_scores_path,
@@ -790,6 +790,6 @@ def admin_restore_snapshot(body: SnapshotIn, _=Depends(require_admin)):
 
 
 if __name__ == "__main__":
-    __NOPE__
+    import uvicorn
 
     uvicorn.run("app:app", port=5000, reload=True)
