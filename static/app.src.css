@@ -131,6 +131,48 @@
   }
 }
 
+/* Small seals beneath the portrait, with a readable note on demand. */
+#player-modal {
+  margin: max(1rem, env(safe-area-inset-top, 0px)) auto auto;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+.badge-collection { width: 100%; min-width: 0; }
+.badge-row { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.badge-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 4.5rem;
+  min-height: 44px;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  color: #ffe27a;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
+}
+.badge-button img { width: 2.25rem; height: 2.25rem; border: 1px solid rgb(249 201 74 / 40%); }
+.badge-button:hover, .badge-button[aria-expanded="true"] { background: rgb(249 201 74 / 10%); }
+.badge-button:focus-visible { outline: 2px solid #ffe27a; outline-offset: 2px; }
+.badge-detail {
+  margin-top: 0.625rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid rgb(249 201 74 / 28%);
+  border-left: 3px solid #f9c94a;
+  border-radius: 0.75rem;
+  background: rgb(6 32 26 / 75%);
+  color: #f7f3e8;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.badge-detail[hidden] { display: none; }
+.badge-detail h3 { color: #ffe27a; font-family: Georgia, serif; font-size: 1.125rem; font-weight: 700; }
+.badge-detail p { margin-top: 0.5rem; }
+.badge-detail [data-detail-reward] { color: #ffe27a; }
+
 /* Winter arcade: a score ledger and a stamped reliquary for found objects. */
 .arcade-panel {
   --arcade-edge: 12px;

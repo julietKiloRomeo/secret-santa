@@ -34,14 +34,24 @@
       const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const players = {};
       let lastCard = null;
+      let badgeGroupId = 0;
 
-      function badge(b) {
-        // Hover text: the name is the title, the snark and reward are the tooltip body.
-        const tip = `${b.snark}\n\n${b.reward}`;
-        return `<figure class="flex w-20 flex-col items-center gap-1 text-center" title="${esc(tip)}" tabindex="0" data-badge="${esc(b.id)}">
-          <img src="${esc(b.image)}" alt="${esc(b.name)}" class="h-16 w-16 rounded-full object-cover drop-shadow-lg">
-          <figcaption class="text-[0.7rem] leading-tight text-gold-300">${esc(b.name)}</figcaption>
-        </figure>`;
+      function badgesFor(badges) {
+        if (!badges.length) return '<p class="text-xs text-snow-100/60">Ingen badges endnu</p>';
+        const detailId = `badge-detail-${++badgeGroupId}`;
+        return `<div class="badge-collection" data-badge-group>
+          <div class="badge-row">${badges.map((b) => `
+            <button type="button" class="badge-button" data-badge="${esc(b.id)}"
+              data-name="${esc(b.name)}" data-snark="${esc(b.snark)}" data-reward="${esc(b.reward)}"
+              aria-controls="${detailId}" aria-expanded="false">
+              <img src="${esc(b.image)}" alt="" class="rounded-full object-cover">
+              <span>${esc(b.name)}</span>
+            </button>`).join('')}
+          </div>
+          <section id="${detailId}" class="badge-detail" data-badge-detail hidden>
+            <h3 data-detail-name></h3><p data-detail-snark></p><p data-detail-reward></p>
+          </section>
+        </div>`;
       }
 
       function card(p) {
@@ -49,7 +59,7 @@
         const avatar = p.avatar
           ? `<img src="${esc(p.avatar)}" alt="" class="h-20 w-20 rounded-full border border-gold-500/40 object-cover">`
           : `<div class="flex h-20 w-20 items-center justify-center rounded-full border border-gold-500/40 bg-pine-950/60 font-display text-2xl text-gold-300">${esc(p.name[0].toUpperCase())}</div>`;
-        const badges = p.badges.map(badge).join('') || '<span class="text-xs text-snow-100/60">Ingen badges endnu</span>';
+        const badges = badgesFor(p.badges);
         return `
           <article class="xmas-card flex flex-col gap-3 ${p.name === me ? 'ring-2 ring-gold-300/60' : ''}" data-card="${esc(p.name)}">
             <button type="button" data-card-open="${esc(p.name)}" class="flex items-center gap-3 rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-300"
@@ -57,7 +67,7 @@
               ${avatar}
               <h2 class="text-2xl">${esc(p.name)}</h2>
             </button>
-            <div class="flex flex-wrap gap-2">${badges}</div>
+            ${badges}
           </article>`;
       }
 
@@ -79,8 +89,7 @@
         const wishEl = document.querySelector('[data-panel="wish"]');
         // The wish list is HTML the server already sanitized on read.
         wishEl.innerHTML = p.wish_html || '<p class="text-snow-100/60">Ingen ønsker endnu.</p>';
-        document.querySelector('[data-panel="badges"]').innerHTML =
-          p.badges.map(badge).join('') || '<p class="text-snow-100/60">Ingen badges endnu.</p>';
+        document.querySelector('[data-panel="badges"]').innerHTML = badgesFor(p.badges);
         selectTab('badges', false);
         modal.showModal();
       }
@@ -88,6 +97,49 @@
       root.addEventListener('click', (ev) => {
         const btn = ev.target.closest('[data-card-open]');
         if (btn) openPlayer(btn.dataset.cardOpen, btn);
+      });
+
+      function showBadge(group, button) {
+        const detail = group.querySelector('[data-badge-detail]');
+        group.querySelectorAll('[data-badge]').forEach((b) => b.setAttribute('aria-expanded', b === button ? 'true' : 'false'));
+        detail.hidden = !button;
+        if (!button) return;
+        detail.querySelector('[data-detail-name]').textContent = button.dataset.name;
+        detail.querySelector('[data-detail-snark]').textContent = button.dataset.snark;
+        detail.querySelector('[data-detail-reward]').textContent = button.dataset.reward;
+      }
+
+      document.addEventListener('click', (ev) => {
+        const button = ev.target.closest('[data-badge]');
+        if (!button) return;
+        const group = button.closest('[data-badge-group]');
+        group.pinnedBadge = group.pinnedBadge === button ? null : button;
+        showBadge(group, group.pinnedBadge);
+      });
+      document.addEventListener('pointerover', (ev) => {
+        if (ev.pointerType !== 'mouse') return;
+        const button = ev.target.closest('[data-badge]');
+        if (!button || button.contains(ev.relatedTarget)) return;
+        const group = button.closest('[data-badge-group]');
+        if (!group.pinnedBadge) showBadge(group, button);
+      });
+      document.addEventListener('pointerout', (ev) => {
+        if (ev.pointerType !== 'mouse') return;
+        const group = ev.target.closest('[data-badge-group]');
+        if (!group || group.contains(ev.relatedTarget)) return;
+        if (!group.pinnedBadge) showBadge(group, null);
+      });
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Escape') return;
+        const active = modal.open ? modal : root;
+        const focused = document.activeElement?.closest('[data-badge-group]');
+        const group = (focused && !focused.querySelector('[data-badge-detail]').hidden && focused) ||
+          [...active.querySelectorAll('[data-badge-group]')]
+          .find((g) => !g.querySelector('[data-badge-detail]').hidden);
+        if (!group || group.querySelector('[data-badge-detail]').hidden) return;
+        ev.preventDefault();
+        group.pinnedBadge = null;
+        showBadge(group, null);
       });
       modal.querySelector('[data-modal-close]').addEventListener('click', () => modal.close());
       modal.addEventListener('close', () => { if (lastCard) lastCard.focus(); lastCard = null; });
