@@ -25,6 +25,7 @@ test('a badge gives a brief, non-blocking hint when earned and re-earned', async
   expect((await (await response).json()).success).toBe(true);
   const hint = page.getByRole('status', { name: 'Badge' });
   await expect(hint).toContainText('Nidhogg');
+  expect(await hint.evaluate((el) => Number(getComputedStyle(el).zIndex))).toBeGreaterThan(0);
   await expect(page.locator('.arcade-panel')).toHaveCount(0);
   await expect(hint).toHaveText('', { timeout: 5000 });
 
