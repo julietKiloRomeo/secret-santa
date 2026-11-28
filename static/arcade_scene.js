@@ -30,7 +30,7 @@ class ScoresScene extends Phaser.Scene {
         <p class="arcade-score-summary">Dine point <strong></strong></p>
       </header>
       <div class="arcade-ranking" role="region" aria-label="Placeringer" tabindex="0"><ol role="list"></ol></div>
-      <p class="arcade-score-message" role="status">Henter resultater …</p>
+      <p id="arcade-score-message" class="arcade-score-message" role="status">Henter resultater …</p>
       <form class="arcade-score-form" hidden>
         <div class="arcade-form-heading">
           <label for="arcade-score-name">Dit navn på julemandens liste</label>
@@ -41,7 +41,7 @@ class ScoresScene extends Phaser.Scene {
           <button class="arcade-action" type="submit">Gem point</button>
         </div>
       </form>
-      <button class="arcade-action" type="button" data-score-close hidden>Luk</button>`;
+      <button class="arcade-action" type="button" data-score-close>Luk</button>`;
     const heading = panel.querySelector('h2');
     heading.textContent = title;
     const summary = panel.querySelector('.arcade-score-summary');
@@ -88,7 +88,7 @@ class ScoresScene extends Phaser.Scene {
     };
 
     const finish = () => {
-      if (!['list', 'entry'].includes(this.state)) return;
+      if (!['loading', 'list', 'entry'].includes(this.state)) return;
       this.state = 'closed';
       panel.close();
       this.scene.stop();
@@ -125,14 +125,28 @@ class ScoresScene extends Phaser.Scene {
     this.state = 'entry';
     renderRows(scores);
     status.textContent = 'Ny rekord!';
+    close.hidden = true;
     form.hidden = false;
     input.value = window.__defaultPlayerName__ || '';
     input.focus();
     input.select();
+    input.addEventListener('input', () => {
+      if (!input.hasAttribute('aria-invalid')) return;
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-describedby');
+      status.textContent = 'Ny rekord!';
+    });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (this.state !== 'entry') return;
       const name = input.value.trim();
-      if (!name || this.state !== 'entry') return;
+      if (!name) {
+        status.textContent = 'Skriv et navn for at gemme dine point.';
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-describedby', status.id);
+        input.focus();
+        return;
+      }
       this.state = 'saving';
       save.disabled = true;
       skip.disabled = true;

@@ -35,12 +35,15 @@ for (const [size, viewport] of Object.entries(sizes)) {
     });
     const loot = page.getByRole('dialog', { name: 'Misteltenens spøgelse' });
     await expect(loot).toBeVisible();
+    await page.waitForTimeout(300); // let the pickup guard expire before testing the shortcuts
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('PageUp');
+    await expect(loot).toBeVisible();
     await expect(loot.getByText('Virkning')).toBeInViewport();
     await expect(loot.getByRole('button', { name: 'Fortsæt' })).toBeInViewport();
     expect(await loot.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('powerup.png') });
 
-    await page.waitForTimeout(300);
     if (size === 'phone') await loot.getByRole('button', { name: 'Fortsæt' }).click();
     else await page.keyboard.press('Space');
     await expect(loot).toBeHidden();
@@ -51,6 +54,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       d.placeGiftNextToHead(1, 0);
       d.setDirection('right');
       d.tickOnce();
+      d.placeGiftNextToHead(1, 0);
       d.setDirection('up');
       for (let i = 0; i < 30; i++) d.tickOnce();
     });

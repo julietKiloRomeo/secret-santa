@@ -92,3 +92,21 @@ test('an unavailable ranking shows an error and can be closed by keyboard', asyn
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
 });
+
+test('the ranking can be closed while its request is pending', async ({ page }) => {
+  await page.route('**/api/scores/advent-1', () => {});
+  await dieWithScore(page, 1);
+  await expect(page.getByRole('status')).toHaveText('Henter resultater …');
+  await page.getByRole('button', { name: 'Luk' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('a whitespace-only name gets a visible validation message', async ({ page }) => {
+  await page.route('**/api/scores/advent-1', (route) => route.fulfill({ json: { scores: [] } }));
+  await dieWithScore(page, 1);
+  const input = page.getByLabel('Dit navn på julemandens liste');
+  await input.fill('   ');
+  await input.press('Enter');
+  await expect(page.getByRole('status')).toHaveText('Skriv et navn for at gemme dine point.');
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+});

@@ -276,9 +276,11 @@ class SnakeScene extends Phaser.Scene {
     panel.querySelector('button').addEventListener('click', () => this.dismissCard());
     panel.addEventListener('keydown', (e) => {
       e.stopPropagation();
-      if (e.repeat || ['Tab', 'Shift', 'Alt', 'Control', 'Meta'].includes(e.key)) return;
+      // Keep scrolling and native button activation intact. Space on the initial heading
+      // also continues, like the original arcade shortcut.
+      if (![' ', 'Enter'].includes(e.key) || e.target.tagName !== 'H2') return;
       e.preventDefault();
-      this.dismissCard();
+      if (!e.repeat) this.dismissCard();
     });
     panel.addEventListener('cancel', (e) => {
       e.preventDefault();
