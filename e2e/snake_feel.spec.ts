@@ -21,6 +21,27 @@ test('a key press reaches the queue (the two-turn order is covered in Jest)', as
   expect(await page.evaluate(() => (window as any).__snakeDebug__.getQueue())).toEqual(['up']);
 });
 
+test('an arrow press turns the head on screen before the next movement tick', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/advent-1');
+  await dbg(page);
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  await page.evaluate(() => (window as any).__snakeDebug__.restartGame());
+
+  await page.keyboard.press('ArrowLeft'); // a reverse must not turn the sprite
+  await page.clock.runFor(32);
+  const rotation = () => page.evaluate(() => (window as any).__snakeDebug__.getHeadRotation());
+  expect(await rotation()).toBe(0);
+  // Reset to test a legal turn immediately after a fresh movement interval.
+  await page.evaluate(() => (window as any).__snakeDebug__.restartGame());
+  const coords = () => page.evaluate(() => (window as any).__snakeDebug__.getSnakeCoords());
+  const before = await coords();
+  await page.keyboard.press('ArrowUp');
+  await page.clock.runFor(32);
+  expect(await rotation()).toBeCloseTo(-Math.PI / 2);
+  expect(await coords()).toEqual(before);
+});
+
 test('a wall death opens the score screen and freezes the snake', async ({ page }) => {
   await page.goto('/advent-1');
   await dbg(page);

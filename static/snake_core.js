@@ -73,10 +73,13 @@ export const turn = (s, dir) => {
   if (s.queue.length < QUEUE_MAX) s.queue.push(dir);
 };
 
+export const nextDirection = ({ dir, queue: [next] }) =>
+  next && OPPOSITE[next] !== dir ? next : dir;
+
 // Advance one tick. Returns 'dead', 'ate' or 'moved'.
 export function step(s, rand) {
-  const next = s.queue.shift();
-  if (next && OPPOSITE[next] !== s.dir) s.dir = next;
+  s.dir = nextDirection(s);
+  s.queue.shift();
   const [dx, dy] = DELTA[s.dir];
   const head = { x: s.body[0].x + dx, y: s.body[0].y + dy };
   // The tail moves away this tick, so its cell is free unless the snake grows (then it stays put).

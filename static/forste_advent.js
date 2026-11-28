@@ -3,6 +3,7 @@
 // at any frame rate. The simulation never depends on the frame rate.
 import {
   createSnake,
+  nextDirection,
   step,
   turn,
   swipeDir,
@@ -96,19 +97,19 @@ class SnakeScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.card?.remove());
     this.input.on('pointerdown', (p) => {
       if (this.cardOpen) return this.dismissCard();
-      // Record the start in every state, so a swipe made during the wait is read on release.
-      this.swipe = p.position.clone();
+      this.swipe = { id: p.id, x: p.x, y: p.y };
       if (this.waiting) return; // a tap during the wait does not reset the run
       if (!this.running() && !this.busy) this.restart();
     });
+    this.input.on('pointermove', (p) => {
+      if (p.isDown) this.readSwipe(p);
+    });
     this.input.on('pointerup', (p) => {
-      const dir =
-        this.swipe &&
-        swipeDir((p.x - this.swipe.x) * this.scaleRatio(), (p.y - this.swipe.y) * this.scaleRatio());
-      this.swipe = null;
-      if (dir && this.waiting) this.startFromWait(dir);
-      else if (dir) turn(this.s, dir);
-      if (dir) beep(this, 440, 40, 'square', 0.01);
+      this.readSwipe(p); // fallback if the release was the first event past the threshold
+      if (this.swipe?.id === p.id) this.swipe = null;
+    });
+    this.input.on('pointerupoutside', (p) => {
+      if (this.swipe?.id === p.id) this.swipe = null;
     });
     this.paused = false;
     this.acc = 0;
@@ -137,25 +138,30 @@ class SnakeScene extends Phaser.Scene {
     return this.s.alive && !this.paused;
   }
 
-  // Swipe threshold is in screen px, pointer coords are in game px.
-  scaleRatio() {
-    return this.scale.displayScale.x ? 1 / this.scale.displayScale.x : 1;
+  readSwipe(p) {
+    if (this.swipe?.id !== p.id || this.cardOpen) return;
+    // Swipe threshold is in screen px, pointer coords are in game px.
+    const scale = this.scale.displayScale;
+    const dir = swipeDir((p.x - this.swipe.x) / (scale.x || 1), (p.y - this.swipe.y) / (scale.y || 1));
+    if (!dir) return;
+    this.swipe = null; // one direction per gesture, including across the release
+    this.steer(dir);
   }
 
   onKey(e) {
     if (this.cardOpen) return this.dismissCard();
+    if (!this.waiting && !this.running() && !this.busy && RESTART_KEYS.has(e.code)) this.restart();
+    if (KEY_DIR[e.key]) this.steer(KEY_DIR[e.key]);
+  }
+
+  steer(dir) {
     if (this.waiting) {
-      if (KEY_DIR[e.key]) {
-        this.startFromWait(KEY_DIR[e.key]);
-        beep(this, 440, 40, 'square', 0.01);
-      }
-      return;
+      this.waiting = false;
+      this.paused = false;
+      setStatus('');
     }
-    if (!this.running() && !this.busy && RESTART_KEYS.has(e.code)) this.restart();
-    if (KEY_DIR[e.key]) {
-      turn(this.s, KEY_DIR[e.key]);
-      beep(this, 440, 40, 'square', 0.01);
-    }
+    turn(this.s, dir);
+    beep(this, 440, 40, 'square', 0.01);
   }
 
   restart() {
@@ -322,13 +328,6 @@ class SnakeScene extends Phaser.Scene {
     setStatus(line);
   }
 
-  startFromWait(dir) {
-    this.waiting = false;
-    this.paused = false;
-    setStatus('');
-    turn(this.s, dir);
-  }
-
   onPickup() {
     scoreEl.textContent = `Point: ${this.s.score}`;
     beep(this, 880, 120, 'sine', 0.03);
@@ -420,12 +419,14 @@ class SnakeScene extends Phaser.Scene {
     };
     this.body.clear();
     const h = at(0);
+    // Show the next legal turn right away, without moving ahead of the grid simulation.
+    const facing = this.running() ? nextDirection(this.s) : this.s.dir;
     this.head
       .setVisible(true)
       .setTexture('head')
       .setPosition(h.x * CELL + CELL / 2, h.y * CELL + CELL / 2)
       .setDisplaySize(CELL * (this.headPop ?? 1), CELL * (this.headPop ?? 1))
-      .setRotation(HEAD_ANGLE[this.s.dir] ?? 0);
+      .setRotation(HEAD_ANGLE[facing] ?? 0);
     // Body segments are presents too: skins[i] is drawn on body[i + 1].
     // The floor gift is drawn last, on top of the body, with a pulsing glow so it reads at a glance.
     const bodyMarks = skins.slice(0, body.length - 1).map((skin, i) => ({ ...at(i + 1), skin }));
@@ -489,6 +490,7 @@ function exposeDebug(scene) {
     setDirection: (d) => turn(scene.s, d),
     getPendingDirection: () => scene.s.queue.at(-1) ?? scene.s.dir,
     getDirection: () => scene.s.dir,
+    getHeadRotation: () => scene.head.rotation,
     getQueue: () => [...scene.s.queue],
     tickOnce: () => {
       if (!scene.s.alive || scene.waiting) return; // a wait must hold, as in the real loop

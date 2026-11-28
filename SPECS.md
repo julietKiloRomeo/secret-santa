@@ -84,7 +84,7 @@ Client behavior / Mini-games
 All four games are Phaser 4 scenes (`static/vendor/phaser-4.2.1.min.js`). The rules live in pure modules that Jest tests; the views draw them and handle input. Every game ends with the shared score screen (`static/arcade_scene.js`): it shows the top 10, asks for a name if the score qualifies (max 18 characters, pre-filled with the player's name), and posts it. The game pauses while the screen is open.
 
 - Jule Snake (`/advent-1`, `static/forste_advent.js`, rules `static/snake_core.js` and `static/snake_powerups.js`, feedback values `static/snake_feel.js`):
-  - Arrow keys or swipe (24px threshold) steer. The board matches the screen aspect (`static/snake_board.js`), about 400 cells.
+  - Arrow keys or swipe (as soon as the drag reaches 24 screen pixels) steer. The head faces the next valid turn immediately; movement and collisions still follow the grid ticks. The board matches the screen aspect (`static/snake_board.js`), about 400 cells.
   - Turns are queued: up to two per tick, applied in press order. A reverse is refused against the direction in use.
   - The snake starts as a 5-segment body with four present segments. Gifts come from a shuffle bag and become body segments in the order eaten.
   - Tick time starts at 220 ms, drops 3 ms per gift, and never goes below 90 ms. A queued turn steps early once half a tick has passed.
