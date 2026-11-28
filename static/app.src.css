@@ -102,6 +102,34 @@
   }
 }
 
+/* A small, non-interactive glint; the board and controls remain available. */
+.achievement-hint {
+  position: absolute;
+  bottom: max(2.5rem, env(safe-area-inset-bottom, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgb(249 201 74 / 45%);
+  border-radius: 999px;
+  background: rgb(6 32 26 / 92%);
+  color: #ffe27a;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 0 1.25rem rgb(249 201 74 / 20%);
+}
+.achievement-hint:empty {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .achievement-hint:not(:empty) { animation: achievement-glint 0.3s ease-out; }
+  @keyframes achievement-glint {
+    from { opacity: 0; transform: translateY(0.35rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
 /* Winter arcade: a score ledger and a stamped reliquary for found objects. */
 .arcade-panel {
   --arcade-edge: 12px;

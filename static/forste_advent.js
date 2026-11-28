@@ -15,7 +15,7 @@ import {
 import { showScores } from './arcade_scene.js';
 import { pickSaveLine, saveStreakLine, nextStreak } from './shield_messages.js';
 import { boardFor } from './snake_board.js';
-import { reachedSnakeIds } from './snake_achievements.js';
+import { reachedSnakeIds, snakeTierName } from './snake_achievements.js';
 import { FEEL } from './snake_feel.js';
 import {
   placeFloor,
@@ -94,7 +94,10 @@ class SnakeScene extends Phaser.Scene {
     this.headPop = 1;
     this.marks = []; // reusable sprite objects for the gift and the body skins
     this.input.keyboard.on('keydown', (e) => this.onKey(e));
-    this.events.once('shutdown', () => this.card?.remove());
+    this.events.once('shutdown', () => {
+      this.card?.remove();
+      clearTimeout(this.achievementTimer);
+    });
     this.input.on('pointerdown', (p) => {
       if (this.cardOpen) return this.dismissCard();
       this.swipe = { id: p.id, x: p.x, y: p.y };
@@ -168,6 +171,7 @@ class SnakeScene extends Phaser.Scene {
     this.waiting = false;
     this.saveStreak = 0;
     this.stats = null;
+    this.sentTiers = new Set();
     this.seenCards = new Set(); // every game start: the loot cards are read again once
     this.s = createSnake(COLS, ROWS, Math.random);
     placeFloor(this.s, Math.random); // the floor holds one gift or powerup, never both
@@ -217,21 +221,33 @@ class SnakeScene extends Phaser.Scene {
     this.sendReachedTiers();
   }
 
-  // Reached snake tiers go to the server. Each id is sent once per page; the server ignores repeats.
+  // Each tier is announced once per run, including tiers already earned in a previous run.
   sendReachedTiers() {
-    this.sentTiers ??= new Set();
+    const sent = this.sentTiers;
     for (const id of reachedSnakeIds(this.stats ?? {})) {
-      if (this.sentTiers.has(id)) continue;
-      this.sentTiers.add(id);
+      if (sent.has(id)) continue;
+      sent.add(id);
       fetch('/api/achievements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ achievement_id: id }),
         credentials: 'same-origin',
-      }).catch(() => this.sentTiers.delete(id)); // offline or failed: try again on the next update
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error('Achievement not saved');
+          if (this.sentTiers !== sent) return;
+          const hint = document.getElementById('achievement-hint');
+          const name = snakeTierName(id);
+          if (!hint || !name) return;
+          clearTimeout(this.achievementTimer);
+          hint.textContent = `✦ ${name}`;
+          this.achievementTimer = setTimeout(() => {
+            hint.textContent = '';
+          }, 2800);
+        })
+        .catch(() => sent.delete(id)); // offline or failed: try again on the next update
     }
   }
-
 
   // Shield and ghost counts plus the trim note, so stacked pickups stay readable.
   refreshHud() {
@@ -431,7 +447,12 @@ class SnakeScene extends Phaser.Scene {
     // The floor gift is drawn last, on top of the body, with a pulsing glow so it reads at a glance.
     const bodyMarks = skins.slice(0, body.length - 1).map((skin, i) => ({ ...at(i + 1), skin }));
     // Frozen trim pieces: their cells, held still, fading out. Drawn behind the live body.
-    const trimMarks = (this.s.trimmed ?? []).map((p) => ({ x: p.x, y: p.y, skin: p.skin, alpha: trimAlpha(p.ttl) }));
+    const trimMarks = (this.s.trimmed ?? []).map((p) => ({
+      x: p.x,
+      y: p.y,
+      skin: p.skin,
+      alpha: trimAlpha(p.ttl),
+    }));
     const marks = [...trimMarks, ...bodyMarks, ...(gift ? [{ ...gift, floor: true }] : [])];
     // While ghosting, the body and head are see-through. The floor gift stays solid.
     const bodyAlpha = ghostAlpha(this.s);

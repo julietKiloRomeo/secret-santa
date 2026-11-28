@@ -1,7 +1,13 @@
-import { reachedSnakeIds, SNAKE_TRACKS } from '../static/snake_achievements';
+import { reachedSnakeIds, SNAKE_TRACKS, snakeTierName } from '../static/snake_achievements';
 
 test('no stats reached means no ids', () => {
   expect(reachedSnakeIds({})).toEqual([]);
+});
+
+test('tier ids resolve to their badge names', () => {
+  expect(snakeTierName('advent-1:loops:1')).toBe('Nidhogg');
+  expect(snakeTierName('advent-1:loops:3')).toBe('Midgårdsormen');
+  expect(snakeTierName('advent-1:other:1')).toBeNull();
 });
 
 test('a loop tier is sent for every loop count reached', () => {
