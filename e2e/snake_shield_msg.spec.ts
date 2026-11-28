@@ -18,7 +18,7 @@ test('a wall save shows a wall line and waits for a direction', async ({ page })
   });
   for (let i = 0; i < 14; i += 1) await page.evaluate(() => (window as any).__snakeDebug__.tickOnce());
   const status = await page.locator('#status').textContent();
-  expect(status).toMatch(/arrow|pil/i);
+  expect(status).toContain('Vælg en retning');
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isWaiting())).toBe(true);
 });
 

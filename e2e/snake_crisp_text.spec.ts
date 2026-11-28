@@ -49,5 +49,7 @@ test('score screen title and rows are DOM text', async ({ page }) => {
   });
   await expect.poll(() => boxed(page, '.arcade-title')).not.toBeNull();
   expect((await boxed(page, '.arcade-title'))!.text).toContain('Søde Børn');
-  expect(await page.locator('.arcade-score-row, .arcade-text').count()).toBeGreaterThan(3);
+  // Rows arrive after the asynchronous scores request, later than the title.
+  await expect(page.locator('.arcade-score-row').first()).toBeVisible();
+  expect((await boxed(page, '.arcade-score-row'))!.w).toBeGreaterThan(0);
 });

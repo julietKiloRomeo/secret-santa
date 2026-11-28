@@ -19,8 +19,8 @@ test('shield saves you from a wall, pauses, and waits for a direction', async ({
   for (let i = 0; i < 14; i += 1) {
     await page.evaluate(() => (window as any).__snakeDebug__.tickOnce());
   }
-  // A random save line is shown (see shield_messages.js); it always asks for an arrow.
-  await expect(page.locator('#status')).toContainText(/arrow|pil/i);
+  // Every Danish save message asks the player to choose a direction.
+  await expect(page.locator('#status')).toContainText('Vælg en retning');
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isWaiting())).toBe(true);
   expect(await page.evaluate(() => (window as any).__snakeDebug__.isAlive())).toBe(true);
   // Space does not start it; a direction does.
